@@ -9,6 +9,7 @@ mod session_ops;
 mod styles;
 mod ui_canvas;
 mod ui_inspector;
+mod ui_visuals;
 #[cfg(target_arch = "wasm32")]
 mod web_diag;
 

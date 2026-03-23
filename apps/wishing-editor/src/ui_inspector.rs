@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use dioxus::prelude::*;
 use wishing_core::{EditorDocument, ObjectShape, Property};
 
@@ -12,6 +10,7 @@ use crate::{
         selected_object_view, update_layer_property_value, update_object_property_value,
         update_selected_object_geometry,
     },
+    ui_visuals::{object_icon_style, palette_tile_style},
 };
 
 pub(crate) fn render_palette(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
@@ -91,6 +90,10 @@ pub(crate) fn render_inspector(snapshot: &AppState, mut state: Signal<AppState>)
                                         let object_id = object.id;
                                         move |_| state.write().selected_object = Some(object_id)
                                     },
+                                    span {
+                                        class: "object-shape-icon",
+                                        style: object_icon_style(&object.shape),
+                                    }
                                     "#{object.id} {object.name}"
                                 }
                             }
@@ -225,29 +228,4 @@ fn collect_palette(document: &EditorDocument) -> Vec<PaletteTile> {
         }
     }
     palette
-}
-
-fn palette_tile_style(
-    document: &EditorDocument,
-    image_cache: &BTreeMap<usize, String>,
-    tile: &PaletteTile,
-) -> String {
-    let Some(reference) = document.map.tile_reference_for_gid(tile.gid) else {
-        return String::new();
-    };
-    let Some(image) = image_cache.get(&tile.tileset_index) else {
-        return String::new();
-    };
-    let columns = reference.tileset.tileset.columns.max(1);
-    let tile_width = reference.tileset.tileset.tile_width;
-    let tile_height = reference.tileset.tileset.tile_height;
-    let source_x = (tile.local_id % columns) * tile_width;
-    let source_y = (tile.local_id / columns) * tile_height;
-    format!(
-        "background-image:url('{image}');background-position:-{}px -{}px;background-size:{}px {}px;",
-        source_x,
-        source_y,
-        reference.tileset.tileset.image.width,
-        reference.tileset.tileset.image.height,
-    )
 }

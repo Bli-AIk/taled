@@ -179,18 +179,10 @@ pub(crate) const STYLES: &str = r#"
   }
   .object-overlay {
     cursor: pointer;
-  }
-  .object-overlay.rectangle {
-    border: 2px solid rgba(89, 220, 174, 0.95);
-    background: rgba(89, 220, 174, 0.18);
-  }
-  .object-overlay.point {
-    border-radius: 999px;
-    border: 2px solid rgba(253, 92, 131, 0.95);
-    background: rgba(253, 92, 131, 0.28);
+    background-repeat: no-repeat;
   }
   .object-overlay.selected {
-    box-shadow: 0 0 0 2px rgba(255, 226, 133, 0.96);
+    filter: drop-shadow(0 0 4px rgba(255, 226, 133, 0.96));
   }
   .palette-grid {
     display: grid;
@@ -227,6 +219,21 @@ pub(crate) const STYLES: &str = r#"
     border-radius: 8px;
     color: #eef4fb;
     padding: 7px 9px;
+  }
+  .object-row button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-align: left;
+  }
+  .object-shape-icon {
+    width: 18px;
+    height: 18px;
+    flex: none;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
   }
   .mobile-shell {
     display: none;

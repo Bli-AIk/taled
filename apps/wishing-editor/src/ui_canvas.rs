@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
-use wishing_core::{EditorDocument, MapObject, ObjectShape};
+use wishing_core::{EditorDocument, ObjectShape};
 
 use crate::{
     app_state::{AppState, Tool},
     edit_ops::apply_cell_tool,
+    ui_visuals::object_overlay_style,
 };
 
 pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
@@ -61,7 +62,12 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                                     div {
                                         key: "object-{layer_index}-{object.id}",
                                         class: object_class(snapshot.selected_object, object.id, &object.shape),
-                                        style: object_style(object, snapshot.tool == Tool::Select),
+                                        style: object_overlay_style(
+                                            object,
+                                            snapshot.tool == Tool::Select,
+                                            snapshot.selected_object == Some(object.id),
+                                            zoom,
+                                        ),
                                         onclick: {
                                             let object_id = object.id;
                                             move |_| {
@@ -140,21 +146,5 @@ fn object_class(selected: Option<u32>, object_id: u32, shape: &ObjectShape) -> &
         (true, ObjectShape::Point) => "object-overlay point selected",
         (false, ObjectShape::Rectangle) => "object-overlay rectangle",
         (false, ObjectShape::Point) => "object-overlay point",
-    }
-}
-
-fn object_style(object: &MapObject, selectable: bool) -> String {
-    let pointer_events = if selectable { "auto" } else { "none" };
-    match object.shape {
-        ObjectShape::Rectangle => format!(
-            "left:{}px;top:{}px;width:{}px;height:{}px;pointer-events:{};",
-            object.x, object.y, object.width, object.height, pointer_events
-        ),
-        ObjectShape::Point => format!(
-            "left:{}px;top:{}px;width:10px;height:10px;pointer-events:{};",
-            object.x - 5.0,
-            object.y - 5.0,
-            pointer_events
-        ),
     }
 }
