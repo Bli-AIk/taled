@@ -1,0 +1,152 @@
+use std::collections::BTreeMap;
+
+use wishing_core::EditorSession;
+
+#[cfg(target_os = "android")]
+use crate::platform::log_path;
+#[cfg(any(target_arch = "wasm32", target_os = "android"))]
+use crate::platform::{EMBEDDED_DEMO_MAP_PATH, log};
+#[cfg(target_arch = "wasm32")]
+use crate::session_ops::load_sample;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Tool {
+    Paint,
+    Erase,
+    Select,
+    AddRectangle,
+    AddPoint,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum MobilePanel {
+    Layers,
+    Tiles,
+    Inspector,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AppState {
+    pub(crate) path_input: String,
+    pub(crate) save_as_input: String,
+    pub(crate) session: Option<EditorSession>,
+    pub(crate) image_cache: BTreeMap<usize, String>,
+    pub(crate) active_layer: usize,
+    pub(crate) selected_gid: u32,
+    pub(crate) selected_cell: Option<(u32, u32)>,
+    pub(crate) selected_object: Option<u32>,
+    pub(crate) tool: Tool,
+    pub(crate) mobile_panel: MobilePanel,
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) show_web_logs: bool,
+    pub(crate) zoom_percent: i32,
+    pub(crate) pan_x: i32,
+    pub(crate) pan_y: i32,
+    pub(crate) status: String,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let path_input = EMBEDDED_DEMO_MAP_PATH.to_string();
+            let mut state = Self {
+                path_input: path_input.clone(),
+                save_as_input: path_input,
+                session: None,
+                image_cache: BTreeMap::new(),
+                active_layer: 0,
+                selected_gid: 0,
+                selected_cell: None,
+                selected_object: None,
+                tool: Tool::Paint,
+                mobile_panel: MobilePanel::Layers,
+                show_web_logs: false,
+                zoom_percent: 100,
+                pan_x: 0,
+                pan_y: 0,
+                status: default_status_message(),
+            };
+            log("boot: constructing default web state");
+            load_sample(&mut state);
+            return state;
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            let path_input = EMBEDDED_DEMO_MAP_PATH.to_string();
+            let state = Self {
+                path_input: path_input.clone(),
+                save_as_input: path_input,
+                session: None,
+                image_cache: BTreeMap::new(),
+                active_layer: 0,
+                selected_gid: 0,
+                selected_cell: None,
+                selected_object: None,
+                tool: Tool::Paint,
+                mobile_panel: MobilePanel::Layers,
+                zoom_percent: 100,
+                pan_x: 0,
+                pan_y: 0,
+                status: default_status_message(),
+            };
+            log("boot: constructing default android state");
+            log("boot: android startup skips auto-loading the demo map");
+            return state;
+        }
+
+        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+        {
+            let path_input = std::env::current_dir()
+                .ok()
+                .map(EditorSession::sample_path_from_root)
+                .map(|path| path.display().to_string())
+                .unwrap_or_default();
+
+            Self {
+                path_input: path_input.clone(),
+                save_as_input: path_input,
+                session: None,
+                image_cache: BTreeMap::new(),
+                active_layer: 0,
+                selected_gid: 0,
+                selected_cell: None,
+                selected_object: None,
+                tool: Tool::Paint,
+                mobile_panel: MobilePanel::Layers,
+                zoom_percent: 100,
+                pan_x: 0,
+                pan_y: 0,
+                status: default_status_message(),
+            }
+        }
+    }
+}
+
+fn default_status_message() -> String {
+    #[cfg(target_arch = "wasm32")]
+    {
+        return format!("Web preview uses the embedded TMWA demo map ({EMBEDDED_DEMO_MAP_PATH}).");
+    }
+
+    #[cfg(target_os = "android")]
+    {
+        let log_path = log_path().unwrap_or_default();
+        return format!(
+            "Android booted. Tap Demo to load the embedded sample ({EMBEDDED_DEMO_MAP_PATH}). Logs: {log_path}"
+        );
+    }
+
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    {
+        "Load a Stage-1 compatible TMX file to begin.".to_string()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct PaletteTile {
+    pub(crate) gid: u32,
+    pub(crate) tileset_index: usize,
+    pub(crate) local_id: u32,
+}

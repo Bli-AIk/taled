@@ -1,0 +1,331 @@
+use dioxus::prelude::*;
+use wishing_core::{EditorSession, Layer};
+
+use crate::{
+    app_state::{AppState, MobilePanel, Tool},
+    edit_ops::{toggle_layer_lock, toggle_layer_visibility},
+    session_ops::{adjust_zoom, load_sample, open_document, save_as_document, save_document},
+    styles::STYLES,
+    ui_canvas::render_canvas,
+    ui_inspector::{render_inspector, render_palette},
+};
+
+#[cfg(target_arch = "wasm32")]
+use crate::web_diag;
+
+#[component]
+pub(crate) fn App() -> Element {
+    let state = use_signal(AppState::default);
+    let snapshot = state.read().clone();
+
+    #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+    use_effect(move || {
+        crate::platform::mark_app_rendered();
+    });
+
+    rsx! {
+        style { "{STYLES}" }
+        div { class: "app-shell",
+            {render_topbar(&snapshot, state)}
+            div { class: "workspace",
+                {render_desktop_left_panel(&snapshot, state)}
+                {render_canvas(&snapshot, state)}
+                div { class: "panel right desktop-panel",
+                    {render_palette(&snapshot, state)}
+                    {render_inspector(&snapshot, state)}
+                }
+            }
+            {render_mobile_shell(&snapshot, state)}
+            {render_web_log_panel(&snapshot, state)}
+        }
+    }
+}
+
+fn render_topbar(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    rsx! {
+        div { class: "topbar",
+            input {
+                class: "desktop-file-control",
+                value: snapshot.path_input.clone(),
+                oninput: move |event| state.write().path_input = event.value(),
+            }
+            button {
+                class: "desktop-file-control",
+                onclick: move |_| open_document(&mut state.write()),
+                "Open TMX"
+            }
+            button {
+                class: "desktop-file-control",
+                onclick: move |_| load_sample(&mut state.write()),
+                "Load Sample"
+            }
+            button {
+                class: "desktop-file-control",
+                onclick: move |_| save_document(&mut state.write()),
+                "Save"
+            }
+            input {
+                class: "desktop-file-control",
+                value: snapshot.save_as_input.clone(),
+                oninput: move |event| state.write().save_as_input = event.value(),
+            }
+            button {
+                class: "desktop-file-control",
+                onclick: move |_| save_as_document(&mut state.write()),
+                "Save As"
+            }
+            {render_web_log_controls(snapshot, state)}
+            button {
+                class: "desktop-file-control",
+                onclick: move |_| {
+                    let mut state = state.write();
+                    if state.session.as_mut().is_some_and(EditorSession::undo) {
+                        state.status = "Undo applied.".to_string();
+                    } else {
+                        state.status = "Nothing to undo.".to_string();
+                    }
+                },
+                "Undo"
+            }
+            button {
+                class: "desktop-file-control",
+                onclick: move |_| {
+                    let mut state = state.write();
+                    if state.session.as_mut().is_some_and(EditorSession::redo) {
+                        state.status = "Redo applied.".to_string();
+                    } else {
+                        state.status = "Nothing to redo.".to_string();
+                    }
+                },
+                "Redo"
+            }
+            div { class: "status", "{snapshot.status}" }
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn render_web_log_controls(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    let show_web_logs = snapshot.show_web_logs;
+    rsx! {
+        button {
+            onclick: move |_| state.write().show_web_logs = !show_web_logs,
+            if show_web_logs { "Hide Logs" } else { "Logs" }
+        }
+        button {
+            onclick: move |_| {
+                let mut state = state.write();
+                match web_diag::download_logs() {
+                    Ok(()) => state.status = "Downloaded wishing-room-web.log.".to_string(),
+                    Err(error) => state.status = format!("Log download failed: {error}"),
+                }
+            },
+            "Download Log"
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn render_web_log_controls(_snapshot: &AppState, _state: Signal<AppState>) -> Element {
+    rsx! {}
+}
+
+#[cfg(target_arch = "wasm32")]
+fn render_web_log_panel(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    if !snapshot.show_web_logs {
+        return rsx! {};
+    }
+
+    let lines = web_diag::entries().join("\n");
+    rsx! {
+        div { class: "web-log-panel",
+            div { class: "inline-row",
+                strong { "Web Log" }
+                button {
+                    onclick: move |_| {
+                        let mut state = state.write();
+                        match web_diag::download_logs() {
+                            Ok(()) => state.status = "Downloaded wishing-room-web.log.".to_string(),
+                            Err(error) => state.status = format!("Log download failed: {error}"),
+                        }
+                    },
+                    "Download"
+                }
+                button {
+                    onclick: move |_| state.write().show_web_logs = false,
+                    "Close"
+                }
+            }
+            pre { "{lines}" }
+        }
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn render_web_log_panel(_snapshot: &AppState, _state: Signal<AppState>) -> Element {
+    rsx! {}
+}
+
+fn render_desktop_left_panel(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    rsx! {
+        div { class: "panel desktop-panel",
+            h2 { "Tools" }
+            div { class: "tool-grid",
+                {tool_button(snapshot, state, Tool::Paint, "Paint")}
+                {tool_button(snapshot, state, Tool::Erase, "Erase")}
+                {tool_button(snapshot, state, Tool::Select, "Select")}
+                {tool_button(snapshot, state, Tool::AddRectangle, "Rect")}
+                {tool_button(snapshot, state, Tool::AddPoint, "Point")}
+            }
+
+            h2 { "View" }
+            div { class: "zoom-grid",
+                button { onclick: move |_| adjust_zoom(&mut state.write(), -25), "- Zoom" }
+                button { onclick: move |_| adjust_zoom(&mut state.write(), 25), "+ Zoom" }
+                button { onclick: move |_| state.write().pan_y -= 32, "Pan Up" }
+                button { onclick: move |_| state.write().pan_y += 32, "Pan Down" }
+                button { onclick: move |_| state.write().pan_x -= 32, "Pan Left" }
+                button { onclick: move |_| state.write().pan_x += 32, "Pan Right" }
+            }
+
+            {render_layers_section(snapshot, state)}
+        }
+    }
+}
+
+fn render_mobile_shell(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    rsx! {
+        div { class: "mobile-shell",
+            div { class: "mobile-quick-actions",
+                button { onclick: move |_| load_sample(&mut state.write()), "Demo" }
+                button {
+                    onclick: move |_| {
+                        let mut state = state.write();
+                        if state.session.as_mut().is_some_and(EditorSession::undo) {
+                            state.status = "Undo applied.".to_string();
+                        } else {
+                            state.status = "Nothing to undo.".to_string();
+                        }
+                    },
+                    "Undo"
+                }
+                button {
+                    onclick: move |_| {
+                        let mut state = state.write();
+                        if state.session.as_mut().is_some_and(EditorSession::redo) {
+                            state.status = "Redo applied.".to_string();
+                        } else {
+                            state.status = "Nothing to redo.".to_string();
+                        }
+                    },
+                    "Redo"
+                }
+                button { onclick: move |_| adjust_zoom(&mut state.write(), -25), "Zoom -" }
+                button { onclick: move |_| adjust_zoom(&mut state.write(), 25), "Zoom +" }
+            }
+            div { class: "mobile-tool-grid",
+                {tool_button(snapshot, state, Tool::Paint, "Paint")}
+                {tool_button(snapshot, state, Tool::Erase, "Erase")}
+                {tool_button(snapshot, state, Tool::Select, "Select")}
+                {tool_button(snapshot, state, Tool::AddRectangle, "Rect")}
+                {tool_button(snapshot, state, Tool::AddPoint, "Point")}
+                button { onclick: move |_| state.write().pan_x -= 32, "Pan <-" }
+                button { onclick: move |_| state.write().pan_x += 32, "Pan ->" }
+                button { onclick: move |_| state.write().pan_y -= 32, "Pan ^" }
+                button { onclick: move |_| state.write().pan_y += 32, "Pan v" }
+            }
+            div { class: "mobile-panel-tabs",
+                {mobile_panel_button(snapshot, state, MobilePanel::Layers, "Layers")}
+                {mobile_panel_button(snapshot, state, MobilePanel::Tiles, "Tiles")}
+                {mobile_panel_button(snapshot, state, MobilePanel::Inspector, "Inspector")}
+            }
+            div { class: "panel mobile-panel",
+                match snapshot.mobile_panel {
+                    MobilePanel::Layers => rsx! { {render_layers_section(snapshot, state)} },
+                    MobilePanel::Tiles => rsx! { {render_palette(snapshot, state)} },
+                    MobilePanel::Inspector => rsx! { {render_inspector(snapshot, state)} },
+                }
+            }
+        }
+    }
+}
+
+fn render_layers_section(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    rsx! {
+        h2 { "Layers" }
+        if let Some(session) = snapshot.session.as_ref() {
+            div { class: "layer-list",
+                for (index, layer) in session.document().map.layers.iter().enumerate() {
+                    div {
+                        key: "layer-{index}",
+                        class: if index == snapshot.active_layer { "layer-row active" } else { "layer-row" },
+                        button {
+                            class: "name",
+                            onclick: move |_| {
+                                let mut state = state.write();
+                                state.active_layer = index;
+                                state.selected_object = None;
+                            },
+                            span { class: "layer-name-stack",
+                                span { "{layer.name()}" }
+                                span { class: "layer-kind", "{layer_kind_label(layer)}" }
+                            }
+                        }
+                        button {
+                            onclick: move |_| toggle_layer_visibility(&mut state.write(), index),
+                            if layer.visible() { "Visible" } else { "Hidden" }
+                        }
+                        button {
+                            onclick: move |_| toggle_layer_lock(&mut state.write(), index),
+                            if layer.locked() { "Locked" } else { "Unlocked" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn mobile_panel_button(
+    snapshot: &AppState,
+    mut state: Signal<AppState>,
+    panel: MobilePanel,
+    label: &'static str,
+) -> Element {
+    let class = if snapshot.mobile_panel == panel {
+        "active"
+    } else {
+        ""
+    };
+    rsx! {
+        button {
+            class: class,
+            onclick: move |_| state.write().mobile_panel = panel.clone(),
+            "{label}"
+        }
+    }
+}
+
+fn tool_button(
+    snapshot: &AppState,
+    mut state: Signal<AppState>,
+    tool: Tool,
+    label: &'static str,
+) -> Element {
+    let class = if snapshot.tool == tool { "active" } else { "" };
+    rsx! {
+        button {
+            class: class,
+            onclick: move |_| state.write().tool = tool.clone(),
+            "{label}"
+        }
+    }
+}
+
+fn layer_kind_label(layer: &Layer) -> &'static str {
+    if layer.as_tile().is_some() {
+        "Tile Layer"
+    } else {
+        "Object Layer"
+    }
+}

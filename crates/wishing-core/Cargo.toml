@@ -1,0 +1,11 @@
+[package]
+name = "wishing-core"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base64.workspace = true
+quick-xml.workspace = true
+roxmltree.workspace = true
+thiserror.workspace = true
+tiled = { workspace = true, features = ["wasm"] }

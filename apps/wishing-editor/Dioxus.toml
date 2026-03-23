@@ -1,0 +1,16 @@
+[application]
+out_dir = "../../dist/wishing-editor"
+asset_dir = "../../assets"
+public_dir = ""
+android_main_activity = "android/MainActivity.kt"
+
+[web.app]
+title = "wishing-room"
+
+[bundle]
+identifier = "io.github.wishingroom.editor"
+publisher = "wishing-room"
+short_description = "Orthogonal TMX editor prototype."
+long_description = """
+Orthogonal TMX editor prototype for Android and web verification.
+"""
