@@ -2,8 +2,13 @@ use dioxus::prelude::*;
 use wishing_core::{EditorSession, Layer};
 
 use crate::{
-    app_state::{AppState, MobilePanel, Tool},
+    app_state::{AppState, Tool},
     edit_ops::{toggle_layer_lock, toggle_layer_visibility},
+    mobile_page_styles::MOBILE_PAGE_STYLES,
+    mobile_review::render_review_shell,
+    mobile_review_styles::MOBILE_REVIEW_STYLES,
+    mobile_shell::render_mobile_shell,
+    mobile_styles::MOBILE_STYLES,
     session_ops::{adjust_zoom, load_sample, open_document, save_as_document, save_document},
     styles::STYLES,
     ui_canvas::render_canvas,
@@ -24,7 +29,7 @@ pub(crate) fn App() -> Element {
     });
 
     rsx! {
-        style { "{STYLES}" }
+        style { "{STYLES}{MOBILE_STYLES}{MOBILE_PAGE_STYLES}{MOBILE_REVIEW_STYLES}" }
         div { class: "app-shell",
             {render_topbar(&snapshot, state)}
             div { class: "workspace",
@@ -35,7 +40,11 @@ pub(crate) fn App() -> Element {
                     {render_inspector(&snapshot, state)}
                 }
             }
-            {render_mobile_shell(&snapshot, state)}
+            if snapshot.review_mode {
+                {render_review_shell(&snapshot, state)}
+            } else {
+                {render_mobile_shell(&snapshot, state)}
+            }
             {render_web_log_panel(&snapshot, state)}
         }
     }
@@ -193,63 +202,6 @@ fn render_desktop_left_panel(snapshot: &AppState, mut state: Signal<AppState>) -
     }
 }
 
-fn render_mobile_shell(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
-    rsx! {
-        div { class: "mobile-shell",
-            div { class: "mobile-quick-actions",
-                button { onclick: move |_| load_sample(&mut state.write()), "Demo" }
-                button {
-                    onclick: move |_| {
-                        let mut state = state.write();
-                        if state.session.as_mut().is_some_and(EditorSession::undo) {
-                            state.status = "Undo applied.".to_string();
-                        } else {
-                            state.status = "Nothing to undo.".to_string();
-                        }
-                    },
-                    "Undo"
-                }
-                button {
-                    onclick: move |_| {
-                        let mut state = state.write();
-                        if state.session.as_mut().is_some_and(EditorSession::redo) {
-                            state.status = "Redo applied.".to_string();
-                        } else {
-                            state.status = "Nothing to redo.".to_string();
-                        }
-                    },
-                    "Redo"
-                }
-                button { onclick: move |_| adjust_zoom(&mut state.write(), -25), "Zoom -" }
-                button { onclick: move |_| adjust_zoom(&mut state.write(), 25), "Zoom +" }
-            }
-            div { class: "mobile-tool-grid",
-                {tool_button(snapshot, state, Tool::Paint, "Paint")}
-                {tool_button(snapshot, state, Tool::Erase, "Erase")}
-                {tool_button(snapshot, state, Tool::Select, "Select")}
-                {tool_button(snapshot, state, Tool::AddRectangle, "Rect")}
-                {tool_button(snapshot, state, Tool::AddPoint, "Point")}
-                button { onclick: move |_| state.write().pan_x -= 32, "Pan <-" }
-                button { onclick: move |_| state.write().pan_x += 32, "Pan ->" }
-                button { onclick: move |_| state.write().pan_y -= 32, "Pan ^" }
-                button { onclick: move |_| state.write().pan_y += 32, "Pan v" }
-            }
-            div { class: "mobile-panel-tabs",
-                {mobile_panel_button(snapshot, state, MobilePanel::Layers, "Layers")}
-                {mobile_panel_button(snapshot, state, MobilePanel::Tiles, "Tiles")}
-                {mobile_panel_button(snapshot, state, MobilePanel::Inspector, "Inspector")}
-            }
-            div { class: "panel mobile-panel",
-                match snapshot.mobile_panel {
-                    MobilePanel::Layers => rsx! { {render_layers_section(snapshot, state)} },
-                    MobilePanel::Tiles => rsx! { {render_palette(snapshot, state)} },
-                    MobilePanel::Inspector => rsx! { {render_inspector(snapshot, state)} },
-                }
-            }
-        }
-    }
-}
-
 fn render_layers_section(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
     rsx! {
         h2 { "Layers" }
@@ -282,26 +234,6 @@ fn render_layers_section(snapshot: &AppState, mut state: Signal<AppState>) -> El
                     }
                 }
             }
-        }
-    }
-}
-
-fn mobile_panel_button(
-    snapshot: &AppState,
-    mut state: Signal<AppState>,
-    panel: MobilePanel,
-    label: &'static str,
-) -> Element {
-    let class = if snapshot.mobile_panel == panel {
-        "active"
-    } else {
-        ""
-    };
-    rsx! {
-        button {
-            class: class,
-            onclick: move |_| state.write().mobile_panel = panel.clone(),
-            "{label}"
         }
     }
 }

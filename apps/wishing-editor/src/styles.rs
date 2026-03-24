@@ -168,7 +168,11 @@ pub(crate) const STYLES: &str = r#"
     position: absolute;
     box-sizing: border-box;
   }
+  .tile-sprite {
+    z-index: 1;
+  }
   .cell-hitbox {
+    z-index: 2;
     background: transparent;
     border: 1px solid rgba(255, 255, 255, 0.06);
     cursor: crosshair;
@@ -178,6 +182,7 @@ pub(crate) const STYLES: &str = r#"
     outline-offset: -2px;
   }
   .object-overlay {
+    z-index: 3;
     cursor: pointer;
     background-repeat: no-repeat;
   }
@@ -235,21 +240,6 @@ pub(crate) const STYLES: &str = r#"
     background-position: center;
     background-size: contain;
   }
-  .mobile-shell {
-    display: none;
-    min-width: 0;
-  }
-  .mobile-quick-actions,
-  .mobile-tool-grid,
-  .mobile-panel-tabs {
-    display: none;
-  }
-  .mobile-panel-tabs button.active {
-    background: #d77b3f;
-    border-color: rgba(255, 201, 166, 0.4);
-    color: #081019;
-    font-weight: 700;
-  }
   .inline-row {
     display: flex;
     gap: 8px;
@@ -263,55 +253,6 @@ pub(crate) const STYLES: &str = r#"
     min-height: 100%;
     color: #8aa0b7;
     font-size: 18px;
-  }
-  @media (max-width: 900px) {
-    .desktop-file-control,
-    .desktop-panel {
-      display: none;
-    }
-    .topbar {
-      display: grid;
-      gap: 8px;
-      padding: 12px;
-    }
-    .topbar .status {
-      width: 100%;
-      max-width: none;
-      margin-left: 0;
-      text-align: left;
-    }
-    .workspace {
-      grid-template-columns: 1fr;
-    }
-    .canvas-host {
-      padding: 8px;
-      min-height: 56vh;
-    }
-    .mobile-shell {
-      display: grid;
-      gap: 8px;
-      padding: 0 8px 8px;
-    }
-    .mobile-quick-actions,
-    .mobile-tool-grid,
-    .mobile-panel-tabs {
-      display: grid;
-      gap: 8px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .mobile-quick-actions button,
-    .mobile-tool-grid button,
-    .mobile-panel-tabs button {
-      min-height: 44px;
-      white-space: normal;
-    }
-    .mobile-panel {
-      max-height: 34vh;
-      padding: 12px;
-    }
-    .palette-grid {
-      grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
-    }
   }
   .web-log-panel {
     position: fixed;

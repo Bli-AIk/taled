@@ -8,6 +8,8 @@ use crate::platform::log_path;
 use crate::platform::{EMBEDDED_DEMO_MAP_PATH, log};
 #[cfg(target_arch = "wasm32")]
 use crate::session_ops::load_sample;
+#[cfg(target_arch = "wasm32")]
+use web_sys::window;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Tool {
@@ -19,10 +21,13 @@ pub(crate) enum Tool {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum MobilePanel {
+pub(crate) enum MobileScreen {
+    Dashboard,
+    Editor,
+    Tilesets,
     Layers,
-    Tiles,
-    Inspector,
+    Objects,
+    Settings,
 }
 
 #[derive(Debug, Clone)]
@@ -36,7 +41,8 @@ pub(crate) struct AppState {
     pub(crate) selected_cell: Option<(u32, u32)>,
     pub(crate) selected_object: Option<u32>,
     pub(crate) tool: Tool,
-    pub(crate) mobile_panel: MobilePanel,
+    pub(crate) mobile_screen: MobileScreen,
+    pub(crate) review_mode: bool,
     #[cfg(target_arch = "wasm32")]
     pub(crate) show_web_logs: bool,
     pub(crate) zoom_percent: i32,
@@ -49,6 +55,11 @@ impl Default for AppState {
     fn default() -> Self {
         #[cfg(target_arch = "wasm32")]
         {
+            let review_mode = web_query_param("review")
+                .is_some_and(|value| matches!(value.as_str(), "1" | "true" | "yes" | "ui"));
+            let mobile_screen = web_query_param("screen")
+                .map(|value| parse_mobile_screen(&value))
+                .unwrap_or(MobileScreen::Dashboard);
             let path_input = EMBEDDED_DEMO_MAP_PATH.to_string();
             let mut state = Self {
                 path_input: path_input.clone(),
@@ -60,7 +71,8 @@ impl Default for AppState {
                 selected_cell: None,
                 selected_object: None,
                 tool: Tool::Paint,
-                mobile_panel: MobilePanel::Layers,
+                mobile_screen,
+                review_mode,
                 show_web_logs: false,
                 zoom_percent: 100,
                 pan_x: 0,
@@ -68,7 +80,12 @@ impl Default for AppState {
                 status: default_status_message(),
             };
             log("boot: constructing default web state");
-            load_sample(&mut state);
+            if review_mode {
+                log("boot: web review mode enabled");
+                state.status = "Web UI review mode is active.".to_string();
+            } else {
+                load_sample(&mut state);
+            }
             return state;
         }
 
@@ -85,7 +102,8 @@ impl Default for AppState {
                 selected_cell: None,
                 selected_object: None,
                 tool: Tool::Paint,
-                mobile_panel: MobilePanel::Layers,
+                mobile_screen: MobileScreen::Dashboard,
+                review_mode: false,
                 zoom_percent: 100,
                 pan_x: 0,
                 pan_y: 0,
@@ -114,7 +132,8 @@ impl Default for AppState {
                 selected_cell: None,
                 selected_object: None,
                 tool: Tool::Paint,
-                mobile_panel: MobilePanel::Layers,
+                mobile_screen: MobileScreen::Editor,
+                review_mode: false,
                 zoom_percent: 100,
                 pan_x: 0,
                 pan_y: 0,
@@ -141,6 +160,33 @@ fn default_status_message() -> String {
     #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
     {
         "Load a Stage-1 compatible TMX file to begin.".to_string()
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+fn web_query_param(name: &str) -> Option<String> {
+    let search = window()?.location().search().ok()?;
+    let query = search.strip_prefix('?').unwrap_or(&search);
+    for entry in query.split('&') {
+        let Some((key, value)) = entry.split_once('=') else {
+            continue;
+        };
+        if key == name {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
+fn parse_mobile_screen(value: &str) -> MobileScreen {
+    match value {
+        "editor" => MobileScreen::Editor,
+        "tilesets" => MobileScreen::Tilesets,
+        "layers" => MobileScreen::Layers,
+        "objects" => MobileScreen::Objects,
+        "settings" => MobileScreen::Settings,
+        _ => MobileScreen::Dashboard,
     }
 }
 

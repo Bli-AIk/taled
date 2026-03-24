@@ -216,7 +216,7 @@ fn render_object_properties(properties: &[Property], mut state: Signal<AppState>
     }
 }
 
-fn collect_palette(document: &EditorDocument) -> Vec<PaletteTile> {
+pub(crate) fn collect_palette(document: &EditorDocument) -> Vec<PaletteTile> {
     let mut palette = Vec::new();
     for (tileset_index, tileset) in document.map.tilesets.iter().enumerate() {
         for local_id in 0..tileset.tileset.tile_count {

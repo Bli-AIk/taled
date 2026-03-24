@@ -53,3 +53,6 @@ dioxus-build:
 
 dioxus-bundle:
     dx bundle
+
+ui-compare:
+    ./scripts/ui_compare.sh

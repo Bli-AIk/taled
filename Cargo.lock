@@ -5530,6 +5530,7 @@ dependencies = [
 name = "wishing-editor"
 version = "0.1.0"
 dependencies = [
+ "base64",
  "console_error_panic_hook",
  "dioxus",
  "jni 0.21.1",
