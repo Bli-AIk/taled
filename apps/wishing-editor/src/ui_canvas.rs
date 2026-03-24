@@ -6,6 +6,10 @@ use wishing_core::{EditorDocument, ObjectShape};
 use crate::{
     app_state::{AppState, Tool},
     edit_ops::apply_cell_tool,
+    touch_ops::{
+        handle_touch_pointer_cancel, handle_touch_pointer_down, handle_touch_pointer_move,
+        handle_touch_pointer_up, should_ignore_synthetic_click,
+    },
     ui_visuals::object_overlay_style,
 };
 
@@ -31,8 +35,24 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
 
     rsx! {
         div { class: "canvas-host",
-            div { class: "canvas-stage",
-                div { class: "canvas", style: canvas_style,
+            div {
+                class: "canvas-stage",
+                onmounted: move |event| {
+                    let mut state = state;
+                    async move {
+                        if let Ok(rect) = event.get_client_rect().await {
+                            state.write().canvas_stage_client_origin =
+                                Some((rect.origin.x, rect.origin.y));
+                        }
+                    }
+                },
+                onpointerdown: move |event| handle_touch_pointer_down(&mut state.write(), event),
+                onpointermove: move |event| handle_touch_pointer_move(&mut state.write(), event),
+                onpointerup: move |event| handle_touch_pointer_up(&mut state.write(), event),
+                onpointercancel: move |event| handle_touch_pointer_cancel(&mut state.write(), event),
+                div {
+                    class: "canvas",
+                    style: canvas_style,
                     for (layer_index, layer) in map.layers.iter().enumerate() {
                         if let Some(tile_layer) = layer.as_tile() {
                             if tile_layer.visible {
@@ -72,6 +92,9 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                                             let object_id = object.id;
                                             move |_| {
                                                 let mut state = state.write();
+                                                if should_ignore_synthetic_click(&mut state) {
+                                                    return;
+                                                }
                                                 if state.tool != Tool::Select {
                                                     state.status = "Switch to Select before choosing objects.".to_string();
                                                     return;
@@ -92,7 +115,13 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                                 key: "cell-{x}-{y}",
                                 class: if snapshot.selected_cell == Some((x, y)) { "cell-hitbox selected" } else { "cell-hitbox" },
                                 style: cell_style(map.tile_width, map.tile_height, x, y),
-                                onclick: move |_| apply_cell_tool(&mut state.write(), x, y),
+                                onclick: move |_| {
+                                    let mut state = state.write();
+                                    if should_ignore_synthetic_click(&mut state) {
+                                        return;
+                                    }
+                                    apply_cell_tool(&mut state, x, y);
+                                },
                             }
                         }
                     }

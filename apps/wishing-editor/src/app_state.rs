@@ -1,21 +1,23 @@
 use std::collections::BTreeMap;
+use std::time::Instant;
 
 use wishing_core::EditorSession;
 
 #[cfg(target_os = "android")]
 use crate::platform::log_path;
+#[cfg(target_arch = "wasm32")]
+use crate::session_ops::load_sample;
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{
     embedded_samples::embedded_samples,
     platform::{EMBEDDED_DEMO_MAP_PATH, log},
 };
 #[cfg(target_arch = "wasm32")]
-use crate::session_ops::load_sample;
-#[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Tool {
+    Hand,
     Paint,
     Erase,
     Select,
@@ -43,6 +45,31 @@ pub(crate) enum MobileTransition {
     VerticalBackward,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ActiveTouchPointer {
+    pub(crate) pointer_id: i32,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SingleTouchGesture {
+    pub(crate) pointer_id: i32,
+    pub(crate) started_at: Instant,
+    pub(crate) drag_active: bool,
+    pub(crate) last_applied_cell: Option<(u32, u32)>,
+    pub(crate) last_surface_x: f64,
+    pub(crate) last_surface_y: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct PinchGesture {
+    pub(crate) initial_distance: f64,
+    pub(crate) initial_zoom_percent: i32,
+    pub(crate) world_center_x: f64,
+    pub(crate) world_center_y: f64,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct AppState {
     pub(crate) path_input: String,
@@ -62,6 +89,11 @@ pub(crate) struct AppState {
     pub(crate) zoom_percent: i32,
     pub(crate) pan_x: i32,
     pub(crate) pan_y: i32,
+    pub(crate) canvas_stage_client_origin: Option<(f64, f64)>,
+    pub(crate) active_touch_points: Vec<ActiveTouchPointer>,
+    pub(crate) single_touch_gesture: Option<SingleTouchGesture>,
+    pub(crate) pinch_gesture: Option<PinchGesture>,
+    pub(crate) suppress_click_until: Option<Instant>,
     pub(crate) status: String,
 }
 
@@ -90,6 +122,11 @@ impl Default for AppState {
                 zoom_percent: 100,
                 pan_x: 0,
                 pan_y: 0,
+                canvas_stage_client_origin: None,
+                active_touch_points: Vec::new(),
+                single_touch_gesture: None,
+                pinch_gesture: None,
+                suppress_click_until: None,
                 status: default_status_message(),
             };
             log("boot: constructing default web state");
@@ -116,6 +153,11 @@ impl Default for AppState {
                 zoom_percent: 100,
                 pan_x: 0,
                 pan_y: 0,
+                canvas_stage_client_origin: None,
+                active_touch_points: Vec::new(),
+                single_touch_gesture: None,
+                pinch_gesture: None,
+                suppress_click_until: None,
                 status: default_status_message(),
             };
             log("boot: constructing default android state");
@@ -147,6 +189,11 @@ impl Default for AppState {
                 zoom_percent: 100,
                 pan_x: 0,
                 pan_y: 0,
+                canvas_stage_client_origin: None,
+                active_touch_points: Vec::new(),
+                single_touch_gesture: None,
+                pinch_gesture: None,
+                suppress_click_until: None,
                 status: default_status_message(),
             }
         }

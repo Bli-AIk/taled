@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use wishing_core::EditorSession;
 
+#[cfg(any(target_arch = "wasm32", target_os = "android"))]
+use crate::embedded_samples::{embedded_sample, embedded_samples};
 #[cfg(target_os = "android")]
 use crate::platform::log_path;
 use crate::{app_state::AppState, platform::log};
-#[cfg(any(target_arch = "wasm32", target_os = "android"))]
-use crate::embedded_samples::{embedded_sample, embedded_samples};
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{demo::load_embedded_demo_session, platform::EMBEDDED_DEMO_MAP_PATH};
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
@@ -32,7 +32,9 @@ pub(crate) fn open_document(state: &mut AppState) {
         return;
     }
     if embedded_sample(&requested).is_some() {
-        log(format!("boot: requested embedded demo map from web preview: {requested}"));
+        log(format!(
+            "boot: requested embedded demo map from web preview: {requested}"
+        ));
         load_embedded_sample(state, &requested);
         return;
     }
@@ -54,7 +56,9 @@ pub(crate) fn open_document(state: &mut AppState) {
         return;
     }
     if embedded_sample(&requested).is_some() {
-        log(format!("boot: requested embedded demo map from android app: {requested}"));
+        log(format!(
+            "boot: requested embedded demo map from android app: {requested}"
+        ));
         load_embedded_sample(state, &requested);
         return;
     }
@@ -189,6 +193,10 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.selected_gid = selected_gid;
     state.selected_cell = None;
     state.selected_object = None;
+    state.active_touch_points.clear();
+    state.single_touch_gesture = None;
+    state.pinch_gesture = None;
+    state.suppress_click_until = None;
     state.image_cache = image_cache;
     state.session = Some(session);
 }

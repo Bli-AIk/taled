@@ -41,6 +41,7 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
     state.selected_cell = Some((x, y));
     let layer_index = state.active_layer;
     match state.tool {
+        Tool::Hand => {}
         Tool::Paint => {
             let gid = state.selected_gid;
             apply_edit(state, move |document| {

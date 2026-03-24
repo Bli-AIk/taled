@@ -867,16 +867,19 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     padding: 0;
     background: transparent;
     overflow: auto;
+    touch-action: none;
   }
   .review-map-live .canvas-stage {
     min-width: 100%;
     min-height: 100%;
     justify-content: flex-start;
     align-items: flex-start;
+    touch-action: none;
   }
   .review-map-live .canvas {
     border-radius: 0;
     box-shadow: none;
+    touch-action: none;
   }
   .review-map-live .cell-hitbox {
     border-color: rgba(255,255,255,0.04);

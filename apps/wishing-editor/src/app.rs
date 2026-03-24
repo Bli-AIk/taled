@@ -4,8 +4,8 @@ use wishing_core::{EditorSession, Layer};
 use crate::{
     app_state::{AppState, Tool},
     edit_ops::{toggle_layer_lock, toggle_layer_visibility},
-    mobile_review_styles::MOBILE_REVIEW_STYLES,
     mobile_review::render_mobile_shell,
+    mobile_review_styles::MOBILE_REVIEW_STYLES,
     session_ops::{adjust_zoom, load_sample, open_document, save_as_document, save_document},
     styles::STYLES,
     ui_canvas::render_canvas,
@@ -173,6 +173,7 @@ fn render_desktop_left_panel(snapshot: &AppState, mut state: Signal<AppState>) -
         div { class: "panel desktop-panel",
             h2 { "Tools" }
             div { class: "tool-grid",
+                {tool_button(snapshot, state, Tool::Hand, "Hand")}
                 {tool_button(snapshot, state, Tool::Paint, "Paint")}
                 {tool_button(snapshot, state, Tool::Erase, "Erase")}
                 {tool_button(snapshot, state, Tool::Select, "Select")}

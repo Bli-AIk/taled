@@ -19,12 +19,21 @@ enum ThumbKind {
     Frontier,
 }
 
-static DASHBOARD_STAGE1: LazyLock<String> =
-    LazyLock::new(|| data_url(include_bytes!("../../../assets/review/dashboard-stage1.png")));
-static DASHBOARD_THEATER: LazyLock<String> =
-    LazyLock::new(|| data_url(include_bytes!("../../../assets/review/dashboard-theater.png")));
-static DASHBOARD_FRONTIER: LazyLock<String> =
-    LazyLock::new(|| data_url(include_bytes!("../../../assets/review/dashboard-frontier.png")));
+static DASHBOARD_STAGE1: LazyLock<String> = LazyLock::new(|| {
+    data_url(include_bytes!(
+        "../../../assets/review/dashboard-stage1.png"
+    ))
+});
+static DASHBOARD_THEATER: LazyLock<String> = LazyLock::new(|| {
+    data_url(include_bytes!(
+        "../../../assets/review/dashboard-theater.png"
+    ))
+});
+static DASHBOARD_FRONTIER: LazyLock<String> = LazyLock::new(|| {
+    data_url(include_bytes!(
+        "../../../assets/review/dashboard-frontier.png"
+    ))
+});
 
 static EMBEDDED_SAMPLES: [EmbeddedSample; 3] = [
     EmbeddedSample {

@@ -146,6 +146,7 @@ pub(crate) const STYLES: &str = r#"
     max-width: 100%;
     padding: 18px;
     overscroll-behavior: contain;
+    touch-action: none;
   }
   .canvas-stage {
     width: max-content;
@@ -154,6 +155,7 @@ pub(crate) const STYLES: &str = r#"
     display: flex;
     align-items: start;
     justify-content: start;
+    touch-action: none;
   }
   .canvas {
     position: relative;
@@ -163,6 +165,7 @@ pub(crate) const STYLES: &str = r#"
       #142131;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
     transform-origin: top left;
+    touch-action: none;
   }
   .tile-sprite, .cell-hitbox, .object-overlay {
     position: absolute;
@@ -188,6 +191,13 @@ pub(crate) const STYLES: &str = r#"
   }
   .object-overlay.selected {
     filter: drop-shadow(0 0 4px rgba(255, 226, 133, 0.96));
+  }
+  @media (pointer: coarse) {
+    .tile-sprite,
+    .cell-hitbox,
+    .object-overlay {
+      pointer-events: none;
+    }
   }
   .palette-grid {
     display: grid;

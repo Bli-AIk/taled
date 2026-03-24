@@ -1,6 +1,6 @@
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{
-    embedded_samples::{embedded_sample_assets, embedded_sample},
+    embedded_samples::{embedded_sample, embedded_sample_assets},
     platform::log,
 };
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]

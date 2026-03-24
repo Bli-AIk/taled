@@ -5,11 +5,11 @@ use wishing_core::{EditorSession, Layer, ObjectShape};
 
 use crate::{
     app_state::{AppState, MobileScreen, MobileTransition, PaletteTile, Tool},
-    embedded_samples::{embedded_sample, embedded_sample_thumb, embedded_samples},
     edit_ops::{
         create_object, delete_selected_object, nudge_selected_object, rename_selected_object,
         selected_object_view, toggle_layer_lock, toggle_layer_visibility,
     },
+    embedded_samples::{embedded_sample, embedded_sample_thumb, embedded_samples},
     session_ops::{adjust_zoom, load_embedded_sample, load_sample, save_document},
     ui_canvas::render_canvas,
     ui_inspector::collect_palette,
@@ -155,7 +155,10 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
             )
         })
         .collect();
-    let palette: Vec<PaletteTile> = collect_palette(session.document()).into_iter().take(24).collect();
+    let palette: Vec<PaletteTile> = collect_palette(session.document())
+        .into_iter()
+        .take(24)
+        .collect();
     let grid_style = editor_grid_style(snapshot, session);
     let page_key = review_page_key(snapshot, "editor");
     let page_class = review_page_class(snapshot, "review-page review-editor-page");
@@ -231,6 +234,7 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
             }
             div { class: "review-editor-toolbar",
                 div { class: "review-tool-row review-tool-row-live",
+                    {review_tool_button(snapshot, state, Tool::Hand, "Hand")}
                     {review_tool_button(snapshot, state, Tool::Select, "Select")}
                     {review_tool_button(snapshot, state, Tool::Paint, "Brush")}
                     {review_tool_button(snapshot, state, Tool::Erase, "Eraser")}
@@ -666,7 +670,11 @@ fn render_settings(snapshot: &AppState, state: Signal<AppState>) -> Element {
     }
 }
 
-fn render_missing_screen(title: String, message: &'static str, mut state: Signal<AppState>) -> Element {
+fn render_missing_screen(
+    title: String,
+    message: &'static str,
+    mut state: Signal<AppState>,
+) -> Element {
     rsx! {
         div { class: "review-page",
             {review_top_bar(title, Some(("Back", MobileScreen::Dashboard)), None, state)}
@@ -1047,6 +1055,22 @@ fn review_tool_button(
 
 fn review_tool_icon(tool: &Tool) -> Element {
     match tool {
+        Tool::Hand => rsx! {
+            svg {
+                class: "review-tool-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.9",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                path { d: "M7 11V6.5a1.5 1.5 0 0 1 3 0V11" }
+                path { d: "M10 11V5.5a1.5 1.5 0 0 1 3 0V11" }
+                path { d: "M13 11V6.5a1.5 1.5 0 0 1 3 0V12" }
+                path { d: "M16 12V8.5a1.5 1.5 0 0 1 3 0V13" }
+                path { d: "M7 11 5.7 9.8A1.6 1.6 0 0 0 3 11v.5c0 1.8.6 3.5 1.8 4.8l1.9 2.2c.8.9 2 1.5 3.2 1.5H14c1.7 0 3.2-.8 4.2-2.1l1.2-1.8c.4-.6.6-1.3.6-2V13" }
+            }
+        },
         Tool::Select => rsx! {
             svg {
                 class: "review-tool-icon-svg",
@@ -1162,7 +1186,7 @@ fn editor_grid_style(snapshot: &AppState, session: &EditorSession) -> String {
     let grid_width = (map.tile_width as f32 * zoom).max(1.0);
     let grid_height = (map.tile_height as f32 * zoom).max(1.0);
     let offset_x = snapshot.pan_x as f32;
-    let offset_y = snapshot.pan_y as f32;
+    let offset_y = snapshot.pan_y as f32 + 10.0;
 
     format!(
         "--grid-size-x:{grid_width}px;--grid-size-y:{grid_height}px;--grid-offset-x:{offset_x}px;--grid-offset-y:{offset_y}px;"
@@ -1174,7 +1198,13 @@ fn tileset_sheet_style(document: &wishing_core::EditorDocument, selected_gid: u3
         .map
         .tile_reference_for_gid(selected_gid)
         .map(|reference| reference.tileset.tileset.columns.max(1))
-        .or_else(|| document.map.tilesets.first().map(|tileset| tileset.tileset.columns.max(1)))
+        .or_else(|| {
+            document
+                .map
+                .tilesets
+                .first()
+                .map(|tileset| tileset.tileset.columns.max(1))
+        })
         .unwrap_or(1);
 
     format!("grid-template-columns:repeat({columns}, minmax(0, 1fr));")
