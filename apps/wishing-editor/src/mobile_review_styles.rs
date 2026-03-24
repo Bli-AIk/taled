@@ -399,9 +399,13 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     display: block;
   }
   .review-tile-strip {
-    display: flex;
+    display: grid;
+    grid-template-rows: repeat(2, 52px);
+    grid-auto-flow: column;
+    grid-auto-columns: 52px;
     gap: 8px;
     overflow-x: auto;
+    overflow-y: hidden;
     padding: 0 14px 12px;
   }
   .review-tile-strip-live {
@@ -410,6 +414,14 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     border-top: 1px solid #2c2c2e;
     background: #18181a;
     align-items: center;
+  }
+  .review-tile-strip-top {
+    min-height: 128px;
+    padding: 12px 14px 14px;
+    border-bottom: 1px solid #2c2c2e;
+    background: #18181a;
+    align-items: start;
+    justify-items: stretch;
   }
   .review-tile-chip {
     width: 52px;

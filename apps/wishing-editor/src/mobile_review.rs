@@ -123,6 +123,24 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                 Some(("Layers", MobileScreen::Layers)),
                 state,
             )}
+            div { class: "review-tile-strip review-tile-strip-top",
+                for tile in palette.clone() {
+                    button {
+                        key: "review-top-tile-{tile.gid}",
+                        class: if snapshot.selected_gid == tile.gid {
+                            "review-tile-chip selected live"
+                        } else {
+                            "review-tile-chip live"
+                        },
+                        style: palette_tile_style(session.document(), &snapshot.image_cache, &tile),
+                        onclick: move |_| {
+                            let mut state = state.write();
+                            state.selected_gid = tile.gid;
+                            state.status = format!("Selected gid {}.", tile.gid);
+                        },
+                    }
+                }
+            }
             div { class: "review-editor-canvas",
                 div { class: "review-map-surface review-map-live",
                     {render_canvas(snapshot, state)}
@@ -170,24 +188,6 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                     {review_tool_button(snapshot, state, Tool::Erase, "Eraser")}
                     {review_tool_button(snapshot, state, Tool::AddRectangle, "Rect")}
                     {review_tool_button(snapshot, state, Tool::AddPoint, "Point")}
-                }
-                div { class: "review-tile-strip review-tile-strip-live",
-                    for tile in palette {
-                        button {
-                            key: "review-tile-{tile.gid}",
-                            class: if snapshot.selected_gid == tile.gid {
-                                "review-tile-chip selected live"
-                            } else {
-                                "review-tile-chip live"
-                            },
-                            style: palette_tile_style(session.document(), &snapshot.image_cache, &tile),
-                            onclick: move |_| {
-                                let mut state = state.write();
-                                state.selected_gid = tile.gid;
-                                state.status = format!("Selected gid {}.", tile.gid);
-                            },
-                        }
-                    }
                 }
             }
             {review_nav(snapshot, state, false)}
@@ -781,11 +781,10 @@ fn review_tool_icon(tool: &Tool) -> Element {
                 view_box: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                stroke_width: "1.8",
+                stroke_width: "1.9",
                 stroke_linecap: "round",
                 stroke_linejoin: "round",
-                path { d: "M5 4v14l4-4h6" }
-                path { d: "M13.5 13.5 18 20" }
+                path { d: "M5 3.5v13.5h4.4L7.6 20.5l2.1 1 1.9-4.5H16L5 3.5z" }
             }
         },
         Tool::Paint => rsx! {
@@ -794,10 +793,12 @@ fn review_tool_icon(tool: &Tool) -> Element {
                 view_box: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                stroke_width: "1.8",
+                stroke_width: "1.9",
                 stroke_linecap: "round",
                 stroke_linejoin: "round",
-                path { d: "M14 4c3 2 5 4.5 5 7a4 4 0 0 1-4 4h-1l-4.5 4.5a1.8 1.8 0 0 1-2.5 0l-2-2a1.8 1.8 0 0 1 0-2.5L9.5 10V9a4 4 0 0 1 4-5z" }
+                path { d: "M15.5 4.5 19.5 8.5" }
+                path { d: "M13.5 6.5 17.5 10.5" }
+                path { d: "M5 19.5c1.8-.2 3.3-.9 4.5-2.1l7.5-7.5-4.5-4.5-7.5 7.5C3.8 14.1 3.1 15.7 3 17.5c0 1.1.9 2 2 2z" }
             }
         },
         Tool::Erase => rsx! {
@@ -806,11 +807,12 @@ fn review_tool_icon(tool: &Tool) -> Element {
                 view_box: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                stroke_width: "1.8",
+                stroke_width: "1.9",
                 stroke_linecap: "round",
                 stroke_linejoin: "round",
-                path { d: "m7 14 6-8 7 7-8 6H7z" }
-                path { d: "M4 20h9" }
+                path { d: "m7 14 6-6 5 5-4 4H10z" }
+                path { d: "M12 9l5 5" }
+                path { d: "M4 19.5h15" }
             }
         },
         Tool::AddRectangle => rsx! {
@@ -819,10 +821,10 @@ fn review_tool_icon(tool: &Tool) -> Element {
                 view_box: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                stroke_width: "1.8",
+                stroke_width: "1.9",
                 stroke_linecap: "round",
                 stroke_linejoin: "round",
-                rect { x: "5", y: "7", width: "14", height: "10", rx: "2" }
+                rect { x: "5", y: "6.5", width: "14", height: "11", rx: "2.5" }
             }
         },
         Tool::AddPoint => rsx! {
@@ -831,12 +833,11 @@ fn review_tool_icon(tool: &Tool) -> Element {
                 view_box: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                stroke_width: "1.8",
+                stroke_width: "1.9",
                 stroke_linecap: "round",
                 stroke_linejoin: "round",
-                path { d: "M12 5v14" }
-                path { d: "M5 12h14" }
-                circle { cx: "12", cy: "12", r: "2.5" }
+                path { d: "M12 20.5s4.5-4.8 4.5-8.8a4.5 4.5 0 1 0-9 0c0 4 4.5 8.8 4.5 8.8z" }
+                circle { cx: "12", cy: "11.5", r: "1.6" }
             }
         },
     }
