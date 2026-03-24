@@ -18,7 +18,6 @@ use crate::{
         adjust_zoom, adjust_zoom_around_view_center, animate_camera_to_center,
         animate_camera_to_fit_map, load_embedded_sample, load_sample, save_document,
     },
-    ui_canvas::render_canvas,
     ui_inspector::collect_palette,
     ui_visuals::{object_icon_style, palette_tile_style},
 };
@@ -153,22 +152,28 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
         );
     };
 
-    let layers: Vec<(usize, String, &'static str, bool)> = session
+    let layers: Vec<(usize, String, bool, bool, bool)> = session
         .document()
         .map
         .layers
         .iter()
         .enumerate()
-        .take(3)
         .map(|(index, layer)| {
             (
                 index,
                 layer.name().to_string(),
-                layer_kind_label(layer),
+                layer.as_tile().is_some(),
                 layer.visible(),
+                layer.locked(),
             )
         })
         .collect();
+    let active_layer_summary = session
+        .document()
+        .map
+        .layer(snapshot.active_layer)
+        .map(|layer| (layer.name().to_string(), layer_kind_label(layer)))
+        .unwrap_or_else(|| ("No layer".to_string(), "Unavailable"));
     let palette: Vec<PaletteTile> = collect_palette(session.document())
         .into_iter()
         .take(24)
@@ -205,7 +210,7 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
             }
             div { class: "review-editor-canvas", style: grid_style,
                 div { class: "review-map-surface review-map-live",
-                    {render_canvas(snapshot, state)}
+                    {crate::ui_canvas::render_canvas(snapshot, state)}
                 }
                 ReviewPanJoystick { state }
                 ReviewZoomControl { zoom_percent: snapshot.zoom_percent, state }
@@ -221,7 +226,10 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                             let mut state = state.write();
                             state.layers_panel_expanded = !state.layers_panel_expanded;
                         },
-                        span { "Layers" }
+                        span { class: "review-layer-float-title-stack",
+                            span { "Layers" }
+                            span { class: "review-layer-float-current", "{active_layer_summary.0}" }
+                        }
                         span { class: "review-layer-float-title-icon", {review_layer_chevron_icon(snapshot.layers_panel_expanded)} }
                     }
                     div {
@@ -231,7 +239,7 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                             "review-layer-float-body"
                         },
                         div { class: "review-layer-float-list",
-                            for (index, name, kind, visible) in layers {
+                            for (index, name, is_tile_layer, visible, locked) in layers {
                                 div {
                                     key: "review-float-layer-{index}",
                                     class: if snapshot.active_layer == index {
@@ -241,15 +249,23 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                                     },
                                     span { class: if visible { "review-eye on" } else { "review-eye off" }, {review_eye_icon(visible)} }
                                     button {
+                                        class: "review-layer-float-switch",
                                         onclick: move |_| {
                                             let mut state = state.write();
                                             state.active_layer = index;
                                             state.selected_object = None;
                                         },
-                                        span { "{name}" }
-                                        span { class: "muted", "{kind}" }
+                                        span { class: "review-layer-float-kind", {review_layer_kind_icon(is_tile_layer)} }
+                                        span { class: "review-layer-float-name", "{name}" }
                                     }
-                                    span { class: "review-menu-glyph", {review_menu_icon()} }
+                                    span {
+                                        class: if locked {
+                                            "review-lock on"
+                                        } else {
+                                            "review-lock off"
+                                        },
+                                        {review_lock_icon(locked)}
+                                    }
                                 }
                             }
                         }
@@ -1326,18 +1342,67 @@ fn review_eye_icon(visible: bool) -> Element {
     }
 }
 
-fn review_menu_icon() -> Element {
-    rsx! {
-        svg {
-            class: "review-inline-icon-svg",
-            view_box: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
-            stroke_width: "2",
-            stroke_linecap: "round",
-            path { d: "M5 8h14" }
-            path { d: "M5 12h14" }
-            path { d: "M5 16h14" }
+fn review_layer_kind_icon(is_tile_layer: bool) -> Element {
+    if is_tile_layer {
+        rsx! {
+            svg {
+                class: "review-inline-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.8",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                rect { x: "4", y: "4", width: "16", height: "16", rx: "2" }
+                path { d: "M12 4v16" }
+                path { d: "M4 12h16" }
+            }
+        }
+    } else {
+        rsx! {
+            svg {
+                class: "review-inline-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.8",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                rect { x: "5", y: "5", width: "14", height: "14", rx: "2.5" }
+                circle { cx: "12", cy: "12", r: "2.5" }
+            }
+        }
+    }
+}
+
+fn review_lock_icon(locked: bool) -> Element {
+    if locked {
+        rsx! {
+            svg {
+                class: "review-inline-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.9",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                rect { x: "5", y: "11", width: "14", height: "9", rx: "2" }
+                path { d: "M8 11V8.6A4 4 0 0 1 12 5a4 4 0 0 1 4 3.6V11" }
+            }
+        }
+    } else {
+        rsx! {
+            svg {
+                class: "review-inline-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.9",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                rect { x: "5", y: "11", width: "14", height: "9", rx: "2" }
+                path { d: "M8 11V8.6A4 4 0 0 1 12 5a4 4 0 0 1 4 3.6" }
+            }
         }
     }
 }

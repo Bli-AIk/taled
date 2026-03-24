@@ -487,9 +487,27 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     font-weight: 600;
     text-align: left;
   }
+  .review-layer-float-title-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+  }
+  .review-layer-float-current {
+    max-width: 112px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: rgba(255,255,255,0.66);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
   .review-layer-float-title-icon,
   .review-eye,
-  .review-menu-glyph {
+  .review-menu-glyph,
+  .review-lock {
     display: grid;
     place-items: center;
   }
@@ -504,29 +522,35 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
       margin-top 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .review-layer-float-body.expanded {
-    max-height: 160px;
+    max-height: 176px;
     opacity: 1;
     margin-top: 5px;
   }
   .review-layer-float-list {
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 176px;
+    overflow-y: auto;
   }
   .review-layer-float-item {
     display: grid;
     grid-template-columns: 14px minmax(0, 1fr) 14px;
     gap: 6px;
     align-items: center;
-    padding: 6px 0;
-    border-top: 1px solid rgba(255,255,255,0.06);
+    padding: 7px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
   }
   .review-layer-float-item:first-of-type {
     border-top: none;
   }
-  .review-layer-float-item button {
+  .review-layer-float-switch {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
     border: none;
     background: transparent;
@@ -534,13 +558,23 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     padding: 0;
     text-align: left;
   }
-  .review-layer-float-item .muted {
+  .review-layer-float-kind {
+    color: rgba(255,255,255,0.66);
+    flex: none;
+  }
+  .review-layer-float-name {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
   }
   .review-layer-float-item.active {
     color: #fff;
+    background: rgba(142, 142, 147, 0.24);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  }
+  .review-layer-float-item.active .review-layer-float-kind {
+    color: rgba(255,255,255,0.9);
   }
   .review-menu-glyph,
   .review-eye,
