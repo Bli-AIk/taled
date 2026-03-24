@@ -542,11 +542,15 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     align-items: center;
   }
   .review-tile-strip-top {
-    min-height: 108px;
-    padding: 10px 14px 12px;
+    box-sizing: border-box;
+    height: 114px;
+    min-height: 114px;
+    max-height: 114px;
+    padding: 10px 14px 10px;
     border-bottom: 1px solid #2c2c2e;
     background: #18181a;
     align-items: start;
+    align-content: start;
     justify-items: stretch;
   }
   .review-tile-chip {
