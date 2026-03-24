@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
-use wishing_core::{EditorDocument, ObjectShape};
+use taled_core::{EditorDocument, ObjectShape};
 
 use crate::{
     app_state::{AppState, Tool},

@@ -26,7 +26,7 @@ pick_port() {
 PORT="$(pick_port)"
 
 cat <<EOF
-Wishing Room SSH Preview
+Taled SSH Preview
 
 1. On your local machine, open an SSH tunnel:
    ssh -L ${PORT}:127.0.0.1:${PORT} ${SSH_TARGET_HINT}
@@ -43,7 +43,7 @@ fi
 
 cd "${ROOT_DIR}"
 exec dx serve \
-    --package wishing-editor \
+    --package taled-editor \
     --platform web \
     --addr 127.0.0.1 \
     --port "${PORT}" \

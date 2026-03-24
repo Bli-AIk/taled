@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use wishing_core::{EditorSession, Layer};
+use taled_core::{EditorSession, Layer};
 
 use crate::{
     app_state::{AppState, Tool},
@@ -118,7 +118,7 @@ fn render_web_log_controls(snapshot: &AppState, mut state: Signal<AppState>) -> 
             onclick: move |_| {
                 let mut state = state.write();
                 match web_diag::download_logs() {
-                    Ok(()) => state.status = "Downloaded wishing-room-web.log.".to_string(),
+                    Ok(()) => state.status = "Downloaded taled-web.log.".to_string(),
                     Err(error) => state.status = format!("Log download failed: {error}"),
                 }
             },
@@ -147,7 +147,7 @@ fn render_web_log_panel(snapshot: &AppState, mut state: Signal<AppState>) -> Ele
                     onclick: move |_| {
                         let mut state = state.write();
                         match web_diag::download_logs() {
-                            Ok(()) => state.status = "Downloaded wishing-room-web.log.".to_string(),
+                            Ok(()) => state.status = "Downloaded taled-web.log.".to_string(),
                             Err(error) => state.status = format!("Log download failed: {error}"),
                         }
                     },

@@ -1,4 +1,4 @@
-use wishing_core::{
+use taled_core::{
     EditorError, EditorSession, Layer, MapObject, ObjectShape, Property, PropertyValue,
 };
 
@@ -390,7 +390,7 @@ pub(crate) fn selected_object_view(
 
 pub(crate) fn apply_edit<F>(state: &mut AppState, edit: F)
 where
-    F: FnOnce(&mut wishing_core::EditorDocument) -> Result<(), EditorError>,
+    F: FnOnce(&mut taled_core::EditorDocument) -> Result<(), EditorError>,
 {
     let Some(session) = state.session.as_mut() else {
         state.status = "No map loaded.".to_string();

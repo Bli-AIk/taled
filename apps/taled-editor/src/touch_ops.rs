@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use dioxus::prelude::*;
-use wishing_core::ObjectShape;
+use taled_core::ObjectShape;
 
 #[cfg(target_os = "android")]
 use crate::platform::log;

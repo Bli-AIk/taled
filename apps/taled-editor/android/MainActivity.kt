@@ -1,7 +1,7 @@
 package dev.dioxus.main
 
 import android.os.Bundle
-import io.github.wishingroom.editor.BuildConfig
+import io.github.taled.editor.BuildConfig
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -60,7 +60,7 @@ class MainActivity : WryActivity() {
             if (!dir.exists()) {
                 dir.mkdirs()
             }
-            File(dir, "wishing-editor.log").appendText(
+            File(dir, "taled-editor.log").appendText(
                 "[${System.currentTimeMillis()}] java: $message\n"
             )
         } catch (_: Throwable) {

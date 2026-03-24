@@ -4250,6 +4250,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "taled-core"
+version = "0.0.1"
+dependencies = [
+ "base64",
+ "quick-xml",
+ "roxmltree",
+ "thiserror 2.0.18",
+ "tiled",
+]
+
+[[package]]
+name = "taled-editor"
+version = "0.0.1"
+dependencies = [
+ "base64",
+ "console_error_panic_hook",
+ "dioxus",
+ "jni 0.21.1",
+ "js-sys",
+ "ndk-context",
+ "taled-core",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "tao"
 version = "0.34.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5513,32 +5539,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a90e88e4667264a994d34e6d1ab2d26d398dcdca8b7f52bec8668957517fc7d8"
 dependencies = [
  "memchr",
-]
-
-[[package]]
-name = "wishing-core"
-version = "0.0.1"
-dependencies = [
- "base64",
- "quick-xml",
- "roxmltree",
- "thiserror 2.0.18",
- "tiled",
-]
-
-[[package]]
-name = "wishing-editor"
-version = "0.0.1"
-dependencies = [
- "base64",
- "console_error_panic_hook",
- "dioxus",
- "jni 0.21.1",
- "js-sys",
- "ndk-context",
- "wasm-bindgen",
- "web-sys",
- "wishing-core",
 ]
 
 [[package]]

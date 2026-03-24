@@ -16,7 +16,7 @@ tokei-check:
     ./tokei_check.sh
 
 tokei-check-editor:
-    ./tokei_check.sh 800 500 apps/wishing-editor/src
+    ./tokei_check.sh 800 500 apps/taled-editor/src
 
 check:
     cargo check --workspace --all-targets --all-features

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use dioxus::prelude::*;
-use wishing_core::{EditorSession, Layer, ObjectShape};
+use taled_core::{EditorSession, Layer, ObjectShape};
 
 use crate::{
     app_state::{AppState, MobileScreen, MobileTransition, PaletteTile, Tool},
@@ -1193,7 +1193,7 @@ fn editor_grid_style(snapshot: &AppState, session: &EditorSession) -> String {
     )
 }
 
-fn tileset_sheet_style(document: &wishing_core::EditorDocument, selected_gid: u32) -> String {
+fn tileset_sheet_style(document: &taled_core::EditorDocument, selected_gid: u32) -> String {
     let columns = document
         .map
         .tile_reference_for_gid(selected_gid)

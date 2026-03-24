@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
-use wishing_core::{EditorSession, Layer};
+use taled_core::{EditorSession, Layer};
 
 fn sample_map_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -45,14 +45,14 @@ fn loads_stage1_sample() {
     assert_eq!(object_layer.objects.len(), 2);
     assert!(matches!(
         object_layer.objects[1].shape,
-        wishing_core::ObjectShape::Point
+        taled_core::ObjectShape::Point
     ));
 }
 
 #[test]
 fn round_trips_supported_map() {
     let source = sample_map_path();
-    let temp_dir = std::env::temp_dir().join("wishing-room-stage1-tests");
+    let temp_dir = std::env::temp_dir().join("taled-stage1-tests");
     fs::create_dir_all(&temp_dir).expect("temp dir");
     let temp_map = temp_dir.join("roundtrip-map.tmx");
     let temp_tsx = temp_dir.join("terrain.tsx");
@@ -166,7 +166,7 @@ fn loads_embedded_tmwa_sample() {
 
 #[test]
 fn rejects_infinite_maps() {
-    let temp_dir = std::env::temp_dir().join("wishing-room-stage1-tests");
+    let temp_dir = std::env::temp_dir().join("taled-stage1-tests");
     fs::create_dir_all(&temp_dir).expect("temp dir");
     let infinite_map = temp_dir.join("infinite-map.tmx");
     let tileset = temp_dir.join("terrain.tsx");

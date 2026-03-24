@@ -6,7 +6,7 @@ use web_sys::{
     window,
 };
 
-const BOOT_LOG_ID: &str = "wishing-room-boot-log";
+const BOOT_LOG_ID: &str = "taled-boot-log";
 const MAX_LOG_LINES: usize = 400;
 
 thread_local! {
@@ -85,7 +85,7 @@ pub fn download_logs() -> Result<(), String> {
         .map_err(|_| "failed to cast anchor element".to_string())?;
 
     anchor.set_href(&url);
-    anchor.set_download("wishing-room-web.log");
+    anchor.set_download("taled-web.log");
 
     let _ = body.append_child(&anchor);
     anchor.click();
@@ -183,7 +183,7 @@ fn ensure_boot_overlay() {
     };
 
     overlay.set_id(BOOT_LOG_ID);
-    overlay.set_text_content(Some("Wishing Room web boot log\n"));
+    overlay.set_text_content(Some("Taled web boot log\n"));
     let _ = overlay.set_attribute(
         "style",
         concat!(

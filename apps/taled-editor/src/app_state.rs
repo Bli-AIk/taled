@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use wishing_core::EditorSession;
+use taled_core::EditorSession;
 
 #[cfg(target_os = "android")]
 use crate::platform::log_path;

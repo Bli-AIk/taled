@@ -12,7 +12,7 @@ use jni::{
 };
 
 const DEFAULT_LOG_PATH: &str =
-    "/sdcard/Android/data/io.github.wishingroom.editor/files/logs/wishing-editor.log";
+    "/sdcard/Android/data/io.github.taled.editor/files/logs/taled-editor.log";
 
 static LOG_PATH: OnceLock<PathBuf> = OnceLock::new();
 static LOG_LOCK: Mutex<()> = Mutex::new(());
@@ -83,7 +83,7 @@ fn resolve_log_path() -> Option<PathBuf> {
     let external_dir = java_file_dir(&mut env, &android_context, true)
         .or_else(|| java_file_dir(&mut env, &android_context, false))?;
 
-    Some(external_dir.join("logs").join("wishing-editor.log"))
+    Some(external_dir.join("logs").join("taled-editor.log"))
 }
 
 fn java_file_dir(

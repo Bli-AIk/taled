@@ -1,16 +1,16 @@
 [application]
-out_dir = "../../dist/wishing-editor"
+out_dir = "../../dist/taled-editor"
 asset_dir = "../../assets"
 public_dir = ""
 android_main_activity = "android/MainActivity.kt"
 
 [web.app]
-title = "wishing-room"
+title = "Taled"
 
 [bundle]
-identifier = "io.github.wishingroom.editor"
-publisher = "wishing-room"
+identifier = "io.github.taled.editor"
+publisher = "taled"
 short_description = "Orthogonal TMX editor prototype."
 long_description = """
-Orthogonal TMX editor prototype for Android and web verification.
+Taled orthogonal TMX editor prototype for Android and web verification.
 """

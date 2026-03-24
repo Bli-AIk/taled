@@ -1,5 +1,5 @@
 [workspace]
-members = ["apps/wishing-editor", "crates/wishing-core"]
+members = ["apps/taled-editor", "crates/taled-core"]
 resolver = "2"
 
 [workspace.package]

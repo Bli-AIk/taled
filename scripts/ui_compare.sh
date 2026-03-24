@@ -34,7 +34,7 @@ trap cleanup EXIT
 
 (
   cd "$ROOT"
-  dx serve --platform web --port "$PORT" -p wishing-editor
+  dx serve --platform web --port "$PORT" -p taled-editor
 ) >"$OUT_DIR/server.log" 2>&1 &
 SERVER_PID=$!
 

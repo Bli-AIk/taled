@@ -1,11 +1,11 @@
 [package]
-name = "wishing-editor"
+name = "taled-editor"
 version = "0.0.1"
 edition = "2024"
 
 [dependencies]
 base64.workspace = true
-wishing-core = { path = "../../crates/wishing-core" }
+taled-core = { path = "../../crates/taled-core" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_error_panic_hook = "0.1.7"

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use wishing_core::{EditorDocument, MapObject, ObjectShape};
+use taled_core::{EditorDocument, MapObject, ObjectShape};
 
 use crate::app_state::PaletteTile;
 

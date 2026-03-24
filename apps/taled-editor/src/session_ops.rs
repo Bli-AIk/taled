@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use wishing_core::EditorSession;
+use taled_core::EditorSession;
 
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::embedded_samples::{embedded_sample, embedded_samples};
@@ -10,7 +10,7 @@ use crate::{app_state::AppState, platform::log};
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{demo::load_embedded_demo_session, platform::EMBEDDED_DEMO_MAP_PATH};
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
-use wishing_core::Layer;
+use taled_core::Layer;
 
 #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 pub(crate) fn open_document(state: &mut AppState) {

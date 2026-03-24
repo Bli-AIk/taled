@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use wishing_core::{EditorDocument, ObjectShape, Property};
+use taled_core::{EditorDocument, ObjectShape, Property};
 
 use crate::{
     app_state::{AppState, PaletteTile},
