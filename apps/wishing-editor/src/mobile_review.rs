@@ -119,10 +119,10 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
 
     rsx! {
         div { class: "review-page review-editor-page",
-            {review_top_bar(
+            {review_top_bar_inactive_right(
                 document_title(snapshot),
-                Some(("Back", MobileScreen::Dashboard)),
-                Some(("Settings", MobileScreen::Settings)),
+                ("Back", MobileScreen::Dashboard),
+                "Settings",
                 state,
             )}
             div { class: "review-tile-strip review-tile-strip-top",
@@ -574,17 +574,9 @@ fn render_properties(snapshot: &AppState, mut state: Signal<AppState>) -> Elemen
 }
 
 fn render_settings(snapshot: &AppState, state: Signal<AppState>) -> Element {
-    let back_screen = settings_back_screen(snapshot);
-    let done_screen = settings_done_screen(snapshot);
-
     rsx! {
         div { class: "review-page",
-            {review_top_bar(
-                "App Settings".to_string(),
-                Some(("Back", back_screen)),
-                Some(("Done", done_screen)),
-                state,
-            )}
+            {review_title_only_bar("App Settings".to_string())}
             div { class: "review-body review-section-stack",
                 div { class: "review-caption", "Grid Settings" }
                 div { class: "review-settings-card",
@@ -667,6 +659,42 @@ fn review_top_bar(
             } else {
                 div { class: "review-header-spacer" }
             }
+        }
+    }
+}
+
+fn review_top_bar_inactive_right(
+    title: String,
+    left: (&'static str, MobileScreen),
+    inactive_right: &'static str,
+    mut state: Signal<AppState>,
+) -> Element {
+    rsx! {
+        div { class: "review-header",
+            button {
+                class: "review-header-action left",
+                onclick: move |_| state.write().mobile_screen = left.1.clone(),
+                "{left.0}"
+            }
+            h1 { "{title}" }
+            button {
+                class: "review-header-action right",
+                onclick: move |_| {
+                    state.write().status =
+                        "Editor-specific settings are not implemented yet.".to_string();
+                },
+                "{inactive_right}"
+            }
+        }
+    }
+}
+
+fn review_title_only_bar(title: String) -> Element {
+    rsx! {
+        div { class: "review-header",
+            div { class: "review-header-spacer" }
+            h1 { "{title}" }
+            div { class: "review-header-spacer" }
         }
     }
 }
@@ -1085,18 +1113,6 @@ fn editor_grid_style(snapshot: &AppState, session: &EditorSession) -> String {
     format!(
         "--grid-size-x:{grid_width}px;--grid-size-y:{grid_height}px;--grid-offset-x:{offset_x}px;--grid-offset-y:{offset_y}px;"
     )
-}
-
-fn settings_back_screen(snapshot: &AppState) -> MobileScreen {
-    if snapshot.session.is_some() {
-        MobileScreen::Editor
-    } else {
-        MobileScreen::Dashboard
-    }
-}
-
-fn settings_done_screen(snapshot: &AppState) -> MobileScreen {
-    settings_back_screen(snapshot)
 }
 
 fn tileset_sheet_style(document: &wishing_core::EditorDocument, selected_gid: u32) -> String {
