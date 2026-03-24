@@ -146,18 +146,22 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                     {render_canvas(snapshot, state)}
                 }
                 div { class: "review-dpad",
-                    button { class: "up", onclick: move |_| state.write().pan_y -= 32, "^" }
-                    button { class: "left", onclick: move |_| state.write().pan_x -= 32, "<" }
+                    button { class: "up", onclick: move |_| state.write().pan_y -= 32, {review_direction_icon("up")} }
+                    button { class: "left", onclick: move |_| state.write().pan_x -= 32, {review_direction_icon("left")} }
                     button {
                         class: "center",
                         onclick: move |_| state.write().mobile_screen = MobileScreen::Tilesets,
-                        "{snapshot.zoom_percent}%"
+                        {review_dpad_center_icon()}
                     }
-                    button { class: "right", onclick: move |_| state.write().pan_x += 32, ">" }
-                    button { class: "down", onclick: move |_| state.write().pan_y += 32, "v" }
+                    button { class: "right", onclick: move |_| state.write().pan_x += 32, {review_direction_icon("right")} }
+                    button { class: "down", onclick: move |_| state.write().pan_y += 32, {review_direction_icon("down")} }
+                    div { class: "review-dpad-zoom", "{snapshot.zoom_percent}%" }
                 }
                 div { class: "review-layer-float",
-                    div { class: "review-layer-float-title", "Layers" }
+                    div { class: "review-layer-float-title",
+                        span { "Layers" }
+                        span { class: "review-layer-float-title-icon", {review_stack_icon()} }
+                    }
                     for (index, name, kind, visible) in layers {
                         div {
                             key: "review-float-layer-{index}",
@@ -175,8 +179,8 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                                 span { "{name}" }
                                 span { class: "muted", "{kind}" }
                             }
-                            span { class: if visible { "review-eye on" } else { "review-eye off" }, "o" }
-                            span { class: "review-menu-glyph", "≡" }
+                            span { class: if visible { "review-eye on" } else { "review-eye off" }, {review_eye_icon(visible)} }
+                            span { class: "review-menu-glyph", {review_menu_icon()} }
                         }
                     }
                 }
@@ -753,6 +757,116 @@ fn review_plus_icon(class: &'static str) -> Element {
             stroke_linejoin: "round",
             path { d: "M12 5v14" }
             path { d: "M5 12h14" }
+        }
+    }
+}
+
+fn review_direction_icon(direction: &'static str) -> Element {
+    let rotation = match direction {
+        "up" => "0",
+        "right" => "90",
+        "down" => "180",
+        "left" => "270",
+        _ => "0",
+    };
+
+    rsx! {
+        svg {
+            class: "review-dpad-icon-svg",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2.2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            style: "transform:rotate({rotation}deg);",
+            path { d: "M12 5 6 11" }
+            path { d: "M12 5 18 11" }
+        }
+    }
+}
+
+fn review_dpad_center_icon() -> Element {
+    rsx! {
+        svg {
+            class: "review-dpad-center-svg",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            circle { cx: "12", cy: "12", r: "4" }
+            path { d: "M12 3v3" }
+            path { d: "M12 18v3" }
+            path { d: "M3 12h3" }
+            path { d: "M18 12h3" }
+        }
+    }
+}
+
+fn review_stack_icon() -> Element {
+    rsx! {
+        svg {
+            class: "review-inline-icon-svg",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "1.9",
+            stroke_linecap: "round",
+            stroke_linejoin: "round",
+            path { d: "M12 5 4 9l8 4 8-4-8-4z" }
+            path { d: "m4 13 8 4 8-4" }
+        }
+    }
+}
+
+fn review_eye_icon(visible: bool) -> Element {
+    if visible {
+        rsx! {
+            svg {
+                class: "review-inline-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.9",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                path { d: "M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" }
+                circle { cx: "12", cy: "12", r: "2.7" }
+            }
+        }
+    } else {
+        rsx! {
+            svg {
+                class: "review-inline-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "1.9",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                path { d: "M3 3 21 21" }
+                path { d: "M10.6 6.2A10.8 10.8 0 0 1 12 6c6.5 0 10 6 10 6a19 19 0 0 1-3 3.7" }
+                path { d: "M6.6 6.7C3.9 8.4 2 12 2 12a18.7 18.7 0 0 0 5.7 5.2" }
+                path { d: "M9.9 9.9A3 3 0 0 0 12 15a3 3 0 0 0 2.1-.9" }
+            }
+        }
+    }
+}
+
+fn review_menu_icon() -> Element {
+    rsx! {
+        svg {
+            class: "review-inline-icon-svg",
+            view_box: "0 0 24 24",
+            fill: "none",
+            stroke: "currentColor",
+            stroke_width: "2",
+            stroke_linecap: "round",
+            path { d: "M5 8h14" }
+            path { d: "M5 12h14" }
+            path { d: "M5 16h14" }
         }
     }
 }
