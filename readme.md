@@ -26,12 +26,6 @@ At the moment, the project is intentionally focused on a narrow and reliable pat
 
 Once the core editor loop is stable, Taled is meant to grow into a friendlier tool for community map workflows, especially those around **Undertale / Deltarune** creation, remixing, and curation.
 
-## Name Origin
-
-The name **Taled** is a shortened project name built around the **Tiled** workflow this editor targets.
-
-It is short enough to work cleanly in package names, commands, documentation, and community discussion, while still pointing back to the editor ecosystem it is meant to support.
-
 ## Motivation
 
 The starting point of Taled is simple: we want the **Undertale / Deltarune** community to have a more convenient map editor.
