@@ -39,13 +39,24 @@ pub(crate) fn palette_tile_style(
         .max(1.0);
     let rendered_width = tile_width * scale;
     let rendered_height = tile_height * scale;
-    let offset_x = (PALETTE_PREVIEW_SIZE - rendered_width) / 2.0 - source_x * scale;
-    let offset_y = (PALETTE_PREVIEW_SIZE - rendered_height) / 2.0 - source_y * scale;
+    let inset_x = (PALETTE_PREVIEW_SIZE - rendered_width) / 2.0;
+    let inset_y = (PALETTE_PREVIEW_SIZE - rendered_height) / 2.0;
+    let tile_preview = tile_preview_data_uri(
+        image,
+        atlas_width,
+        atlas_height,
+        source_x,
+        source_y,
+        tile_width,
+        tile_height,
+        inset_x,
+        inset_y,
+        rendered_width,
+        rendered_height,
+    );
 
     format!(
-        "background-image:url('{image}');background-position:{offset_x}px {offset_y}px;background-size:{}px {}px;",
-        atlas_width * scale,
-        atlas_height * scale,
+        "background-image:{tile_preview};background-position:center;background-size:100% 100%;background-repeat:no-repeat;",
     )
 }
 
@@ -142,9 +153,49 @@ fn point_marker_data_uri() -> String {
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+fn tile_preview_data_uri(
+    image: &str,
+    atlas_width: f32,
+    atlas_height: f32,
+    source_x: f32,
+    source_y: f32,
+    tile_width: f32,
+    tile_height: f32,
+    inset_x: f32,
+    inset_y: f32,
+    rendered_width: f32,
+    rendered_height: f32,
+) -> String {
+    svg_data_uri(&format!(
+        concat!(
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {size} {size}' shape-rendering='crispEdges'>",
+            "<rect width='{size}' height='{size}' rx='10' fill='transparent'/>",
+            "<svg x='{inset_x}' y='{inset_y}' width='{rendered_width}' height='{rendered_height}' ",
+            "viewBox='{source_x} {source_y} {tile_width} {tile_height}' preserveAspectRatio='none'>",
+            "<image href='{image}' width='{atlas_width}' height='{atlas_height}'/>",
+            "</svg>",
+            "</svg>"
+        ),
+        size = PALETTE_PREVIEW_SIZE,
+        inset_x = inset_x,
+        inset_y = inset_y,
+        rendered_width = rendered_width,
+        rendered_height = rendered_height,
+        source_x = source_x,
+        source_y = source_y,
+        tile_width = tile_width,
+        tile_height = tile_height,
+        image = image,
+        atlas_width = atlas_width,
+        atlas_height = atlas_height,
+    ))
+}
+
 fn svg_data_uri(svg: &str) -> String {
     let encoded = svg
         .replace('%', "%25")
+        .replace('&', "%26")
         .replace('#', "%23")
         .replace('<', "%3C")
         .replace('>', "%3E")
