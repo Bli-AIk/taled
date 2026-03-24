@@ -1,11 +1,11 @@
-# Wishing Room
+# Taled
 
 [![version](https://img.shields.io/badge/version-0.0.1-blue)]() <img src="https://img.shields.io/badge/status-early%20development-orange"/> <img src="https://img.shields.io/badge/focus-Android%20first-1f6feb"/> <img src="https://img.shields.io/badge/Tiled-latest%20orthogonal%20subset-2ea44f"/> <br>
 <img src="https://img.shields.io/badge/Rust-2024-000000?style=for-the-badge&logo=rust&logoColor=white" /> <img src="https://img.shields.io/badge/Dioxus-0.7.3-6f42c1?style=for-the-badge" />
 
 > Current Status: 🚧 Early Development (the core format boundary is in place, while the Android-first UI is still being refined)
 
-**Wishing Room** — an Android-first third-party implementation of the **Tiled** map editor, built for people who want a real mobile map editing workflow instead of a desktop UI squeezed into a phone screen.
+**Taled** — an Android-first third-party **Tiled** editor for the **Undertale / Deltarune** community.
 
 | English | 简体中文 |
 |---------|----------|
@@ -13,7 +13,7 @@
 
 ## Introduction
 
-**Wishing Room** is an Android-first, community-facing third-party implementation of the **Tiled** map editor.
+**Taled** is an Android-first, community-facing third-party **Tiled** editor.
 
 It is being built for a very specific use case: opening, reviewing, and eventually editing Tiled maps on a phone without treating mobile as a second-class target.
 
@@ -24,21 +24,21 @@ At the moment, the project is intentionally focused on a narrow and reliable pat
 - Android portrait workflows
 - explicit support boundaries instead of vague “partial support”
 
-Once the core editor loop is stable, Wishing Room is meant to grow into a friendlier tool for community map workflows, especially those around **Undertale / Deltarune** creation, remixing, and curation.
+Once the core editor loop is stable, Taled is meant to grow into a friendlier tool for community map workflows, especially those around **Undertale / Deltarune** creation, remixing, and curation.
 
 ## Name Origin
 
-The name **Wishing Room** comes from the location of the same name in **Undertale**.
+The name **Taled** is a shortened project name built around the **Tiled** workflow this editor targets.
 
-That reference is intentional. This project is not only a generic map editor experiment. It is also shaped by the kind of community workflows that grow around **Undertale / Deltarune** derivative works, fangames, and map archives.
+It is short enough to work cleanly in package names, commands, documentation, and community discussion, while still pointing back to the editor ecosystem it is meant to support.
 
 ## Motivation
 
-The starting point of Wishing Room is simple: we want the **Undertale / Deltarune** community to have a more convenient map editor.
+The starting point of Taled is simple: we want the **Undertale / Deltarune** community to have a more convenient map editor.
 
 That is why the project treats Android and mobile workflows seriously from the beginning, instead of leaving them as an afterthought.
 
-In the future, Wishing Room is also intended to connect with the map resource library built around [`open-utdr-maps`](https://github.com/Bli-AIk/open-utdr-maps), so that mobile-side viewing and editing can tie into a broader open map ecosystem.
+In the future, Taled is also intended to connect with the map resource library built around [`open-utdr-maps`](https://github.com/Bli-AIk/open-utdr-maps), so that mobile-side viewing and editing can tie into a broader open map ecosystem.
 
 ## Features
 
@@ -51,13 +51,13 @@ In the future, Wishing Room is also intended to connect with the map resource li
 
 ## How to Use
 
-Right now, Wishing Room is primarily aimed at contributors and testers.
+Right now, Taled is primarily aimed at contributors and testers.
 
 1. **Clone the repository**:
 
    ```bash
    git clone <your-fork-or-local-remote>
-   cd wishing-room
+   cd taled
    ```
 
 2. **Run workspace checks**:
@@ -72,7 +72,7 @@ Right now, Wishing Room is primarily aimed at contributors and testers.
 3. **Start a web preview**:
 
    ```bash
-   dx serve -p wishing-editor --platform web
+   dx serve -p taled-editor --platform web
    ```
 
 4. **Preview through SSH on another machine**:
@@ -84,7 +84,7 @@ Right now, Wishing Room is primarily aimed at contributors and testers.
 5. **Build an Android package**:
 
    ```bash
-   dx build --android --target aarch64-linux-android -r -p wishing-editor
+   dx build --android --target aarch64-linux-android -r -p taled-editor
    ```
 
 ## How to Build
@@ -118,7 +118,7 @@ Right now, Wishing Room is primarily aimed at contributors and testers.
 4. **Build the Android app**:
 
    ```bash
-   dx build --android --target aarch64-linux-android -r -p wishing-editor
+   dx build --android --target aarch64-linux-android -r -p taled-editor
    ```
 
 ## Dependencies
@@ -136,8 +136,8 @@ The workspace currently leans on a small set of core crates:
 ## Project Structure
 
 ```text
-apps/wishing-editor/   Dioxus application for web, desktop, and Android
-crates/wishing-core/   shared editor model, loading, saving, and session logic
+apps/taled-editor/   Dioxus application for web, desktop, and Android
+crates/taled-core/   shared editor model, loading, saving, and session logic
 assets/                embedded TMX samples and image assets
 TASK.csv               structured Tiled feature/task stack
 ```

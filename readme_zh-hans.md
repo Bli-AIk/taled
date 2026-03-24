@@ -1,11 +1,11 @@
-# Wishing Room
+# Taled
 
 [![version](https://img.shields.io/badge/version-0.0.1-blue)]() <img src="https://img.shields.io/badge/status-early%20development-orange"/> <img src="https://img.shields.io/badge/focus-Android%20first-1f6feb"/> <img src="https://img.shields.io/badge/Tiled-latest%20orthogonal%20subset-2ea44f"/> <br>
 <img src="https://img.shields.io/badge/Rust-2024-000000?style=for-the-badge&logo=rust&logoColor=white" /> <img src="https://img.shields.io/badge/Dioxus-0.7.3-6f42c1?style=for-the-badge" />
 
 > **状态**：🚧 初始开发阶段（当前已建立核心格式边界，Android 主界面仍在持续收紧）
 
-**Wishing Room** —— 一个面向 **Android** 的 **Tiled 地图编辑器第三方实现**，目标不是把桌面版强行压缩到手机里，而是认真做一套适合触控和竖屏使用的地图编辑工作流。
+**Taled** —— 一个面向 **Undertale / Deltarune** 社区、以 **Android** 为优先的第三方 **Tiled** 编辑器。
 
 | English | 简体中文 |
 |---------|----------|
@@ -13,7 +13,7 @@
 
 ## 简介
 
-**Wishing Room** 是一个面向 **Android**、面向社区使用场景的 **Tiled 地图编辑器第三方实现**。
+**Taled** 是一个面向社区使用场景、以 **Android** 为优先的第三方 **Tiled** 编辑器。
 
 它首先解决的是一个很具体的问题：  
 让 `.tmx` 地图在手机上被打开、查看，并逐步进入可用的编辑流程，而不是把移动端当成桌面版的附属预览器。
@@ -25,21 +25,21 @@
 - 优先打磨 **Android 竖屏工作流**
 - 明确支持范围，而不是模糊地宣称“部分兼容”
 
-在核心编辑闭环站稳之后，Wishing Room 会逐步往更社区化的方向扩展，尤其是 **Undertale / Deltarune** 相关的地图制作、改图与整理流程。
+在核心编辑闭环站稳之后，Taled 会逐步往更社区化的方向扩展，尤其是 **Undertale / Deltarune** 相关的地图制作、改图与整理流程。
 
 ## 名称来源
 
-**Wishing Room** 这个名字来自 **Undertale** 中的同名地点。
+**Taled** 这个名字是围绕 **Tiled** 工作流重新整理出来的一个短名字。
 
-这个命名不是随手取的。它在一开始就表明了项目的气质：Wishing Room 虽然是一个通用方向上的地图编辑器实现，但它也确实受到 **Undertale / Deltarune** 社区地图工作流的影响。
+它比原始术语更短、更像一个工具产品的名字，也更适合在命令、包名、文档和社区讨论里长期使用。
 
 ## 项目动机
 
-Wishing Room 的出发点其实很简单：我们希望 **Undertale / Deltarune** 社区能有一个更便捷的地图编辑软件。
+Taled 的出发点其实很简单：我们希望 **Undertale / Deltarune** 社区能有一个更便捷的地图编辑软件。
 
 所以，这个项目从一开始就把 Android 和移动端工作流当成正经目标来做，而不是事后补一个“也能在手机上打开”的附属壳。
 
-日后，Wishing Room 也会接入 [`open-utdr-maps`](https://github.com/Bli-AIk/open-utdr-maps) 的地图资源库，让移动端的地图查看与编辑能够接上更开放的地图生态。
+日后，Taled 也会接入 [`open-utdr-maps`](https://github.com/Bli-AIk/open-utdr-maps) 的地图资源库，让移动端的地图查看与编辑能够接上更开放的地图生态。
 
 ## 功能特性
 
@@ -52,13 +52,13 @@ Wishing Room 的出发点其实很简单：我们希望 **Undertale / Deltarune*
 
 ## 如何使用
 
-当前阶段，Wishing Room 更偏向贡献者和测试者使用。
+当前阶段，Taled 更偏向贡献者和测试者使用。
 
 1. **克隆仓库**：
 
    ```bash
    git clone <你的 fork 或本地远端地址>
-   cd wishing-room
+   cd taled
    ```
 
 2. **先跑基础检查**：
@@ -73,7 +73,7 @@ Wishing Room 的出发点其实很简单：我们希望 **Undertale / Deltarune*
 3. **启动 Web 预览**：
 
    ```bash
-   dx serve -p wishing-editor --platform web
+   dx serve -p taled-editor --platform web
    ```
 
 4. **如果你在远端机器上开发，需要经 SSH 转发到本机 / Android 浏览器预览**：
@@ -85,7 +85,7 @@ Wishing Room 的出发点其实很简单：我们希望 **Undertale / Deltarune*
 5. **构建 Android 包**：
 
    ```bash
-   dx build --android --target aarch64-linux-android -r -p wishing-editor
+   dx build --android --target aarch64-linux-android -r -p taled-editor
    ```
 
 ## 如何构建
@@ -119,7 +119,7 @@ Wishing Room 的出发点其实很简单：我们希望 **Undertale / Deltarune*
 4. **构建 Android 应用**：
 
    ```bash
-   dx build --android --target aarch64-linux-android -r -p wishing-editor
+   dx build --android --target aarch64-linux-android -r -p taled-editor
    ```
 
 ## 依赖
@@ -137,8 +137,8 @@ Wishing Room 的出发点其实很简单：我们希望 **Undertale / Deltarune*
 ## 项目结构
 
 ```text
-apps/wishing-editor/   Dioxus 应用，面向 Web / Desktop / Android
-crates/wishing-core/   共享编辑器模型、TMX/TSX 读写、会话逻辑
+apps/taled-editor/   Dioxus 应用，面向 Web / Desktop / Android
+crates/taled-core/   共享编辑器模型、TMX/TSX 读写、会话逻辑
 assets/                内置样例地图与资源
 TASK.csv               结构化 Tiled 功能 / 任务栈
 ```
