@@ -615,7 +615,7 @@ fn render_settings(snapshot: &AppState, state: Signal<AppState>) -> Element {
                     div { class: "review-setting-row", span { "PNG" } div { class: "review-toggle on", div { class: "knob" } } }
                 }
             }
-            {review_nav(snapshot, state, false)}
+            {review_nav(snapshot, state, true)}
         }
     }
 }

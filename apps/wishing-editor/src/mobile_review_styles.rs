@@ -1,7 +1,9 @@
 pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   .review-shell {
     display: none;
+    height: 100dvh;
     min-height: 100dvh;
+    overflow: hidden;
     background: #121212;
     color: #ffffff;
     font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
@@ -9,7 +11,9 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   .review-page {
     display: flex;
     flex-direction: column;
+    height: 100dvh;
     min-height: 100dvh;
+    overflow: hidden;
     background: #121212;
   }
   .review-header {
@@ -65,7 +69,9 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   }
   .review-body {
     flex: 1;
+    min-height: 0;
     overflow: auto;
+    overscroll-behavior: contain;
     padding: 14px 14px 0;
   }
   .review-section-stack {
@@ -201,6 +207,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     line-height: 1.3;
   }
   .review-bottom-nav {
+    flex: none;
     display: grid;
     gap: 8px;
     padding: 10px 12px calc(22px + env(safe-area-inset-bottom, 0px));
@@ -241,10 +248,13 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     font-size: 12px;
     line-height: 1.1;
   }
+  .review-editor-page {
+    height: 100dvh;
+  }
   .review-editor-canvas {
     position: relative;
     flex: 1;
-    min-height: 720px;
+    min-height: 0;
     overflow: hidden;
     --grid-size-x: 16px;
     --grid-size-y: 16px;
@@ -397,6 +407,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     color: #8e8e93;
   }
   .review-editor-toolbar {
+    flex: none;
     background: #1c1c1e;
     border-top: 1px solid #2c2c2e;
     display: flex;
@@ -436,6 +447,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     display: block;
   }
   .review-tile-strip {
+    flex: none;
     display: grid;
     grid-template-rows: repeat(2, 52px);
     grid-auto-flow: column;
