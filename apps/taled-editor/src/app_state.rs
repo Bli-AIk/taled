@@ -45,6 +45,12 @@ pub(crate) enum MobileTransition {
     VerticalBackward,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DpadMode {
+    Pan,
+    Zoom,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct ActiveTouchPointer {
     pub(crate) pointer_id: i32,
@@ -91,11 +97,16 @@ pub(crate) struct AppState {
     pub(crate) pan_y: i32,
     pub(crate) pending_canvas_center: bool,
     pub(crate) canvas_stage_client_origin: Option<(f64, f64)>,
+    pub(crate) canvas_host_size: Option<(f64, f64)>,
     pub(crate) canvas_host_scroll_offset: (f64, f64),
     pub(crate) active_touch_points: Vec<ActiveTouchPointer>,
     pub(crate) single_touch_gesture: Option<SingleTouchGesture>,
     pub(crate) pinch_gesture: Option<PinchGesture>,
     pub(crate) suppress_click_until: Option<Instant>,
+    pub(crate) dpad_mode: DpadMode,
+    pub(crate) dpad_center_pressed_at: Option<Instant>,
+    pub(crate) dpad_last_tap_at: Option<Instant>,
+    pub(crate) camera_transition_active: bool,
     pub(crate) status: String,
 }
 
@@ -126,11 +137,16 @@ impl Default for AppState {
                 pan_y: 0,
                 pending_canvas_center: false,
                 canvas_stage_client_origin: None,
+                canvas_host_size: None,
                 canvas_host_scroll_offset: (0.0, 0.0),
                 active_touch_points: Vec::new(),
                 single_touch_gesture: None,
                 pinch_gesture: None,
                 suppress_click_until: None,
+                dpad_mode: DpadMode::Pan,
+                dpad_center_pressed_at: None,
+                dpad_last_tap_at: None,
+                camera_transition_active: false,
                 status: default_status_message(),
             };
             log("boot: constructing default web state");
@@ -159,11 +175,16 @@ impl Default for AppState {
                 pan_y: 0,
                 pending_canvas_center: false,
                 canvas_stage_client_origin: None,
+                canvas_host_size: None,
                 canvas_host_scroll_offset: (0.0, 0.0),
                 active_touch_points: Vec::new(),
                 single_touch_gesture: None,
                 pinch_gesture: None,
                 suppress_click_until: None,
+                dpad_mode: DpadMode::Pan,
+                dpad_center_pressed_at: None,
+                dpad_last_tap_at: None,
+                camera_transition_active: false,
                 status: default_status_message(),
             };
             log("boot: constructing default android state");
@@ -197,11 +218,16 @@ impl Default for AppState {
                 pan_y: 0,
                 pending_canvas_center: false,
                 canvas_stage_client_origin: None,
+                canvas_host_size: None,
                 canvas_host_scroll_offset: (0.0, 0.0),
                 active_touch_points: Vec::new(),
                 single_touch_gesture: None,
                 pinch_gesture: None,
                 suppress_click_until: None,
+                dpad_mode: DpadMode::Pan,
+                dpad_center_pressed_at: None,
+                dpad_last_tap_at: None,
+                camera_transition_active: false,
                 status: default_status_message(),
             }
         }

@@ -174,6 +174,9 @@ pub(crate) const STYLES: &str = r#"
   .tile-sprite {
     z-index: 1;
   }
+  .canvas.camera-transition {
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
   .cell-hitbox {
     z-index: 2;
     background: transparent;

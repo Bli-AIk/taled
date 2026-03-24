@@ -381,6 +381,40 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   .review-dpad .center { inset: 36px auto auto 36px; width: 32px; height: 32px; border-radius: 999px; background: rgba(255,255,255,0.08); }
   .review-dpad .right { top: 36px; right: 6px; }
   .review-dpad .down { bottom: 6px; left: 36px; }
+  .review-dpad.review-dpad-zoom {
+    width: 172px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 999px;
+  }
+  .review-dpad.review-dpad-zoom button {
+    position: static;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+  }
+  .review-dpad.review-dpad-zoom .zoom-center {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    padding: 0 12px;
+    justify-content: center;
+  }
+  .review-dpad-zoom-label {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .review-dpad-zoom-glyph {
+    font-size: 22px;
+    font-weight: 400;
+    line-height: 1;
+  }
   .review-dpad-icon-svg {
     width: 18px;
     height: 18px;

@@ -33,6 +33,11 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
         snapshot.pan_x,
         snapshot.pan_y
     );
+    let canvas_class = if snapshot.camera_transition_active {
+        "canvas camera-transition"
+    } else {
+        "canvas"
+    };
 
     rsx! {
         div {
@@ -50,6 +55,7 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                         ));
                         let mut state = state.write();
                         state.canvas_stage_client_origin = Some((rect.origin.x, rect.origin.y));
+                        state.canvas_host_size = Some((rect.size.width, rect.size.height));
                         center_canvas_if_needed(&mut state, rect.size.width, rect.size.height);
                     }
                     if let Ok(scroll) = event.get_scroll_offset().await {
@@ -75,7 +81,7 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                 state.canvas_host_scroll_offset = (scroll_left, scroll_top);
             },
             div {
-                class: "canvas-stage",
+                    class: "canvas-stage",
                 onmounted: move |event| {
                     let mut state = state;
                     async move {
@@ -96,8 +102,9 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                 onpointerup: move |event| handle_touch_pointer_up(&mut state.write(), event),
                 onpointercancel: move |event| handle_touch_pointer_cancel(&mut state.write(), event),
                 div {
-                    class: "canvas",
+                    class: canvas_class,
                     style: canvas_style,
+                    ontransitionend: move |_| state.write().camera_transition_active = false,
                     for (layer_index, layer) in map.layers.iter().enumerate() {
                         if let Some(tile_layer) = layer.as_tile() {
                             if tile_layer.visible {

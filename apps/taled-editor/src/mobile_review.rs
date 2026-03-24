@@ -1,16 +1,22 @@
-use std::path::Path;
+use std::{
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use dioxus::prelude::*;
 use taled_core::{EditorSession, Layer, ObjectShape};
 
 use crate::{
-    app_state::{AppState, MobileScreen, MobileTransition, PaletteTile, Tool},
+    app_state::{AppState, DpadMode, MobileScreen, MobileTransition, PaletteTile, Tool},
     edit_ops::{
         create_object, delete_selected_object, nudge_selected_object, rename_selected_object,
         selected_object_view, toggle_layer_lock, toggle_layer_visibility,
     },
     embedded_samples::{embedded_sample, embedded_sample_thumb, embedded_samples},
-    session_ops::{adjust_zoom, load_embedded_sample, load_sample, save_document},
+    session_ops::{
+        adjust_zoom, adjust_zoom_around_view_center, animate_camera_to_center,
+        animate_camera_to_fit_map, load_embedded_sample, load_sample, save_document,
+    },
     ui_canvas::render_canvas,
     ui_inspector::collect_palette,
     ui_visuals::{object_icon_style, palette_tile_style},
@@ -26,6 +32,9 @@ struct MobileObjectSummary {
     name: String,
     shape: ObjectShape,
 }
+
+const DPAD_DOUBLE_TAP_WINDOW: Duration = Duration::from_millis(320);
+const DPAD_LONG_PRESS_DURATION: Duration = Duration::from_millis(420);
 
 pub(crate) fn render_mobile_shell(snapshot: &AppState, state: Signal<AppState>) -> Element {
     rsx! {
@@ -193,17 +202,7 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                 div { class: "review-map-surface review-map-live",
                     {render_canvas(snapshot, state)}
                 }
-                div { class: "review-dpad",
-                    button { class: "up", onclick: move |_| state.write().pan_y -= 32, {review_direction_icon("up")} }
-                    button { class: "left", onclick: move |_| state.write().pan_x -= 32, {review_direction_icon("left")} }
-                    button {
-                        class: "center",
-                        onclick: move |_| navigate_mobile_screen(&mut state.write(), MobileScreen::Tilesets),
-                        {review_dpad_center_icon()}
-                    }
-                    button { class: "right", onclick: move |_| state.write().pan_x += 32, {review_direction_icon("right")} }
-                    button { class: "down", onclick: move |_| state.write().pan_y += 32, {review_direction_icon("down")} }
-                }
+                {render_review_dpad(snapshot, state)}
                 div { class: "review-layer-float",
                     div { class: "review-layer-float-title",
                         span { "Layers" }
@@ -244,6 +243,89 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
             }
             {review_nav(snapshot, state, false)}
         }
+    }
+}
+
+fn render_review_dpad(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+    match snapshot.dpad_mode {
+        DpadMode::Pan => rsx! {
+            div { class: "review-dpad",
+                button { class: "up", onclick: move |_| state.write().pan_y -= 32, {review_direction_icon("up")} }
+                button { class: "left", onclick: move |_| state.write().pan_x -= 32, {review_direction_icon("left")} }
+                button {
+                    class: "center",
+                    onpointerdown: move |_| review_dpad_center_press_start(&mut state.write()),
+                    onpointerup: move |_| review_dpad_center_press_end(&mut state.write()),
+                    onpointercancel: move |_| review_dpad_center_press_cancel(&mut state.write()),
+                    {review_dpad_center_icon()}
+                }
+                button { class: "right", onclick: move |_| state.write().pan_x += 32, {review_direction_icon("right")} }
+                button { class: "down", onclick: move |_| state.write().pan_y += 32, {review_direction_icon("down")} }
+            }
+        },
+        DpadMode::Zoom => rsx! {
+            div { class: "review-dpad review-dpad-zoom",
+                button {
+                    class: "zoom-minus",
+                    onclick: move |_| adjust_zoom_around_view_center(&mut state.write(), -25),
+                    {review_zoom_glyph("-")}
+                }
+                button {
+                    class: "zoom-center",
+                    onpointerdown: move |_| review_dpad_center_press_start(&mut state.write()),
+                    onpointerup: move |_| review_dpad_center_press_end(&mut state.write()),
+                    onpointercancel: move |_| review_dpad_center_press_cancel(&mut state.write()),
+                    span { class: "review-dpad-zoom-label", "{snapshot.zoom_percent}%" }
+                }
+                button {
+                    class: "zoom-plus",
+                    onclick: move |_| adjust_zoom_around_view_center(&mut state.write(), 25),
+                    {review_zoom_glyph("+")}
+                }
+            }
+        },
+    }
+}
+
+fn review_dpad_center_press_start(state: &mut AppState) {
+    state.dpad_center_pressed_at = Some(Instant::now());
+}
+
+fn review_dpad_center_press_cancel(state: &mut AppState) {
+    state.dpad_center_pressed_at = None;
+}
+
+fn review_dpad_center_press_end(state: &mut AppState) {
+    let Some(pressed_at) = state.dpad_center_pressed_at.take() else {
+        return;
+    };
+
+    if pressed_at.elapsed() >= DPAD_LONG_PRESS_DURATION {
+        state.dpad_mode = match state.dpad_mode {
+            DpadMode::Pan => DpadMode::Zoom,
+            DpadMode::Zoom => DpadMode::Pan,
+        };
+        state.dpad_last_tap_at = None;
+        state.status = match state.dpad_mode {
+            DpadMode::Pan => "D-pad switched to pan mode.".to_string(),
+            DpadMode::Zoom => "D-pad switched to zoom mode.".to_string(),
+        };
+        return;
+    }
+
+    let now = Instant::now();
+    let is_double_tap = state
+        .dpad_last_tap_at
+        .is_some_and(|last_tap| now.duration_since(last_tap) <= DPAD_DOUBLE_TAP_WINDOW);
+
+    if is_double_tap {
+        match state.dpad_mode {
+            DpadMode::Pan => animate_camera_to_center(state),
+            DpadMode::Zoom => animate_camera_to_fit_map(state),
+        }
+        state.dpad_last_tap_at = None;
+    } else {
+        state.dpad_last_tap_at = Some(now);
     }
 }
 
@@ -968,6 +1050,12 @@ fn review_dpad_center_icon() -> Element {
             path { d: "M3 12h3" }
             path { d: "M18 12h3" }
         }
+    }
+}
+
+fn review_zoom_glyph(label: &'static str) -> Element {
+    rsx! {
+        span { class: "review-dpad-zoom-glyph", "{label}" }
     }
 }
 

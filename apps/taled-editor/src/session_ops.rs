@@ -142,6 +142,49 @@ pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
     state.zoom_percent = (state.zoom_percent + delta).clamp(25, 400);
 }
 
+pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
+    if state.session.is_none() {
+        return;
+    }
+    let Some((host_width, host_height)) = canvas_host_size_or_default(state) else {
+        return;
+    };
+
+    let current_zoom = f64::from(state.zoom_percent) / 100.0;
+    let new_zoom_percent = (state.zoom_percent + delta).clamp(25, 400);
+    let new_zoom = f64::from(new_zoom_percent) / 100.0;
+    let center_x = host_width * 0.5;
+    let center_y = host_height * 0.5;
+    let world_center_x = (center_x - f64::from(state.pan_x)) / current_zoom;
+    let world_center_y = (center_y - f64::from(state.pan_y)) / current_zoom;
+
+    state.zoom_percent = new_zoom_percent;
+    state.pan_x = (center_x - world_center_x * new_zoom).round() as i32;
+    state.pan_y = (center_y - world_center_y * new_zoom).round() as i32;
+    state.status = format!("Zoom {}%.", state.zoom_percent);
+}
+
+pub(crate) fn animate_camera_to_center(state: &mut AppState) {
+    let Some((target_pan_x, target_pan_y)) = centered_pan_for_current_zoom(state) else {
+        return;
+    };
+    state.pan_x = target_pan_x;
+    state.pan_y = target_pan_y;
+    state.camera_transition_active = true;
+    state.status = "Centered camera.".to_string();
+}
+
+pub(crate) fn animate_camera_to_fit_map(state: &mut AppState) {
+    let Some((target_zoom_percent, target_pan_x, target_pan_y)) = fit_map_view(state) else {
+        return;
+    };
+    state.zoom_percent = target_zoom_percent;
+    state.pan_x = target_pan_x;
+    state.pan_y = target_pan_y;
+    state.camera_transition_active = true;
+    state.status = format!("Fit map to view at {}%.", state.zoom_percent);
+}
+
 pub(crate) fn save_document(state: &mut AppState) {
     let Some(session) = state.session.as_mut() else {
         state.status = "Nothing to save.".to_string();
@@ -198,11 +241,16 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.pan_x = default_pan_x;
     state.pan_y = default_pan_y;
     state.pending_canvas_center = true;
+    state.camera_transition_active = false;
     state.active_touch_points.clear();
     state.single_touch_gesture = None;
     state.pinch_gesture = None;
     state.suppress_click_until = None;
     state.canvas_host_scroll_offset = (0.0, 0.0);
+    state.canvas_host_size = None;
+    state.dpad_mode = crate::app_state::DpadMode::Pan;
+    state.dpad_center_pressed_at = None;
+    state.dpad_last_tap_at = None;
     state.image_cache = image_cache;
     state.session = Some(session);
 }
@@ -226,6 +274,52 @@ fn default_mobile_center_pan(session: &EditorSession, zoom_percent: i32) -> (i32
     {
         let _ = (session, zoom_percent);
         (0, 0)
+    }
+}
+
+fn centered_pan_for_current_zoom(state: &AppState) -> Option<(i32, i32)> {
+    let session = state.session.as_ref()?;
+    let (host_width, host_height) = canvas_host_size_or_default(state)?;
+    let map = &session.document().map;
+    let zoom = f64::from(state.zoom_percent) / 100.0;
+    let map_width = f64::from(map.total_pixel_width()) * zoom;
+    let map_height = f64::from(map.total_pixel_height()) * zoom;
+    let pan_x = ((host_width - map_width) * 0.5).round() as i32;
+    let pan_y = ((host_height - map_height) * 0.5).round() as i32;
+    Some((pan_x, pan_y))
+}
+
+fn fit_map_view(state: &AppState) -> Option<(i32, i32, i32)> {
+    let session = state.session.as_ref()?;
+    let (host_width, host_height) = canvas_host_size_or_default(state)?;
+    let map = &session.document().map;
+    let map_width = f64::from(map.total_pixel_width()).max(1.0);
+    let map_height = f64::from(map.total_pixel_height()).max(1.0);
+    let fit_scale = (host_width / map_width).min(host_height / map_height);
+    let target_zoom_percent = (fit_scale * 100.0).floor() as i32;
+    let target_zoom_percent = target_zoom_percent.clamp(25, 400);
+    let zoom = f64::from(target_zoom_percent) / 100.0;
+    let scaled_width = map_width * zoom;
+    let scaled_height = map_height * zoom;
+    let pan_x = ((host_width - scaled_width) * 0.5).round() as i32;
+    let pan_y = ((host_height - scaled_height) * 0.5).round() as i32;
+    Some((target_zoom_percent, pan_x, pan_y))
+}
+
+fn canvas_host_size_or_default(state: &AppState) -> Option<(f64, f64)> {
+    if let Some(size) = state.canvas_host_size {
+        return Some(size);
+    }
+
+    #[cfg(any(target_arch = "wasm32", target_os = "android"))]
+    {
+        return Some((384.0, 241.0));
+    }
+
+    #[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
+    {
+        let _ = state;
+        None
     }
 }
 
