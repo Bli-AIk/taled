@@ -36,6 +36,7 @@ pub(crate) fn render_mobile_shell(snapshot: &AppState, state: Signal<AppState>) 
                 MobileScreen::Tilesets => rsx! { {render_tilesets(snapshot, state)} },
                 MobileScreen::Layers => rsx! { {render_layers(snapshot, state)} },
                 MobileScreen::Objects => rsx! { {render_objects(snapshot, state)} },
+                MobileScreen::Properties => rsx! { {render_properties(snapshot, state)} },
                 MobileScreen::Settings => rsx! { {render_settings(snapshot, state)} },
             }
         }
@@ -467,7 +468,7 @@ fn render_objects(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
     }
 }
 
-fn render_settings(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
+fn render_properties(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
     rsx! {
         div { class: "review-page",
             {review_top_bar(
@@ -572,6 +573,53 @@ fn render_settings(snapshot: &AppState, mut state: Signal<AppState>) -> Element 
     }
 }
 
+fn render_settings(snapshot: &AppState, state: Signal<AppState>) -> Element {
+    let back_screen = settings_back_screen(snapshot);
+    let done_screen = settings_done_screen(snapshot);
+
+    rsx! {
+        div { class: "review-page",
+            {review_top_bar(
+                "App Settings".to_string(),
+                Some(("Back", back_screen)),
+                Some(("Done", done_screen)),
+                state,
+            )}
+            div { class: "review-body review-section-stack",
+                div { class: "review-caption", "Grid Settings" }
+                div { class: "review-settings-card",
+                    div { class: "review-setting-row",
+                        span { "Grid Color" }
+                        div { class: "review-color-chip",
+                            span { class: "swatch", style: "background:#cccccc;" }
+                            span { "#CCCCCC" }
+                        }
+                    }
+                    div { class: "review-setting-row",
+                        span { "Snapping" }
+                        div { class: "review-toggle on", div { class: "knob" } }
+                    }
+                }
+                div { class: "review-caption", "Theme" }
+                div { class: "review-settings-card single",
+                    div { class: "review-segmented",
+                        button { class: "active", "Dark" }
+                        button { "Light" }
+                        button { "System" }
+                    }
+                }
+                div { class: "review-caption", "Export Settings" }
+                div { class: "review-settings-card",
+                    div { class: "review-setting-row", span { "JSON" } div { class: "review-toggle on", div { class: "knob" } } }
+                    div { class: "review-setting-row", span { "XML" } div { class: "review-toggle on", div { class: "knob" } } }
+                    div { class: "review-setting-row", span { "PNG" } div { class: "review-toggle on", div { class: "knob" } } }
+                }
+            }
+            {review_nav(snapshot, state, false)}
+        }
+    }
+}
+
 fn render_missing_screen(title: String, message: &'static str, mut state: Signal<AppState>) -> Element {
     rsx! {
         div { class: "review-page",
@@ -634,7 +682,7 @@ fn review_nav(snapshot: &AppState, state: Signal<AppState>, dashboard_variant: b
                 {review_nav_button(snapshot, state, MobileScreen::Tilesets, "Tilesets")}
                 {review_nav_button(snapshot, state, MobileScreen::Layers, "Layers")}
                 {review_nav_button(snapshot, state, MobileScreen::Objects, "Objects")}
-                {review_nav_button(snapshot, state, MobileScreen::Settings, "Properties")}
+                {review_nav_button(snapshot, state, MobileScreen::Properties, "Properties")}
             }
         }
     }
@@ -1037,6 +1085,18 @@ fn editor_grid_style(snapshot: &AppState, session: &EditorSession) -> String {
     format!(
         "--grid-size-x:{grid_width}px;--grid-size-y:{grid_height}px;--grid-offset-x:{offset_x}px;--grid-offset-y:{offset_y}px;"
     )
+}
+
+fn settings_back_screen(snapshot: &AppState) -> MobileScreen {
+    if snapshot.session.is_some() {
+        MobileScreen::Editor
+    } else {
+        MobileScreen::Dashboard
+    }
+}
+
+fn settings_done_screen(snapshot: &AppState) -> MobileScreen {
+    settings_back_screen(snapshot)
 }
 
 fn tileset_sheet_style(document: &wishing_core::EditorDocument, selected_gid: u32) -> String {

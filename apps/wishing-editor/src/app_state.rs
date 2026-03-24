@@ -30,6 +30,7 @@ pub(crate) enum MobileScreen {
     Tilesets,
     Layers,
     Objects,
+    Properties,
     Settings,
 }
 
@@ -181,6 +182,7 @@ fn parse_mobile_screen(value: &str) -> MobileScreen {
         "tilesets" => MobileScreen::Tilesets,
         "layers" => MobileScreen::Layers,
         "objects" => MobileScreen::Objects,
+        "properties" => MobileScreen::Properties,
         "settings" => MobileScreen::Settings,
         _ => MobileScreen::Dashboard,
     }

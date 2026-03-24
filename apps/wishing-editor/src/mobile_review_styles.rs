@@ -526,6 +526,15 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     gap: 12px;
     padding: 14px 0;
   }
+  .review-setting-row {
+    justify-content: space-between;
+  }
+  .review-setting-row > .review-color-chip,
+  .review-setting-row > .review-toggle,
+  .review-setting-row > .review-link-button,
+  .review-setting-row > .muted {
+    margin-left: auto;
+  }
   .review-input-row .label {
     width: 64px;
     color: #8e8e93;
@@ -839,13 +848,15 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   }
   .review-segmented {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 2px;
+    width: 100%;
     padding: 4px;
     border-radius: 16px;
     background: #2c2c2e;
   }
   .review-segmented button {
+    width: 100%;
     min-height: 40px;
     border-radius: 12px;
     border: none;
