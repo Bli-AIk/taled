@@ -3,6 +3,8 @@ use std::time::{Duration, Instant};
 use dioxus::prelude::*;
 use wishing_core::ObjectShape;
 
+#[cfg(target_os = "android")]
+use crate::platform::log;
 use crate::{
     app_state::{ActiveTouchPointer, AppState, PinchGesture, SingleTouchGesture, Tool},
     edit_ops::apply_cell_tool,
@@ -33,6 +35,7 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
 
     let point = touch_surface_point(state, &event);
     upsert_touch_point(state, event.pointer_id(), point.x, point.y);
+    log_touch_probe(state, &event, "down", point.x, point.y);
 
     if state.active_touch_points.len() >= 2 {
         state.single_touch_gesture = None;
@@ -86,6 +89,7 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
         if delta_x.abs() >= 0.5 || delta_y.abs() >= 0.5 {
             state.pan_x += delta_x.round() as i32;
             state.pan_y += delta_y.round() as i32;
+            log_touch_resolution(state, "hand-pan", point.x, point.y);
         }
         return;
     }
@@ -131,6 +135,7 @@ pub(crate) fn handle_touch_pointer_up(state: &mut AppState, event: Event<Pointer
 
     let point = touch_surface_point(state, &event);
     let should_apply = finalize_single_touch_if_needed(state, event.pointer_id(), point.x, point.y);
+    log_touch_probe(state, &event, "up", point.x, point.y);
 
     remove_touch_point(state, event.pointer_id());
     if state.active_touch_points.len() < 2 {
@@ -180,6 +185,7 @@ fn finalize_single_touch_if_needed(state: &mut AppState, pointer_id: i32, x: f64
 }
 
 fn apply_touch_tool(state: &mut AppState, x: f64, y: f64) {
+    log_touch_resolution(state, "apply", x, y);
     match state.tool {
         Tool::Hand => {}
         Tool::Select => select_at_point(state, x, y),
@@ -267,10 +273,26 @@ fn suppress_synthetic_click(state: &mut AppState) {
     state.suppress_click_until = Some(Instant::now() + SYNTHETIC_CLICK_SUPPRESSION);
 }
 
-fn touch_surface_point(state: &AppState, event: &Event<PointerData>) -> dioxus::html::geometry::ElementPoint {
+fn touch_surface_point(
+    state: &AppState,
+    event: &Event<PointerData>,
+) -> dioxus::html::geometry::ElementPoint {
     if let Some((left, top)) = state.canvas_stage_client_origin {
         let point = event.client_coordinates();
-        return dioxus::html::geometry::ElementPoint::new(point.x - left, point.y - top);
+        let (scroll_left, scroll_top) = state.canvas_host_scroll_offset;
+        #[cfg(target_os = "android")]
+        {
+            let _ = left;
+            return dioxus::html::geometry::ElementPoint::new(
+                point.x + scroll_left,
+                point.y - top + scroll_top,
+            );
+        }
+        #[cfg(not(target_os = "android"))]
+        return dioxus::html::geometry::ElementPoint::new(
+            point.x - left + scroll_left,
+            point.y - top + scroll_top,
+        );
     }
 
     event.element_coordinates()
@@ -318,6 +340,15 @@ fn initialize_pinch_gesture(state: &mut AppState) {
         world_center_x,
         world_center_y,
     });
+    log_pinch_probe(
+        state,
+        "pinch-start",
+        first,
+        second,
+        center_x,
+        center_y,
+        distance,
+    );
 }
 
 fn update_pinch_gesture(state: &mut AppState) {
@@ -342,6 +373,157 @@ fn update_pinch_gesture(state: &mut AppState) {
     state.pan_x = (current_center_x - gesture.world_center_x * new_zoom).round() as i32;
     state.pan_y = (current_center_y - gesture.world_center_y * new_zoom).round() as i32;
     state.status = format!("Zoom {}%.", state.zoom_percent);
+    log_pinch_probe(
+        state,
+        "pinch-update",
+        first,
+        second,
+        current_center_x,
+        current_center_y,
+        current_distance,
+    );
+}
+
+#[cfg(target_os = "android")]
+fn log_touch_probe(
+    state: &AppState,
+    event: &Event<PointerData>,
+    phase: &'static str,
+    surface_x: f64,
+    surface_y: f64,
+) {
+    let client = event.client_coordinates();
+    let element = event.element_coordinates();
+    let (origin_x, origin_y) = state
+        .canvas_stage_client_origin
+        .unwrap_or((f64::NAN, f64::NAN));
+    let (scroll_left, scroll_top) = state.canvas_host_scroll_offset;
+    let tile_size = state
+        .session
+        .as_ref()
+        .map(|session| {
+            let map = &session.document().map;
+            (map.tile_width, map.tile_height)
+        })
+        .unwrap_or((0, 0));
+
+    log(format!(
+        "touch:{phase} tool={:?} pid={} touches={} client=({:.1},{:.1}) element=({:.1},{:.1}) surface=({:.1},{:.1}) origin=({:.1},{:.1}) scroll=({:.1},{:.1}) pan=({}, {}) zoom={} world={} cell={} tile={}x{}",
+        state.tool,
+        event.pointer_id(),
+        state.active_touch_points.len(),
+        client.x,
+        client.y,
+        element.x,
+        element.y,
+        surface_x,
+        surface_y,
+        origin_x,
+        origin_y,
+        scroll_left,
+        scroll_top,
+        state.pan_x,
+        state.pan_y,
+        state.zoom_percent,
+        format_world_pair(world_coordinates_from_surface(state, surface_x, surface_y)),
+        format_cell(cell_from_surface(state, surface_x, surface_y)),
+        tile_size.0,
+        tile_size.1,
+    ));
+}
+
+#[cfg(not(target_os = "android"))]
+fn log_touch_probe(
+    _state: &AppState,
+    _event: &Event<PointerData>,
+    _phase: &'static str,
+    _surface_x: f64,
+    _surface_y: f64,
+) {
+}
+
+#[cfg(target_os = "android")]
+fn log_touch_resolution(state: &AppState, phase: &'static str, surface_x: f64, surface_y: f64) {
+    log(format!(
+        "touch:{phase} tool={:?} surface=({:.1},{:.1}) pan=({}, {}) zoom={} world={} cell={}",
+        state.tool,
+        surface_x,
+        surface_y,
+        state.pan_x,
+        state.pan_y,
+        state.zoom_percent,
+        format_world_pair(world_coordinates_from_surface(state, surface_x, surface_y)),
+        format_cell(cell_from_surface(state, surface_x, surface_y)),
+    ));
+}
+
+#[cfg(not(target_os = "android"))]
+fn log_touch_resolution(_state: &AppState, _phase: &'static str, _surface_x: f64, _surface_y: f64) {
+}
+
+#[cfg(target_os = "android")]
+fn log_pinch_probe(
+    state: &AppState,
+    phase: &'static str,
+    first: ActiveTouchPointer,
+    second: ActiveTouchPointer,
+    center_x: f64,
+    center_y: f64,
+    distance: f64,
+) {
+    log(format!(
+        "touch:{phase} first=({:.1},{:.1}) second=({:.1},{:.1}) center=({:.1},{:.1}) distance={:.2} pan=({}, {}) zoom={}",
+        first.x,
+        first.y,
+        second.x,
+        second.y,
+        center_x,
+        center_y,
+        distance,
+        state.pan_x,
+        state.pan_y,
+        state.zoom_percent,
+    ));
+}
+
+#[cfg(not(target_os = "android"))]
+fn log_pinch_probe(
+    _state: &AppState,
+    _phase: &'static str,
+    _first: ActiveTouchPointer,
+    _second: ActiveTouchPointer,
+    _center_x: f64,
+    _center_y: f64,
+    _distance: f64,
+) {
+}
+
+#[cfg(target_os = "android")]
+fn format_world_pair(world: Option<(f64, f64)>) -> String {
+    match world {
+        Some((x, y)) => format!("({x:.1},{y:.1})"),
+        None => "none".to_string(),
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+#[allow(dead_code)]
+fn format_world_pair(_world: Option<(f64, f64)>) -> String {
+    String::new()
+}
+
+#[cfg(target_os = "android")]
+fn format_cell(cell: Option<(u32, u32)>) -> String {
+    match cell {
+        Some((x, y)) => format!("({x},{y})"),
+        None => "none".to_string(),
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+#[allow(dead_code)]
+fn format_cell(_cell: Option<(u32, u32)>) -> String {
+    String::new()
 }
 
 fn first_two_touch_points(state: &AppState) -> Option<(ActiveTouchPointer, ActiveTouchPointer)> {

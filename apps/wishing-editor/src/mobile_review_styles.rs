@@ -866,7 +866,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     height: 100%;
     padding: 0;
     background: transparent;
-    overflow: auto;
+    overflow: hidden;
     touch-action: none;
   }
   .review-map-live .canvas-stage {

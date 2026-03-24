@@ -6,6 +6,7 @@ use wishing_core::{EditorDocument, ObjectShape};
 use crate::{
     app_state::{AppState, Tool},
     edit_ops::apply_cell_tool,
+    platform::log,
     touch_ops::{
         handle_touch_pointer_cancel, handle_touch_pointer_down, handle_touch_pointer_move,
         handle_touch_pointer_up, should_ignore_synthetic_click,
@@ -34,18 +35,46 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
     );
 
     rsx! {
-        div { class: "canvas-host",
+        div {
+            class: "canvas-host",
+            onmounted: move |event| {
+                let mut state = state;
+                async move {
+                    if let Ok(rect) = event.get_client_rect().await {
+                        log(format!(
+                            "touch:host-rect origin=({:.1},{:.1}) size=({:.1},{:.1})",
+                            rect.origin.x,
+                            rect.origin.y,
+                            rect.size.width,
+                            rect.size.height,
+                        ));
+                        state.write().canvas_stage_client_origin =
+                            Some((rect.origin.x, rect.origin.y));
+                    }
+                    if let Ok(scroll) = event.get_scroll_offset().await {
+                        log(format!(
+                            "touch:host-scroll offset=({:.1},{:.1})",
+                            scroll.x, scroll.y,
+                        ));
+                        state.write().canvas_host_scroll_offset = (scroll.x, scroll.y);
+                    }
+                }
+            },
+            onscroll: move |event| {
+                let mut state = state.write();
+                let scroll_left = event.scroll_left();
+                let scroll_top = event.scroll_top();
+                log(format!(
+                    "touch:host-scroll offset=({scroll_left:.1},{scroll_top:.1}) size=({},{}) client=({},{})",
+                    event.scroll_width(),
+                    event.scroll_height(),
+                    event.client_width(),
+                    event.client_height(),
+                ));
+                state.canvas_host_scroll_offset = (scroll_left, scroll_top);
+            },
             div {
                 class: "canvas-stage",
-                onmounted: move |event| {
-                    let mut state = state;
-                    async move {
-                        if let Ok(rect) = event.get_client_rect().await {
-                            state.write().canvas_stage_client_origin =
-                                Some((rect.origin.x, rect.origin.y));
-                        }
-                    }
-                },
                 onpointerdown: move |event| handle_touch_pointer_down(&mut state.write(), event),
                 onpointermove: move |event| handle_touch_pointer_move(&mut state.write(), event),
                 onpointerup: move |event| handle_touch_pointer_up(&mut state.write(), event),

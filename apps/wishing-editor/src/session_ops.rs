@@ -197,6 +197,7 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.single_touch_gesture = None;
     state.pinch_gesture = None;
     state.suppress_click_until = None;
+    state.canvas_host_scroll_offset = (0.0, 0.0);
     state.image_cache = image_cache;
     state.session = Some(session);
 }
