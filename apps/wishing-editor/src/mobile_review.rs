@@ -120,8 +120,8 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
         div { class: "review-page review-editor-page",
             {review_top_bar(
                 document_title(snapshot),
-                Some(("Projects", MobileScreen::Dashboard)),
-                Some(("Layers", MobileScreen::Layers)),
+                Some(("Back", MobileScreen::Dashboard)),
+                Some(("Settings", MobileScreen::Settings)),
                 state,
             )}
             div { class: "review-tile-strip review-tile-strip-top",
@@ -460,7 +460,7 @@ fn render_settings(snapshot: &AppState, mut state: Signal<AppState>) -> Element 
     rsx! {
         div { class: "review-page",
             {review_top_bar(
-                "App Settings".to_string(),
+                "Properties".to_string(),
                 Some(("Back", MobileScreen::Editor)),
                 Some(("Done", MobileScreen::Editor)),
                 state,
@@ -623,7 +623,7 @@ fn review_nav(snapshot: &AppState, state: Signal<AppState>, dashboard_variant: b
                 {review_nav_button(snapshot, state, MobileScreen::Tilesets, "Tilesets")}
                 {review_nav_button(snapshot, state, MobileScreen::Layers, "Layers")}
                 {review_nav_button(snapshot, state, MobileScreen::Objects, "Objects")}
-                {review_nav_button(snapshot, state, MobileScreen::Settings, "Settings")}
+                {review_nav_button(snapshot, state, MobileScreen::Settings, "Properties")}
             }
         }
     }
@@ -739,6 +739,23 @@ fn review_nav_icon(label: &'static str) -> Element {
                 stroke_linejoin: "round",
                 circle { cx: "12", cy: "12", r: "3" }
                 path { d: "M19.4 15a1.7 1.7 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-.4-1 1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1-.4H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1-.4 1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6c.38-.08.72-.28 1-.6a1.7 1.7 0 0 0 .4-1V3a2 2 0 1 1 4 0v.09c0 .38.14.74.4 1 .28.32.62.52 1 .6a1.7 1.7 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.08.38.28.72.6 1 .26.26.62.4 1 .4H21a2 2 0 1 1 0 4h-.09c-.38 0-.74.14-1 .4-.32.28-.52.62-.6 1z" }
+            }
+        },
+        "Properties" => rsx! {
+            svg {
+                class: "review-nav-icon-svg",
+                view_box: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                stroke_width: "2",
+                stroke_linecap: "round",
+                stroke_linejoin: "round",
+                path { d: "M5 6h14" }
+                path { d: "M5 12h14" }
+                path { d: "M5 18h14" }
+                circle { cx: "9", cy: "6", r: "2" }
+                circle { cx: "15", cy: "12", r: "2" }
+                circle { cx: "11", cy: "18", r: "2" }
             }
         },
         _ => rsx! { span {} },
