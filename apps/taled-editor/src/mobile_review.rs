@@ -2017,15 +2017,18 @@ fn document_title(snapshot: &AppState) -> String {
 }
 
 fn editor_grid_style(snapshot: &AppState, session: &EditorSession) -> String {
+    const REVIEW_GRID_LINE_WIDTH: f32 = 0.5;
+
     let map = &session.document().map;
     let zoom = snapshot.zoom_percent as f32 / 100.0;
     let grid_width = (map.tile_width as f32 * zoom).max(1.0);
     let grid_height = (map.tile_height as f32 * zoom).max(1.0);
-    let offset_x = snapshot.pan_x as f32;
-    let offset_y = snapshot.pan_y as f32 + 10.0;
+    let line_phase_offset = -(REVIEW_GRID_LINE_WIDTH * 0.5);
+    let offset_x = snapshot.pan_x as f32 + line_phase_offset;
+    let offset_y = snapshot.pan_y as f32 + 10.0 + line_phase_offset;
 
     format!(
-        "--grid-size-x:{grid_width}px;--grid-size-y:{grid_height}px;--grid-offset-x:{offset_x}px;--grid-offset-y:{offset_y}px;"
+        "--grid-size-x:{grid_width}px;--grid-size-y:{grid_height}px;--grid-line-width:{REVIEW_GRID_LINE_WIDTH}px;--grid-offset-x:{offset_x}px;--grid-offset-y:{offset_y}px;"
     )
 }
 

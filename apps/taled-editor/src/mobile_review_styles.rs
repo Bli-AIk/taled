@@ -297,13 +297,14 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     flex: 1;
     min-height: 0;
     overflow: hidden;
+    --grid-line-width: 0.5px;
     --grid-size-x: 16px;
     --grid-size-y: 16px;
     --grid-offset-x: 0px;
     --grid-offset-y: 0px;
     background:
-      linear-gradient(rgba(255,255,255,0.085) 0.5px, transparent 0.5px),
-      linear-gradient(90deg, rgba(255,255,255,0.085) 0.5px, transparent 0.5px),
+      linear-gradient(rgba(255,255,255,0.085) var(--grid-line-width), transparent var(--grid-line-width)),
+      linear-gradient(90deg, rgba(255,255,255,0.085) var(--grid-line-width), transparent var(--grid-line-width)),
       #2a2a2a;
     background-size: var(--grid-size-x) var(--grid-size-y);
     background-position: var(--grid-offset-x) var(--grid-offset-y);
