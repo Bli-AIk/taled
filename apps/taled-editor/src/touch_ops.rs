@@ -164,7 +164,7 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
     }
 
     if state.tool == Tool::ShapeFill {
-        let hit_cell = cell_from_surface(state, point.x, point.y);
+        let hit_cell = clamped_cell_from_surface(state, point.x, point.y);
         let Some(gesture) = state.single_touch_gesture.as_mut() else {
             return;
         };
@@ -283,7 +283,7 @@ fn finalize_single_touch_if_needed(state: &mut AppState, pointer_id: i32, x: f64
             && selection_end_cell_from_surface(state, x, y, gesture.resize_handle).is_some();
     }
     if state.tool == Tool::ShapeFill {
-        return gesture.anchor_cell.is_some() && cell_from_surface(state, x, y).is_some();
+        return gesture.anchor_cell.is_some() && clamped_cell_from_surface(state, x, y).is_some();
     }
     if gesture.drag_active {
         if !tool_supports_drag(state.tool) {
@@ -321,7 +321,7 @@ fn apply_touch_tool(
             }
         }
         Tool::ShapeFill => {
-            let Some((end_x, end_y)) = cell_from_surface(state, x, y) else {
+            let Some((end_x, end_y)) = clamped_cell_from_surface(state, x, y) else {
                 return;
             };
             let (start_x, start_y) = anchor_cell.unwrap_or((end_x, end_y));
@@ -426,7 +426,7 @@ fn selection_end_cell_from_surface(
 ) -> Option<(u32, u32)> {
     let adjusted_point = adjusted_selection_resize_surface_point(x, y, resize_handle);
 
-    cell_from_surface(state, adjusted_point.0, adjusted_point.1)
+    clamped_cell_from_surface(state, adjusted_point.0, adjusted_point.1)
 }
 
 fn adjusted_selection_resize_surface_point(
@@ -846,6 +846,27 @@ fn cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(u32, u32)> {
     } else {
         None
     }
+}
+
+fn clamped_cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(u32, u32)> {
+    let session = state.session.as_ref()?;
+    let map = &session.document().map;
+    if map.width == 0 || map.height == 0 {
+        return None;
+    }
+    let zoom = f64::from(state.zoom_percent) / 100.0;
+    if zoom <= 0.0 {
+        return None;
+    }
+
+    let max_world_x = f64::from(map.total_pixel_width()) - f64::EPSILON;
+    let max_world_y = f64::from(map.total_pixel_height()) - f64::EPSILON;
+    let world_x = ((x - f64::from(state.pan_x)) / zoom).clamp(0.0, max_world_x.max(0.0));
+    let world_y = ((y - f64::from(state.pan_y)) / zoom).clamp(0.0, max_world_y.max(0.0));
+    let cell_x = (world_x / f64::from(map.tile_width)).floor() as u32;
+    let cell_y = (world_y / f64::from(map.tile_height)).floor() as u32;
+
+    Some((cell_x.min(map.width - 1), cell_y.min(map.height - 1)))
 }
 
 fn world_coordinates_from_surface(state: &AppState, x: f64, y: f64) -> Option<(f64, f64)> {
