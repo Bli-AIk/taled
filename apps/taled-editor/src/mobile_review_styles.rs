@@ -639,11 +639,18 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     flex-direction: column;
     overflow: hidden;
   }
+  .review-tool-row-shell {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    padding: 4px 8px 2px;
+  }
   .review-tool-row {
     display: flex;
     align-items: stretch;
     gap: 3px;
-    padding: 4px 8px 2px;
+    padding: 0 0 0 6px;
+    flex: 1 1 auto;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -660,6 +667,17 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   }
   .review-tool-row-object .review-tool {
     flex-basis: 66px;
+  }
+  .review-tool-pinned {
+    flex: 0 0 52px;
+  }
+  .review-tool-divider {
+    width: 1px;
+    align-self: stretch;
+    margin: 0 0 0 6px;
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+    flex: none;
   }
   .review-tool {
     display: flex;
