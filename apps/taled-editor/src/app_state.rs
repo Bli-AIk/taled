@@ -19,6 +19,8 @@ use web_sys::window;
 pub(crate) enum Tool {
     Hand,
     Paint,
+    Fill,
+    ShapeFill,
     Erase,
     Select,
     AddRectangle,
@@ -57,6 +59,7 @@ pub(crate) struct SingleTouchGesture {
     pub(crate) pointer_id: i32,
     pub(crate) started_at: Instant,
     pub(crate) drag_active: bool,
+    pub(crate) anchor_cell: Option<(u32, u32)>,
     pub(crate) last_applied_cell: Option<(u32, u32)>,
     pub(crate) last_surface_x: f64,
     pub(crate) last_surface_y: f64,

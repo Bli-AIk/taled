@@ -7,7 +7,7 @@ use taled_core::ObjectShape;
 use crate::platform::log;
 use crate::{
     app_state::{ActiveTouchPointer, AppState, PinchGesture, SingleTouchGesture, Tool},
-    edit_ops::apply_cell_tool,
+    edit_ops::{apply_cell_tool, apply_shape_fill_rect},
 };
 
 const LONG_PRESS_DURATION: Duration = Duration::from_millis(260);
@@ -50,6 +50,7 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
         pointer_id: event.pointer_id(),
         started_at: Instant::now(),
         drag_active: false,
+        anchor_cell: cell_from_surface(state, point.x, point.y),
         last_applied_cell: None,
         last_surface_x: point.x,
         last_surface_y: point.y,
@@ -96,6 +97,20 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
         return;
     }
 
+    if state.tool == Tool::ShapeFill {
+        let hit_cell = cell_from_surface(state, point.x, point.y);
+        let Some(gesture) = state.single_touch_gesture.as_mut() else {
+            return;
+        };
+        if gesture.pointer_id != event.pointer_id() {
+            return;
+        }
+        if hit_cell.is_some() {
+            gesture.drag_active = true;
+        }
+        return;
+    }
+
     if !tool_supports_drag(state.tool) {
         return;
     }
@@ -124,7 +139,7 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
     };
 
     if should_apply {
-        apply_touch_tool(state, point.x, point.y);
+        apply_touch_tool(state, point.x, point.y, None);
     }
 }
 
@@ -137,6 +152,10 @@ pub(crate) fn handle_touch_pointer_up(state: &mut AppState, event: Event<Pointer
 
     let point = touch_surface_point(state, &event);
     let should_apply = finalize_single_touch_if_needed(state, event.pointer_id(), point.x, point.y);
+    let anchor_cell = state
+        .single_touch_gesture
+        .as_ref()
+        .and_then(|gesture| gesture.anchor_cell);
     log_touch_probe(state, &event, "up", point.x, point.y);
 
     remove_touch_point(state, event.pointer_id());
@@ -146,7 +165,7 @@ pub(crate) fn handle_touch_pointer_up(state: &mut AppState, event: Event<Pointer
     state.single_touch_gesture = None;
 
     if should_apply {
-        apply_touch_tool(state, point.x, point.y);
+        apply_touch_tool(state, point.x, point.y, anchor_cell);
     }
 
     finish_touch_edit_batch(state);
@@ -177,6 +196,9 @@ fn finalize_single_touch_if_needed(state: &mut AppState, pointer_id: i32, x: f64
     if gesture.pointer_id != pointer_id {
         return false;
     }
+    if state.tool == Tool::ShapeFill {
+        return gesture.anchor_cell.is_some() && cell_from_surface(state, x, y).is_some();
+    }
     if gesture.drag_active {
         if !tool_supports_drag(state.tool) {
             return false;
@@ -189,11 +211,24 @@ fn finalize_single_touch_if_needed(state: &mut AppState, pointer_id: i32, x: f64
     true
 }
 
-fn apply_touch_tool(state: &mut AppState, x: f64, y: f64) {
+fn apply_touch_tool(
+    state: &mut AppState,
+    x: f64,
+    y: f64,
+    anchor_cell: Option<(u32, u32)>,
+) {
     log_touch_resolution(state, "apply", x, y);
     match state.tool {
         Tool::Hand => {}
         Tool::Select => select_at_point(state, x, y),
+        Tool::ShapeFill => {
+            let Some((end_x, end_y)) = cell_from_surface(state, x, y) else {
+                return;
+            };
+            let (start_x, start_y) = anchor_cell.unwrap_or((end_x, end_y));
+            state.selected_cell = Some((end_x, end_y));
+            apply_shape_fill_rect(state, start_x, start_y, end_x, end_y);
+        }
         _ => {
             let Some((cell_x, cell_y)) = cell_from_surface(state, x, y) else {
                 return;

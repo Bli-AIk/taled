@@ -175,6 +175,8 @@ fn render_desktop_left_panel(snapshot: &AppState, mut state: Signal<AppState>) -
             div { class: "tool-grid",
                 {tool_button(snapshot, state, Tool::Hand, "Hand")}
                 {tool_button(snapshot, state, Tool::Paint, "Paint")}
+                {tool_button(snapshot, state, Tool::Fill, "Fill")}
+                {tool_button(snapshot, state, Tool::ShapeFill, "Shape Fill")}
                 {tool_button(snapshot, state, Tool::Erase, "Erase")}
                 {tool_button(snapshot, state, Tool::Select, "Select")}
                 {tool_button(snapshot, state, Tool::AddRectangle, "Rect")}

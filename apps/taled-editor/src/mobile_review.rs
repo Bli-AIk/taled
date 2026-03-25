@@ -1514,17 +1514,14 @@ fn review_tool_row(
                             "Terrain",
                             "Terrain Brush is not implemented yet."
                         )}
-                        {review_placeholder_tool_button(
+                        {review_tool_button(snapshot, state, Tool::Fill, ReviewToolGlyph::Fill, "Fill", None)}
+                        {review_tool_button(
+                            snapshot,
                             state,
-                            ReviewToolGlyph::Fill,
-                            "Fill",
-                            "Bucket Fill is not implemented yet."
-                        )}
-                        {review_placeholder_tool_button(
-                            state,
+                            Tool::ShapeFill,
                             ReviewToolGlyph::ShapeFill,
                             "Shape Fill",
-                            "Shape Fill is not implemented yet."
+                            None,
                         )}
                         {review_tool_button(snapshot, state, Tool::Erase, ReviewToolGlyph::Erase, "Eraser", None)}
                         {review_tool_button(
@@ -2062,7 +2059,10 @@ fn active_toolbar_kind(session: &EditorSession, layer_index: usize) -> ReviewToo
 
 fn toolbar_supports_tool(kind: ReviewToolbarKind, tool: Tool) -> bool {
     match kind {
-        ReviewToolbarKind::Tile => matches!(tool, Tool::Hand | Tool::Paint | Tool::Erase | Tool::Select),
+        ReviewToolbarKind::Tile => matches!(
+            tool,
+            Tool::Hand | Tool::Paint | Tool::Fill | Tool::ShapeFill | Tool::Erase | Tool::Select
+        ),
         ReviewToolbarKind::Object => matches!(tool, Tool::Select | Tool::AddRectangle | Tool::AddPoint),
     }
 }
