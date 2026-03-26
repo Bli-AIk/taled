@@ -1545,10 +1545,10 @@ fn render_themes(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
 
                 div { class: "review-caption", {t(snapshot, "themes-catppuccin-title")} }
                 div { class: "review-theme-grid",
-                    {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinLatte)}
-                    {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinFrappe)}
-                    {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinMacchiato)}
                     {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinMocha)}
+                    {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinMacchiato)}
+                    {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinFrappe)}
+                    {theme_choice_button(snapshot, state, ThemeChoice::CatppuccinLatte)}
                 }
 
                 div { class: "review-caption", {t(snapshot, "themes-custom-title")} }

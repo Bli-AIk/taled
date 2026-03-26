@@ -123,8 +123,8 @@ impl ThemePalette {
         Self {
             name: "Catppuccin Frappe".to_string(),
             appearance: ThemeAppearance::Dark,
-            background: "#303446".to_string(),
-            background_elevated: "#292c3c".to_string(),
+            background: "#292c3c".to_string(),
+            background_elevated: "#303446".to_string(),
             surface: "#414559".to_string(),
             surface_elevated: "#51576d".to_string(),
             surface_overlay: "rgba(48, 52, 70, 0.92)".to_string(),
@@ -137,7 +137,7 @@ impl ThemePalette {
             accent_text: "#232634".to_string(),
             success: "#a6d189".to_string(),
             danger: "#e78284".to_string(),
-            canvas_base: "#232634".to_string(),
+            canvas_base: "#51576d".to_string(),
             grid_line: "rgba(198,208,245,0.085)".to_string(),
             selection_overlay: "rgba(35,38,52,0.38)".to_string(),
             shadow: "rgba(0,0,0,0.30)".to_string(),
@@ -148,8 +148,8 @@ impl ThemePalette {
         Self {
             name: "Catppuccin Macchiato".to_string(),
             appearance: ThemeAppearance::Dark,
-            background: "#24273a".to_string(),
-            background_elevated: "#1e2030".to_string(),
+            background: "#1e2030".to_string(),
+            background_elevated: "#24273a".to_string(),
             surface: "#363a4f".to_string(),
             surface_elevated: "#494d64".to_string(),
             surface_overlay: "rgba(36, 39, 58, 0.92)".to_string(),
@@ -162,7 +162,7 @@ impl ThemePalette {
             accent_text: "#181926".to_string(),
             success: "#a6da95".to_string(),
             danger: "#ed8796".to_string(),
-            canvas_base: "#1e2030".to_string(),
+            canvas_base: "#494d64".to_string(),
             grid_line: "rgba(202,211,245,0.085)".to_string(),
             selection_overlay: "rgba(24,25,38,0.38)".to_string(),
             shadow: "rgba(0,0,0,0.30)".to_string(),
@@ -173,8 +173,8 @@ impl ThemePalette {
         Self {
             name: "Catppuccin Mocha".to_string(),
             appearance: ThemeAppearance::Dark,
-            background: "#1e1e2e".to_string(),
-            background_elevated: "#181825".to_string(),
+            background: "#181825".to_string(),
+            background_elevated: "#1e1e2e".to_string(),
             surface: "#313244".to_string(),
             surface_elevated: "#45475a".to_string(),
             surface_overlay: "rgba(30, 30, 46, 0.92)".to_string(),
@@ -187,7 +187,7 @@ impl ThemePalette {
             accent_text: "#11111b".to_string(),
             success: "#a6e3a1".to_string(),
             danger: "#f38ba8".to_string(),
-            canvas_base: "#181825".to_string(),
+            canvas_base: "#45475a".to_string(),
             grid_line: "rgba(205,214,244,0.085)".to_string(),
             selection_overlay: "rgba(17,17,27,0.40)".to_string(),
             shadow: "rgba(0,0,0,0.32)".to_string(),
@@ -324,7 +324,10 @@ pub(crate) const THEME_STYLE_OVERRIDES: &str = r#"
   .review-zoom-control,
   .review-history-button,
   .review-selection-actions,
-  .review-license-card {
+  .review-license-card,
+  .review-theme-card,
+  .review-theme-button,
+  .review-theme-textarea {
     background: var(--taled-theme-surface) !important;
     border-color: var(--taled-theme-border) !important;
     color: var(--taled-theme-text) !important;
@@ -343,7 +346,8 @@ pub(crate) const THEME_STYLE_OVERRIDES: &str = r#"
   .review-color-chip,
   .review-segmented,
   .review-tile-strip-top-shell,
-  .review-tile-strip-live {
+  .review-tile-strip-live,
+  .review-theme-button.subtle {
     background: var(--taled-theme-surface-elevated) !important;
   }
   .review-pan-joystick,
@@ -402,16 +406,22 @@ pub(crate) const THEME_STYLE_OVERRIDES: &str = r#"
   }
   .review-tool.active,
   .review-tool-subbutton.active,
+  .review-theme-card.active,
   .review-layer-float-item.active {
     background: var(--taled-theme-accent-soft) !important;
   }
+  .review-theme-card.active,
   .review-layer-float-item.active {
     box-shadow: inset 0 0 0 1px var(--taled-theme-border-strong) !important;
+  }
+  .review-theme-card.active {
+    border-color: color-mix(in srgb, var(--taled-theme-accent) 55%, var(--taled-theme-border)) !important;
   }
   .review-history-button.disabled,
   .review-tool.placeholder,
   .review-tool-subbutton.placeholder,
-  .review-tile-strip-side-empty {
+  .review-tile-strip-side-empty,
+  .review-theme-button.subtle {
     color: var(--taled-theme-muted) !important;
     opacity: 0.72;
   }
@@ -421,6 +431,9 @@ pub(crate) const THEME_STYLE_OVERRIDES: &str = r#"
   .review-tool-divider,
   .review-tile-strip-side-divider {
     background: var(--taled-theme-border) !important;
+  }
+  .review-theme-swatch {
+    border-color: color-mix(in srgb, var(--taled-theme-border-strong) 65%, transparent) !important;
   }
   .review-tileset-sheet,
   .review-settings-card {
@@ -467,10 +480,15 @@ pub(crate) const THEME_STYLE_OVERRIDES: &str = r#"
   .review-header-action:focus,
   .review-link-button:focus,
   .review-select-input:focus,
-  .review-field input:focus {
+  .review-field input:focus,
+  .review-theme-textarea:focus,
+  .review-theme-button:focus {
     outline: none;
     border-color: var(--taled-theme-accent) !important;
     box-shadow: 0 0 0 2px var(--taled-theme-accent-soft) !important;
+  }
+  .review-theme-textarea::placeholder {
+    color: var(--taled-theme-muted) !important;
   }
 "#;
 
