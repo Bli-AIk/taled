@@ -107,7 +107,8 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   .review-body {
     flex: 1;
     min-height: 0;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     overscroll-behavior: contain;
     padding: 14px 14px 0;
   }
@@ -974,6 +975,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   }
   .review-setting-row {
     justify-content: space-between;
+    min-width: 0;
   }
   .review-setting-row > .review-color-chip,
   .review-setting-row > .review-toggle,
@@ -1285,6 +1287,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     gap: 2px;
     color: #9cc7ff;
     text-decoration: none;
+    min-width: 0;
   }
   .review-about-link-title {
     color: #f2f2f7;
@@ -1296,6 +1299,33 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     font-size: 12px;
     line-height: 1.35;
     word-break: break-all;
+  }
+  .review-select-input {
+    margin-left: auto;
+    min-width: 132px;
+    max-width: 56%;
+    min-height: 38px;
+    padding: 0 36px 0 12px;
+    border-radius: 12px;
+    border: 1px solid #2c2c2e;
+    background: #242426;
+    color: #f2f2f7;
+    font: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, #8f8f95 50%),
+      linear-gradient(135deg, #8f8f95 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) calc(50% - 2px),
+      calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+  }
+  .review-select-input:focus {
+    outline: none;
+    border-color: rgba(10, 132, 255, 0.55);
+    box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.14);
   }
   .review-about-hero {
     display: flex;
@@ -1376,6 +1406,12 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     text-align: left;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+  .review-path-copy {
+    width: 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
   .review-map-live .canvas-host {
     height: 100%;

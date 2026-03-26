@@ -112,14 +112,6 @@ fn language_option_label(snapshot: &AppState, preference: AppLanguagePreference)
     }
 }
 
-fn device_language_detail(snapshot: &AppState) -> String {
-    l10n::text_with_args(
-        snapshot.resolved_language(),
-        "settings-language-device",
-        &[("language", l10n::language_name(snapshot.resolved_language()))],
-    )
-}
-
 fn apply_language_preference(state: &mut AppState, preference: AppLanguagePreference) {
     state.language_preference = preference;
     let resolved = l10n::language_name(state.resolved_language());
@@ -1379,24 +1371,33 @@ fn render_settings(snapshot: &AppState, mut state: Signal<AppState>) -> Element 
                 div { class: "review-caption", {t(snapshot, "settings-language-caption")} }
                 div { class: "review-settings-card single",
                     div { class: "review-section-stack review-settings-inline-stack",
-                        div { class: "review-segmented",
-                            button {
-                                class: if snapshot.language_preference == AppLanguagePreference::Auto { "active" } else { "" },
-                                onclick: move |_| apply_language_preference(&mut state.write(), AppLanguagePreference::Auto),
-                                {language_option_label(snapshot, AppLanguagePreference::Auto)}
-                            }
-                            button {
-                                class: if snapshot.language_preference == AppLanguagePreference::English { "active" } else { "" },
-                                onclick: move |_| apply_language_preference(&mut state.write(), AppLanguagePreference::English),
-                                {language_option_label(snapshot, AppLanguagePreference::English)}
-                            }
-                            button {
-                                class: if snapshot.language_preference == AppLanguagePreference::SimplifiedChinese { "active" } else { "" },
-                                onclick: move |_| apply_language_preference(&mut state.write(), AppLanguagePreference::SimplifiedChinese),
-                                {language_option_label(snapshot, AppLanguagePreference::SimplifiedChinese)}
+                        div { class: "review-setting-row",
+                            span { {t(snapshot, "settings-language-caption")} }
+                            select {
+                                class: "review-select-input",
+                                value: "{snapshot.language_preference.as_value()}",
+                                onchange: move |event| {
+                                    if let Some(preference) = AppLanguagePreference::from_value(&event.value()) {
+                                        apply_language_preference(&mut state.write(), preference);
+                                    }
+                                },
+                                option {
+                                    value: "{AppLanguagePreference::Auto.as_value()}",
+                                    selected: snapshot.language_preference == AppLanguagePreference::Auto,
+                                    {language_option_label(snapshot, AppLanguagePreference::Auto)}
+                                }
+                                option {
+                                    value: "{AppLanguagePreference::English.as_value()}",
+                                    selected: snapshot.language_preference == AppLanguagePreference::English,
+                                    {language_option_label(snapshot, AppLanguagePreference::English)}
+                                }
+                                option {
+                                    value: "{AppLanguagePreference::SimplifiedChinese.as_value()}",
+                                    selected: snapshot.language_preference == AppLanguagePreference::SimplifiedChinese,
+                                    {language_option_label(snapshot, AppLanguagePreference::SimplifiedChinese)}
+                                }
                             }
                         }
-                        div { class: "review-info-meta", {device_language_detail(snapshot)} }
                     }
                 }
                 div { class: "review-caption", {t(snapshot, "settings-theme-caption")} }
@@ -1507,7 +1508,19 @@ fn render_about(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                     }
                 }
                 div { class: "review-info-card review-note-card",
+                    div { class: "review-info-title", {t(snapshot, "settings-about-stack-title")} }
+                    div { class: "review-info-meta", {t(snapshot, "settings-about-stack-description")} }
+                    div { class: "review-about-link-list",
+                        {review_about_link(snapshot, "settings-about-dioxus", "https://dioxuslabs.com/")}
+                        {review_about_link(snapshot, "settings-about-rust", "https://www.rust-lang.org/community")}
+                        {review_about_link(snapshot, "settings-about-rs-tiled", "https://github.com/mapeditor/rs-tiled")}
+                        {review_about_link(snapshot, "settings-about-fluent", "https://projectfluent.org/")}
+                        {review_about_link(snapshot, "settings-about-crates", "https://crates.io/")}
+                    }
+                }
+                div { class: "review-info-card review-note-card",
                     div { class: "review-info-title", {t(snapshot, "settings-about-thanks-title")} }
+                    div { class: "review-info-meta", {t(snapshot, "settings-about-thanks-description")} }
                     div { class: "review-about-link-list",
                         {review_about_link(snapshot, "settings-about-tiled", "https://www.mapeditor.org/")}
                         {review_about_link(snapshot, "settings-about-undertale", "https://undertale.com/")}
@@ -2610,7 +2623,7 @@ fn render_log_path_card(snapshot: &AppState) -> Element {
     rsx! {
         div { class: "review-info-card review-note-card",
             div { class: "review-info-title", {t(snapshot, "settings-log-path-title")} }
-            div { class: "review-info-meta", "{path}" }
+            div { class: "review-info-meta review-path-copy", "{path}" }
         }
     }
 }

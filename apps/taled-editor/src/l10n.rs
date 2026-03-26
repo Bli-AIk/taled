@@ -10,6 +10,25 @@ pub(crate) enum AppLanguagePreference {
     SimplifiedChinese,
 }
 
+impl AppLanguagePreference {
+    pub(crate) const fn as_value(self) -> &'static str {
+        match self {
+            Self::Auto => "auto",
+            Self::English => "en-US",
+            Self::SimplifiedChinese => "zh-Hans",
+        }
+    }
+
+    pub(crate) fn from_value(value: &str) -> Option<Self> {
+        match value {
+            "auto" => Some(Self::Auto),
+            "en-US" => Some(Self::English),
+            "zh-Hans" => Some(Self::SimplifiedChinese),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SupportedLanguage {
     English,
