@@ -9,8 +9,8 @@ use taled_core::{EditorSession, Layer, ObjectShape};
 
 use crate::{
     app_state::{
-        is_tile_selection_tool, selection_bounds, AppState, MobileScreen, MobileTransition,
-        PaletteTile, TileSelectionMode, Tool,
+        AppState, MobileScreen, MobileTransition, PaletteTile, TileSelectionMode, Tool,
+        is_tile_selection_tool, selection_bounds,
     },
     edit_ops::{
         cancel_tile_selection_transfer, copy_tile_selection, create_object, cut_tile_selection,
@@ -431,7 +431,11 @@ fn tile_selection_action_bar(
     }
 }
 
-fn tile_selection_action_bar_style(snapshot: &AppState, session: &EditorSession, selection: crate::app_state::TileSelectionRegion) -> String {
+fn tile_selection_action_bar_style(
+    snapshot: &AppState,
+    session: &EditorSession,
+    selection: crate::app_state::TileSelectionRegion,
+) -> String {
     let map = &session.document().map;
     let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
     let zoom = f64::from(snapshot.zoom_percent) / 100.0;
@@ -1481,7 +1485,8 @@ fn review_tool_side_panel(
     state: Signal<AppState>,
     kind: ReviewToolbarKind,
 ) -> Element {
-    let selection_mode_active = kind == ReviewToolbarKind::Tile && is_tile_selection_tool(snapshot.tool);
+    let selection_mode_active =
+        kind == ReviewToolbarKind::Tile && is_tile_selection_tool(snapshot.tool);
     rsx! {
         div {
             class: if selection_mode_active {

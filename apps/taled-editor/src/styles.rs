@@ -225,7 +225,6 @@ pub(crate) const STYLES: &str = r#"
   .tile-selection-irregular-bounds {
     z-index: 5;
     overflow: visible;
-    background: rgba(0, 0, 0, 0.12);
     animation: tile-selection-fade-in 160ms ease-out;
   }
   .tile-selection-irregular-bounds::after {
@@ -237,13 +236,13 @@ pub(crate) const STYLES: &str = r#"
     animation: tile-selection-border-pulse 880ms ease-in-out infinite;
   }
   .tile-selection-irregular-bounds.preview {
-    background: rgba(0, 0, 0, 0.08);
+    background: transparent;
   }
   .tile-selection-irregular-bounds.preview::after {
     border-color: rgba(243, 246, 250, 0.42);
   }
   .tile-selection-irregular-bounds.closing {
-    background: rgba(0, 0, 0, 0.08);
+    background: transparent;
     animation: tile-selection-fade-out 170ms ease-out forwards;
   }
   .tile-selection-irregular-bounds.closing::after {

@@ -5,16 +5,14 @@ use taled_core::{EditorDocument, ObjectShape};
 
 use crate::{
     app_state::{
-        is_tile_selection_tool, selection_bounds, selection_cells_are_rectangular,
-        selection_cells_from_region, selection_region_from_cells, AppState, TileSelectionRegion,
-        Tool,
+        AppState, TileSelectionRegion, Tool, is_tile_selection_tool, selection_bounds,
+        selection_cells_are_rectangular, selection_cells_from_region, selection_region_from_cells,
     },
-    edit_ops::{apply_cell_tool, dismiss_tile_selection},
+    edit_ops::{apply_cell_tool, clear_tile_selection_immediately},
     platform::log,
     touch_ops::{
-        cell_from_surface,
-        handle_touch_pointer_cancel, handle_touch_pointer_down, handle_touch_pointer_move,
-        handle_touch_pointer_up, should_ignore_synthetic_click,
+        cell_from_surface, handle_touch_pointer_cancel, handle_touch_pointer_down,
+        handle_touch_pointer_move, handle_touch_pointer_up, should_ignore_synthetic_click,
     },
     ui_visuals::object_overlay_style,
 };
@@ -537,27 +535,28 @@ fn active_tile_selection_overlay(
                 true,
                 false,
             )
-        } else if let (Some(selection), Some(selection_cells)) =
-            (snapshot.tile_selection, snapshot.tile_selection_cells.clone())
-        {
+        } else if let (Some(selection), Some(selection_cells)) = (
+            snapshot.tile_selection,
+            snapshot.tile_selection_cells.clone(),
+        ) {
             (selection, selection_cells, false, false)
-    } else if snapshot
-        .tile_selection_closing_started_at
-        .is_some_and(|started_at| started_at.elapsed() <= TILE_SELECTION_FADE_DURATION)
-    {
-        let selection = closing_region?;
-        (
-            selection,
-            snapshot
-                .tile_selection_closing_cells
-                .clone()
-                .unwrap_or_else(|| selection_cells_from_region(selection)),
-            false,
-            true,
-        )
-    } else {
-        return None;
-    };
+        } else if snapshot
+            .tile_selection_closing_started_at
+            .is_some_and(|started_at| started_at.elapsed() <= TILE_SELECTION_FADE_DURATION)
+        {
+            let selection = closing_region?;
+            (
+                selection,
+                snapshot
+                    .tile_selection_closing_cells
+                    .clone()
+                    .unwrap_or_else(|| selection_cells_from_region(selection)),
+                false,
+                true,
+            )
+        } else {
+            return None;
+        };
     Some(build_tile_selection_overlay(
         document,
         selection,
@@ -702,7 +701,7 @@ fn dismiss_selection_from_outside_map_click(state: &mut AppState, x: f64, y: f64
     if state.tile_selection_transfer.is_some() {
         return;
     }
-    dismiss_tile_selection(state);
+    clear_tile_selection_immediately(state);
     state.status = "Selection cleared.".to_string();
 }
 
