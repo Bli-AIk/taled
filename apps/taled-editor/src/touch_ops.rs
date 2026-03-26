@@ -67,7 +67,7 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
     let hit_cell = cell_from_surface(state, point.x, point.y);
     let selection_move_drag_offset = if state.tile_selection_transfer.is_some() {
         state.tile_selection.and_then(|selection| {
-            hit_cell.map(|cell| selection_drag_offset(selection, cell))
+            hit_cell.map(|cell| selection_drag_offset(selection, (cell.0 as i32, cell.1 as i32)))
         })
     } else {
         None
@@ -78,7 +78,9 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
         && state
             .tile_selection
             .zip(hit_cell)
-            .is_some_and(|(selection, cell)| !selection_contains_cell(selection, cell));
+            .is_some_and(|(selection, cell)| {
+                !selection_contains_cell(selection, (cell.0 as i32, cell.1 as i32))
+            });
     let anchor_cell = selection_resize_handle
         .and_then(|handle| {
             state
@@ -87,9 +89,13 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
         })
         .or_else(|| {
             if state.tile_selection_transfer.is_some() {
-                hit_cell.and_then(|cell| selection_move_origin_from_cell(state, cell))
+                hit_cell.and_then(|cell| {
+                    selection_move_origin_from_cell(state, (cell.0 as i32, cell.1 as i32))
+                })
             } else {
-                hit_cell.filter(|_| !outside_existing_selection)
+                hit_cell
+                    .filter(|_| !outside_existing_selection)
+                    .map(|cell| (cell.0 as i32, cell.1 as i32))
             }
         });
     state.single_touch_gesture = Some(SingleTouchGesture {
@@ -105,9 +111,11 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
         last_surface_y: point.y,
     });
     state.shape_fill_preview = if state.tool == Tool::ShapeFill {
-        anchor_cell.map(|cell| ShapeFillPreview {
-            start_cell: cell,
-            end_cell: cell,
+        anchor_cell.and_then(|cell| {
+            (cell.0 >= 0 && cell.1 >= 0).then_some(ShapeFillPreview {
+                start_cell: (cell.0 as u32, cell.1 as u32),
+                end_cell: (cell.0 as u32, cell.1 as u32),
+            })
         })
     } else {
         None
@@ -161,12 +169,13 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
     }
 
     if selects_tile_region(state) && state.tile_selection_transfer.is_some() {
-        let hit_cell = clamped_cell_from_surface(state, point.x, point.y);
+        let hit_cell = signed_cell_from_surface(state, point.x, point.y);
         let drag_offset = state
             .single_touch_gesture
             .as_ref()
             .and_then(|gesture| {
-                (gesture.pointer_id == event.pointer_id()).then_some(gesture.selection_move_drag_offset)
+                (gesture.pointer_id == event.pointer_id())
+                    .then_some(gesture.selection_move_drag_offset)
             })
             .flatten();
         let Some(hit_cell) = hit_cell else {
@@ -238,13 +247,15 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
             gesture.drag_active = true;
         }
         state.shape_fill_preview = match (gesture.anchor_cell, hit_cell) {
-            (Some(start_cell), Some(end_cell)) => Some(ShapeFillPreview {
-                start_cell,
-                end_cell,
-            }),
+            (Some(start_cell), Some(end_cell)) if start_cell.0 >= 0 && start_cell.1 >= 0 => {
+                Some(ShapeFillPreview {
+                    start_cell: (start_cell.0 as u32, start_cell.1 as u32),
+                    end_cell,
+                })
+            }
             (Some(start_cell), None) => Some(ShapeFillPreview {
-                start_cell,
-                end_cell: start_cell,
+                start_cell: (start_cell.0 as u32, start_cell.1 as u32),
+                end_cell: (start_cell.0 as u32, start_cell.1 as u32),
             }),
             _ => None,
         };
@@ -292,16 +303,19 @@ pub(crate) fn handle_touch_pointer_up(state: &mut AppState, event: Event<Pointer
 
     let point = touch_surface_point(state, &event);
     let should_apply = finalize_single_touch_if_needed(state, event.pointer_id(), point.x, point.y);
-    let (anchor_cell, resize_handle, outside_existing_selection, preserve_existing_selection) = state
-        .single_touch_gesture
-        .as_ref()
-        .map(|gesture| (
-            gesture.anchor_cell,
-            gesture.resize_handle,
-            gesture.outside_existing_selection,
-            should_preserve_existing_selection(gesture),
-        ))
-        .unwrap_or((None, None, false, false));
+    let (anchor_cell, resize_handle, outside_existing_selection, preserve_existing_selection) =
+        state
+            .single_touch_gesture
+            .as_ref()
+            .map(|gesture| {
+                (
+                    gesture.anchor_cell,
+                    gesture.resize_handle,
+                    gesture.outside_existing_selection,
+                    should_preserve_existing_selection(gesture),
+                )
+            })
+            .unwrap_or((None, None, false, false));
     log_touch_probe(state, &event, "up", point.x, point.y);
 
     remove_touch_point(state, event.pointer_id());
@@ -396,7 +410,7 @@ fn apply_tile_region_touch_tool(
     state: &mut AppState,
     x: f64,
     y: f64,
-    anchor_cell: Option<(u32, u32)>,
+    anchor_cell: Option<(i32, i32)>,
     resize_handle: Option<TileSelectionHandle>,
     outside_existing_selection: bool,
     preserve_existing_selection: bool,
@@ -414,7 +428,11 @@ fn apply_tile_region_touch_tool(
     };
     let (start_x, start_y) = anchor_cell.unwrap_or((end_x, end_y));
     let simple_tap = resize_handle.is_none() && anchor_cell == Some((end_x, end_y));
-    if simple_tap && handle_tile_selection_tap(state, end_x, end_y) {
+    if simple_tap
+        && end_x >= 0
+        && end_y >= 0
+        && handle_tile_selection_tap(state, end_x as u32, end_y as u32)
+    {
         return;
     }
     select_tile_region(state, start_x, start_y, end_x, end_y);
@@ -424,7 +442,7 @@ fn apply_touch_tool(
     state: &mut AppState,
     x: f64,
     y: f64,
-    anchor_cell: Option<(u32, u32)>,
+    anchor_cell: Option<(i32, i32)>,
     resize_handle: Option<TileSelectionHandle>,
     outside_existing_selection: bool,
     preserve_existing_selection: bool,
@@ -455,7 +473,9 @@ fn apply_touch_tool(
             let Some((end_x, end_y)) = clamped_cell_from_surface(state, x, y) else {
                 return;
             };
-            let (start_x, start_y) = anchor_cell.unwrap_or((end_x, end_y));
+            let (start_x, start_y) = anchor_cell
+                .map(|(cell_x, cell_y)| (cell_x.max(0) as u32, cell_y.max(0) as u32))
+                .unwrap_or((end_x, end_y));
             state.selected_cell = Some((end_x, end_y));
             apply_shape_fill_rect(state, start_x, start_y, end_x, end_y);
         }
@@ -517,26 +537,28 @@ fn selection_resize_handle_from_surface(
     let zoom = f64::from(state.zoom_percent) / 100.0;
     let pan_x = f64::from(state.pan_x);
     let pan_y = f64::from(state.pan_y);
+    let tile_width = f64::from(map.tile_width);
+    let tile_height = f64::from(map.tile_height);
     let corners = [
         (
             TileSelectionHandle::TopLeft,
-            pan_x + f64::from(min_x * map.tile_width) * zoom,
-            pan_y + f64::from(min_y * map.tile_height) * zoom,
+            pan_x + f64::from(min_x) * tile_width * zoom,
+            pan_y + f64::from(min_y) * tile_height * zoom,
         ),
         (
             TileSelectionHandle::TopRight,
-            pan_x + f64::from((max_x + 1) * map.tile_width) * zoom,
-            pan_y + f64::from(min_y * map.tile_height) * zoom,
+            pan_x + f64::from(max_x + 1) * tile_width * zoom,
+            pan_y + f64::from(min_y) * tile_height * zoom,
         ),
         (
             TileSelectionHandle::BottomLeft,
-            pan_x + f64::from(min_x * map.tile_width) * zoom,
-            pan_y + f64::from((max_y + 1) * map.tile_height) * zoom,
+            pan_x + f64::from(min_x) * tile_width * zoom,
+            pan_y + f64::from(max_y + 1) * tile_height * zoom,
         ),
         (
             TileSelectionHandle::BottomRight,
-            pan_x + f64::from((max_x + 1) * map.tile_width) * zoom,
-            pan_y + f64::from((max_y + 1) * map.tile_height) * zoom,
+            pan_x + f64::from(max_x + 1) * tile_width * zoom,
+            pan_y + f64::from(max_y + 1) * tile_height * zoom,
         ),
     ];
 
@@ -554,10 +576,11 @@ fn selection_end_cell_from_surface(
     x: f64,
     y: f64,
     resize_handle: Option<TileSelectionHandle>,
-) -> Option<(u32, u32)> {
+) -> Option<(i32, i32)> {
     let adjusted_point = adjusted_selection_resize_surface_point(x, y, resize_handle);
 
     clamped_cell_from_surface(state, adjusted_point.0, adjusted_point.1)
+        .map(|(cell_x, cell_y)| (cell_x as i32, cell_y as i32))
 }
 
 fn adjusted_selection_resize_surface_point(
@@ -589,7 +612,7 @@ fn adjusted_selection_resize_surface_point(
 fn selection_resize_anchor_cell(
     selection: TileSelectionRegion,
     handle: TileSelectionHandle,
-) -> (u32, u32) {
+) -> (i32, i32) {
     let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
     match handle {
         TileSelectionHandle::TopLeft => (max_x, max_y),
@@ -599,12 +622,12 @@ fn selection_resize_anchor_cell(
     }
 }
 
-fn selection_contains_cell(selection: TileSelectionRegion, cell: (u32, u32)) -> bool {
+fn selection_contains_cell(selection: TileSelectionRegion, cell: (i32, i32)) -> bool {
     let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
     cell.0 >= min_x && cell.0 <= max_x && cell.1 >= min_y && cell.1 <= max_y
 }
 
-fn selection_drag_offset(selection: TileSelectionRegion, cell: (u32, u32)) -> (u32, u32) {
+fn selection_drag_offset(selection: TileSelectionRegion, cell: (i32, i32)) -> (i32, i32) {
     let (min_x, min_y, _, _) = selection_bounds(selection);
     if selection_contains_cell(selection, cell) {
         (cell.0 - min_x, cell.1 - min_y)
@@ -613,30 +636,34 @@ fn selection_drag_offset(selection: TileSelectionRegion, cell: (u32, u32)) -> (u
     }
 }
 
-fn selection_move_origin_from_cell(state: &AppState, cell: (u32, u32)) -> Option<(u32, u32)> {
+fn selection_move_origin_from_cell(state: &AppState, cell: (i32, i32)) -> Option<(i32, i32)> {
     let drag_offset = state
         .tile_selection
         .map(|selection| selection_drag_offset(selection, cell))
         .unwrap_or((0, 0));
-    Some(selection_move_origin_from_hit(state, cell, Some(drag_offset)))
+    Some(selection_move_origin_from_hit(
+        state,
+        cell,
+        Some(drag_offset),
+    ))
 }
 
 fn selection_move_origin_from_hit(
     state: &AppState,
-    cell: (u32, u32),
-    drag_offset: Option<(u32, u32)>,
-) -> (u32, u32) {
+    cell: (i32, i32),
+    drag_offset: Option<(i32, i32)>,
+) -> (i32, i32) {
     let transfer = state
         .tile_selection_transfer
         .as_ref()
         .expect("selection move origin requires transfer state");
     let offset = drag_offset.unwrap_or((0, 0));
-    let origin_x = cell.0.saturating_sub(offset.0);
-    let origin_y = cell.1.saturating_sub(offset.1);
+    let origin_x = cell.0 - offset.0;
+    let origin_y = cell.1 - offset.1;
     clamp_selection_origin(state, origin_x, origin_y, transfer.width, transfer.height)
 }
 
-fn selection_from_origin(state: &AppState, origin: (u32, u32)) -> TileSelectionRegion {
+fn selection_from_origin(state: &AppState, origin: (i32, i32)) -> TileSelectionRegion {
     let transfer = state
         .tile_selection_transfer
         .as_ref()
@@ -644,29 +671,31 @@ fn selection_from_origin(state: &AppState, origin: (u32, u32)) -> TileSelectionR
     TileSelectionRegion {
         start_cell: origin,
         end_cell: (
-            origin.0 + transfer.width.saturating_sub(1),
-            origin.1 + transfer.height.saturating_sub(1),
+            origin.0 + transfer.width.saturating_sub(1) as i32,
+            origin.1 + transfer.height.saturating_sub(1) as i32,
         ),
     }
 }
 
 fn clamp_selection_origin(
     state: &AppState,
-    origin_x: u32,
-    origin_y: u32,
+    origin_x: i32,
+    origin_y: i32,
     width: u32,
     height: u32,
-) -> (u32, u32) {
+) -> (i32, i32) {
     let Some(session) = state.session.as_ref() else {
         return (origin_x, origin_y);
     };
     let map = &session.document().map;
-    let max_x = map.width.saturating_sub(width);
-    let max_y = map.height.saturating_sub(height);
-    (origin_x.min(max_x), origin_y.min(max_y))
+    let min_x = -(width as i32);
+    let min_y = -(height as i32);
+    let max_x = map.width as i32;
+    let max_y = map.height as i32;
+    (origin_x.clamp(min_x, max_x), origin_y.clamp(min_y, max_y))
 }
 
-fn selection_bounds(selection: TileSelectionRegion) -> (u32, u32, u32, u32) {
+fn selection_bounds(selection: TileSelectionRegion) -> (i32, i32, i32, i32) {
     (
         selection.start_cell.0.min(selection.end_cell.0),
         selection.start_cell.1.min(selection.end_cell.1),
@@ -1033,14 +1062,9 @@ fn touch_distance(first: ActiveTouchPointer, second: ActiveTouchPointer) -> f64 
 fn cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(u32, u32)> {
     let session = state.session.as_ref()?;
     let map = &session.document().map;
-    let (world_x, world_y) = world_coordinates_from_surface(state, x, y)?;
-    if world_x < 0.0 || world_y < 0.0 {
-        return None;
-    }
-    let cell_x = (world_x / f64::from(map.tile_width)).floor() as u32;
-    let cell_y = (world_y / f64::from(map.tile_height)).floor() as u32;
-    if cell_x < map.width && cell_y < map.height {
-        Some((cell_x, cell_y))
+    let (cell_x, cell_y) = signed_cell_from_surface(state, x, y)?;
+    if cell_x >= 0 && cell_y >= 0 && (cell_x as u32) < map.width && (cell_y as u32) < map.height {
+        Some((cell_x as u32, cell_y as u32))
     } else {
         None
     }
@@ -1067,35 +1091,56 @@ fn clamped_cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(u32, u
     Some((cell_x.min(map.width - 1), cell_y.min(map.height - 1)))
 }
 
-fn world_coordinates_from_surface(state: &AppState, x: f64, y: f64) -> Option<(f64, f64)> {
+fn signed_cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(i32, i32)> {
     let session = state.session.as_ref()?;
     let map = &session.document().map;
+    let (world_x, world_y) = world_coordinates_from_surface(state, x, y)?;
+    Some((
+        (world_x / f64::from(map.tile_width)).floor() as i32,
+        (world_y / f64::from(map.tile_height)).floor() as i32,
+    ))
+}
+
+fn world_coordinates_from_surface(state: &AppState, x: f64, y: f64) -> Option<(f64, f64)> {
+    let _ = state.session.as_ref()?;
     let zoom = f64::from(state.zoom_percent) / 100.0;
     if zoom <= 0.0 {
         return None;
     }
     let world_x = (x - f64::from(state.pan_x)) / zoom;
     let world_y = (y - f64::from(state.pan_y)) / zoom;
-    if world_x > f64::from(map.total_pixel_width()) || world_y > f64::from(map.total_pixel_height())
-    {
-        return None;
-    }
     Some((world_x, world_y))
 }
 
 #[cfg(test)]
 mod tests {
-    use std::time::{Duration, Instant};
+    use std::{
+        path::PathBuf,
+        time::{Duration, Instant},
+    };
+
+    use taled_core::EditorSession;
 
     use super::{
-        adjusted_selection_resize_surface_point, initialize_pinch_gesture, LONG_PRESS_DURATION,
-        selection_resize_anchor_cell, should_preserve_existing_selection, touch_distance,
-        update_pinch_gesture,
+        LONG_PRESS_DURATION, adjusted_selection_resize_surface_point, clamp_selection_origin,
+        initialize_pinch_gesture, selection_resize_anchor_cell, should_preserve_existing_selection,
+        touch_distance, update_pinch_gesture,
     };
     use crate::app_state::{
-        ActiveTouchPointer, AppState, SingleTouchGesture, TileSelectionHandle,
-        TileSelectionRegion,
+        ActiveTouchPointer, AppState, SingleTouchGesture, TileSelectionHandle, TileSelectionRegion,
     };
+
+    fn sample_map_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .parent()
+            .expect("workspace apps dir")
+            .parent()
+            .expect("workspace root")
+            .join("assets")
+            .join("samples")
+            .join("stage1-basic")
+            .join("map.tmx")
+    }
 
     #[test]
     fn touch_distance_uses_euclidean_length() {
@@ -1248,5 +1293,25 @@ mod tests {
         };
 
         assert!(should_preserve_existing_selection(&gesture));
+    }
+
+    #[test]
+    fn selection_origin_can_move_until_the_outer_edges_touch() {
+        let state = AppState {
+            session: Some(EditorSession::load(sample_map_path()).expect("sample map should load")),
+            ..AppState::default()
+        };
+        let map = &state.session.as_ref().expect("session").document().map;
+
+        assert_eq!(
+            clamp_selection_origin(&state, map.width as i32 + 8, 0, 3, 2),
+            (map.width as i32, 0)
+        );
+        assert_eq!(clamp_selection_origin(&state, -8, 0, 3, 2), (-3, 0));
+        assert_eq!(
+            clamp_selection_origin(&state, 0, map.height as i32 + 8, 3, 2),
+            (0, map.height as i32)
+        );
+        assert_eq!(clamp_selection_origin(&state, 0, -8, 3, 2), (0, -2));
     }
 }

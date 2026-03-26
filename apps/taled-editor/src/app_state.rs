@@ -60,9 +60,9 @@ pub(crate) struct SingleTouchGesture {
     pub(crate) started_at: Instant,
     pub(crate) drag_active: bool,
     pub(crate) outside_existing_selection: bool,
-    pub(crate) anchor_cell: Option<(u32, u32)>,
+    pub(crate) anchor_cell: Option<(i32, i32)>,
     pub(crate) resize_handle: Option<TileSelectionHandle>,
-    pub(crate) selection_move_drag_offset: Option<(u32, u32)>,
+    pub(crate) selection_move_drag_offset: Option<(i32, i32)>,
     pub(crate) last_applied_cell: Option<(u32, u32)>,
     pub(crate) last_surface_x: f64,
     pub(crate) last_surface_y: f64,
@@ -84,8 +84,8 @@ pub(crate) struct ShapeFillPreview {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct TileSelectionRegion {
-    pub(crate) start_cell: (u32, u32),
-    pub(crate) end_cell: (u32, u32),
+    pub(crate) start_cell: (i32, i32),
+    pub(crate) end_cell: (i32, i32),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

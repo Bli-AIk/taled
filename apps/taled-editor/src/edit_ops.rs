@@ -8,8 +8,8 @@ use taled_core::{
 };
 
 use crate::app_state::{
-    AppState, TileClipboard, TileSelectionRegion, TileSelectionTransfer,
-    TileSelectionTransferMode, Tool,
+    AppState, TileClipboard, TileSelectionRegion, TileSelectionTransfer, TileSelectionTransferMode,
+    Tool,
 };
 
 const TILE_SELECTION_DOUBLE_TAP_WINDOW: Duration = Duration::from_millis(320);
@@ -95,7 +95,7 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
                 if handle_tile_selection_tap(state, x, y) {
                     return;
                 }
-                select_tile_region(state, x, y, x, y);
+                select_tile_region(state, x as i32, y as i32, x as i32, y as i32);
             }
         }
         Tool::AddRectangle => create_object_at(state, ObjectShape::Rectangle, x, y),
@@ -105,10 +105,10 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
 
 pub(crate) fn select_tile_region(
     state: &mut AppState,
-    start_x: u32,
-    start_y: u32,
-    end_x: u32,
-    end_y: u32,
+    start_x: i32,
+    start_y: i32,
+    end_x: i32,
+    end_y: i32,
 ) {
     state.tile_selection_closing = None;
     state.tile_selection_closing_started_at = None;
@@ -121,8 +121,8 @@ pub(crate) fn select_tile_region(
     state.selected_object = None;
     state.selected_cell = None;
 
-    let width = start_x.abs_diff(end_x) + 1;
-    let height = start_y.abs_diff(end_y) + 1;
+    let width = (start_x - end_x).unsigned_abs() + 1;
+    let height = (start_y - end_y).unsigned_abs() + 1;
     state.status = format!(
         "Selected region {}x{} from ({}, {}) to ({}, {}).",
         width, height, start_x, start_y, end_x, end_y
@@ -138,7 +138,7 @@ pub(crate) fn handle_tile_selection_tap(state: &mut AppState, x: u32, y: u32) ->
         return false;
     };
 
-    if selection_contains_cell(selection, (x, y)) {
+    if selection_contains_cell(selection, (x as i32, y as i32)) {
         let now = Instant::now();
         if state
             .tile_selection_last_tap_at
@@ -197,10 +197,7 @@ pub(crate) fn copy_tile_selection(state: &mut AppState) {
     state.tile_selection_last_tap_at = None;
     state.selected_object = None;
     state.selected_cell = None;
-    state.status = format!(
-        "Copied region {}x{}. Drag to place.",
-        width, height
-    );
+    state.status = format!("Copied region {}x{}. Drag to place.", width, height);
 }
 
 pub(crate) fn cut_tile_selection(state: &mut AppState) {
@@ -219,7 +216,7 @@ pub(crate) fn cut_tile_selection(state: &mut AppState) {
         session.begin_history_batch();
         let clear_result = session.edit(|document| {
             let tile_layer = selected_tile_layer_mut(document, transfer.source_layer)?;
-            clear_region_tiles(tile_layer, min_x, min_y, max_x, max_y)
+            clear_region_tiles_clipped(tile_layer, min_x, min_y, max_x, max_y)
         });
 
         match clear_result {
@@ -253,7 +250,7 @@ pub(crate) fn cut_tile_selection(state: &mut AppState) {
     session.begin_history_batch();
     let clear_result = session.edit(|document| {
         let tile_layer = selected_tile_layer_mut(document, transfer.source_layer)?;
-        clear_region_tiles(tile_layer, min_x, min_y, max_x, max_y)
+        clear_region_tiles_clipped(tile_layer, min_x, min_y, max_x, max_y)
     });
 
     match clear_result {
@@ -299,19 +296,25 @@ pub(crate) fn flip_tile_selection_horizontally(state: &mut AppState) {
         state.status = "Select a tile region first.".to_string();
         return;
     };
-    let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
-    let width = max_x - min_x + 1;
-    let height = max_y - min_y + 1;
+    let (min_x, min_y, _, _) = selection_bounds(selection);
+    let (width, height) = selection_dimensions(selection);
 
     apply_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
-        let snapshot = capture_region(tile_layer, min_x, min_y, width, height)?;
+        let snapshot = capture_region_clipped(tile_layer, min_x, min_y, width, height);
 
         for local_y in 0..height {
             for local_x in 0..width {
                 let source_x = width - 1 - local_x;
                 let gid = snapshot[(local_y * width + source_x) as usize];
-                tile_layer.set_tile(min_x + local_x, min_y + local_y, gid)?;
+                write_region_tiles_clipped(
+                    tile_layer,
+                    min_x + local_x as i32,
+                    min_y + local_y as i32,
+                    1,
+                    1,
+                    &[gid],
+                )?;
             }
         }
 
@@ -328,8 +331,7 @@ pub(crate) fn flip_tile_selection_vertically(state: &mut AppState) {
         for local_y in 0..(transfer.height / 2) {
             for local_x in 0..transfer.width {
                 let top = (local_y * transfer.width + local_x) as usize;
-                let bottom =
-                    ((transfer.height - 1 - local_y) * transfer.width + local_x) as usize;
+                let bottom = ((transfer.height - 1 - local_y) * transfer.width + local_x) as usize;
                 transfer.tiles.swap(top, bottom);
             }
         }
@@ -342,19 +344,25 @@ pub(crate) fn flip_tile_selection_vertically(state: &mut AppState) {
         state.status = "Select a tile region first.".to_string();
         return;
     };
-    let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
-    let width = max_x - min_x + 1;
-    let height = max_y - min_y + 1;
+    let (min_x, min_y, _, _) = selection_bounds(selection);
+    let (width, height) = selection_dimensions(selection);
 
     apply_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
-        let snapshot = capture_region(tile_layer, min_x, min_y, width, height)?;
+        let snapshot = capture_region_clipped(tile_layer, min_x, min_y, width, height);
 
         for local_y in 0..height {
             for local_x in 0..width {
                 let source_y = height - 1 - local_y;
                 let gid = snapshot[(source_y * width + local_x) as usize];
-                tile_layer.set_tile(min_x + local_x, min_y + local_y, gid)?;
+                write_region_tiles_clipped(
+                    tile_layer,
+                    min_x + local_x as i32,
+                    min_y + local_y as i32,
+                    1,
+                    1,
+                    &[gid],
+                )?;
             }
         }
 
@@ -393,32 +401,21 @@ pub(crate) fn rotate_tile_selection_clockwise(state: &mut AppState) {
         return;
     };
     let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
-    let width = max_x - min_x + 1;
-    let height = max_y - min_y + 1;
+    let (width, height) = selection_dimensions(selection);
     let new_width = height;
     let new_height = width;
 
     apply_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
-        if min_x + new_width > tile_layer.width || min_y + new_height > tile_layer.height {
-            return Err(EditorError::Invalid(
-                "rotated selection would extend beyond the layer bounds".to_string(),
-            ));
-        }
-
-        let snapshot = capture_region(tile_layer, min_x, min_y, width, height)?;
-        for y in min_y..=max_y {
-            for x in min_x..=max_x {
-                tile_layer.set_tile(x, y, 0)?;
-            }
-        }
+        let snapshot = capture_region_clipped(tile_layer, min_x, min_y, width, height);
+        clear_region_tiles_clipped(tile_layer, min_x, min_y, max_x, max_y)?;
 
         for source_y in 0..height {
             for source_x in 0..width {
                 let gid = snapshot[(source_y * width + source_x) as usize];
-                let dest_x = min_x + (height - 1 - source_y);
-                let dest_y = min_y + source_x;
-                tile_layer.set_tile(dest_x, dest_y, gid)?;
+                let dest_x = min_x + (height - 1 - source_y) as i32;
+                let dest_y = min_y + source_x as i32;
+                write_region_tiles_clipped(tile_layer, dest_x, dest_y, 1, 1, &[gid])?;
             }
         }
 
@@ -428,7 +425,7 @@ pub(crate) fn rotate_tile_selection_clockwise(state: &mut AppState) {
     if state.status == "Edit applied." {
         state.tile_selection = Some(TileSelectionRegion {
             start_cell: (min_x, min_y),
-            end_cell: (min_x + new_width - 1, min_y + new_height - 1),
+            end_cell: (min_x + new_width as i32 - 1, min_y + new_height as i32 - 1),
         });
         state.status = "Rotated selection clockwise.".to_string();
     }
@@ -448,7 +445,7 @@ pub(crate) fn delete_tile_selection(state: &mut AppState) {
 
     apply_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
-        clear_region_tiles(tile_layer, min_x, min_y, max_x, max_y)
+        clear_region_tiles_clipped(tile_layer, min_x, min_y, max_x, max_y)
     });
 
     if state.status == "Edit applied." {
@@ -479,7 +476,7 @@ pub(crate) fn cancel_tile_selection_transfer(state: &mut AppState) {
             };
             session.edit(|document| {
                 let tile_layer = selected_tile_layer_mut(document, transfer.source_layer)?;
-                write_region_tiles(
+                write_region_tiles_clipped(
                     tile_layer,
                     min_x,
                     min_y,
@@ -904,7 +901,7 @@ fn selected_tile_selection(state: &AppState) -> Option<(usize, TileSelectionRegi
         .map(|_| (state.active_layer, selection))
 }
 
-fn selection_bounds(selection: TileSelectionRegion) -> (u32, u32, u32, u32) {
+fn selection_bounds(selection: TileSelectionRegion) -> (i32, i32, i32, i32) {
     (
         selection.start_cell.0.min(selection.end_cell.0),
         selection.start_cell.1.min(selection.end_cell.1),
@@ -913,9 +910,18 @@ fn selection_bounds(selection: TileSelectionRegion) -> (u32, u32, u32, u32) {
     )
 }
 
-fn selection_contains_cell(selection: TileSelectionRegion, cell: (u32, u32)) -> bool {
+fn selection_contains_cell(selection: TileSelectionRegion, cell: (i32, i32)) -> bool {
     let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
     cell.0 >= min_x && cell.0 <= max_x && cell.1 >= min_y && cell.1 <= max_y
+}
+
+fn selection_dimensions(selection: TileSelectionRegion) -> (u32, u32) {
+    let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
+    ((max_x - min_x + 1) as u32, (max_y - min_y + 1) as u32)
+}
+
+fn tile_layer_contains_cell(tile_layer: &taled_core::TileLayer, x: i32, y: i32) -> bool {
+    x >= 0 && y >= 0 && (x as u32) < tile_layer.width && (y as u32) < tile_layer.height
 }
 
 fn selected_tile_layer_mut(
@@ -934,25 +940,27 @@ fn selected_tile_layer_mut(
         .ok_or_else(|| EditorError::Invalid("active layer is not a tile layer".to_string()))
 }
 
-fn capture_region(
+fn capture_region_clipped(
     tile_layer: &taled_core::TileLayer,
-    min_x: u32,
-    min_y: u32,
+    min_x: i32,
+    min_y: i32,
     width: u32,
     height: u32,
-) -> Result<Vec<u32>, EditorError> {
+) -> Vec<u32> {
     let mut tiles = Vec::with_capacity((width * height) as usize);
     for local_y in 0..height {
         for local_x in 0..width {
-            let x = min_x + local_x;
-            let y = min_y + local_y;
-            let gid = tile_layer.tile_at(x, y).ok_or_else(|| {
-                EditorError::Invalid(format!("tile coordinate out of bounds: {x},{y}"))
-            })?;
+            let x = min_x + local_x as i32;
+            let y = min_y + local_y as i32;
+            let gid = if tile_layer_contains_cell(tile_layer, x, y) {
+                tile_layer.tile_at(x as u32, y as u32).unwrap_or(0)
+            } else {
+                0
+            };
             tiles.push(gid);
         }
     }
-    Ok(tiles)
+    tiles
 }
 
 fn sync_clipboard_from_transfer(state: &mut AppState) {
@@ -973,7 +981,7 @@ fn resize_transfer_selection(state: &mut AppState) {
         return;
     };
     let (min_x, min_y, _, _) = selection_bounds(selection);
-    state.tile_selection = Some(clamp_transfer_selection_to_map(
+    state.tile_selection = Some(transfer_selection_from_origin(
         state,
         min_x,
         min_y,
@@ -982,28 +990,18 @@ fn resize_transfer_selection(state: &mut AppState) {
     ));
 }
 
-fn clamp_transfer_selection_to_map(
-    state: &AppState,
-    origin_x: u32,
-    origin_y: u32,
+fn transfer_selection_from_origin(
+    _state: &AppState,
+    origin_x: i32,
+    origin_y: i32,
     width: u32,
     height: u32,
 ) -> TileSelectionRegion {
-    let (origin_x, origin_y) = if let Some(session) = state.session.as_ref() {
-        let map = &session.document().map;
-        (
-            origin_x.min(map.width.saturating_sub(width)),
-            origin_y.min(map.height.saturating_sub(height)),
-        )
-    } else {
-        (origin_x, origin_y)
-    };
-
     TileSelectionRegion {
         start_cell: (origin_x, origin_y),
         end_cell: (
-            origin_x + width.saturating_sub(1),
-            origin_y + height.saturating_sub(1),
+            origin_x + width.saturating_sub(1) as i32,
+            origin_y + height.saturating_sub(1) as i32,
         ),
     }
 }
@@ -1033,7 +1031,7 @@ fn apply_tile_selection_transfer(state: &mut AppState, finalize: bool) -> bool {
         };
         let result = session.edit(|document| {
             let tile_layer = selected_tile_layer_mut(document, target_layer)?;
-            write_region_tiles(
+            write_region_tiles_clipped(
                 tile_layer,
                 min_x,
                 min_y,
@@ -1058,15 +1056,15 @@ fn apply_tile_selection_transfer(state: &mut AppState, finalize: bool) -> bool {
         let height = transfer.height;
         apply_edit_result(state, move |document| {
             let tile_layer = selected_tile_layer_mut(document, target_layer)?;
-            write_region_tiles(tile_layer, min_x, min_y, width, height, &tiles)
+            write_region_tiles_clipped(tile_layer, min_x, min_y, width, height, &tiles)
         })
     };
 
     match apply_result {
         Ok(()) => {
             let end_cell = (
-                min_x + transfer.width.saturating_sub(1),
-                min_y + transfer.height.saturating_sub(1),
+                min_x + transfer.width.saturating_sub(1) as i32,
+                min_y + transfer.height.saturating_sub(1) as i32,
             );
             state.tile_selection = Some(TileSelectionRegion {
                 start_cell: (min_x, min_y),
@@ -1108,7 +1106,7 @@ fn delete_tile_selection_source_and_exit(state: &mut AppState) {
 
     let deleted = apply_edit_result(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, transfer.source_layer)?;
-        clear_region_tiles(tile_layer, min_x, min_y, max_x, max_y)
+        clear_region_tiles_clipped(tile_layer, min_x, min_y, max_x, max_y)
     });
 
     match deleted {
@@ -1124,10 +1122,10 @@ fn delete_tile_selection_source_and_exit(state: &mut AppState) {
     }
 }
 
-fn write_region_tiles(
+fn write_region_tiles_clipped(
     tile_layer: &mut taled_core::TileLayer,
-    min_x: u32,
-    min_y: u32,
+    min_x: i32,
+    min_y: i32,
     width: u32,
     height: u32,
     tiles: &[u32],
@@ -1135,22 +1133,28 @@ fn write_region_tiles(
     for local_y in 0..height {
         for local_x in 0..width {
             let gid = tiles[(local_y * width + local_x) as usize];
-            tile_layer.set_tile(min_x + local_x, min_y + local_y, gid)?;
+            let x = min_x + local_x as i32;
+            let y = min_y + local_y as i32;
+            if tile_layer_contains_cell(tile_layer, x, y) {
+                tile_layer.set_tile(x as u32, y as u32, gid)?;
+            }
         }
     }
     Ok(())
 }
 
-fn clear_region_tiles(
+fn clear_region_tiles_clipped(
     tile_layer: &mut taled_core::TileLayer,
-    min_x: u32,
-    min_y: u32,
-    max_x: u32,
-    max_y: u32,
+    min_x: i32,
+    min_y: i32,
+    max_x: i32,
+    max_y: i32,
 ) -> Result<(), EditorError> {
     for y in min_y..=max_y {
         for x in min_x..=max_x {
-            tile_layer.set_tile(x, y, 0)?;
+            if tile_layer_contains_cell(tile_layer, x, y) {
+                tile_layer.set_tile(x as u32, y as u32, 0)?;
+            }
         }
     }
     Ok(())
@@ -1177,11 +1181,9 @@ fn capture_tile_selection_transfer(
         return None;
     };
 
-    let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
-    let width = max_x - min_x + 1;
-    let height = max_y - min_y + 1;
-    let tiles = capture_region(tile_layer, min_x, min_y, width, height)
-        .expect("selection bounds should stay inside tile layer");
+    let (min_x, min_y, _, _) = selection_bounds(selection);
+    let (width, height) = selection_dimensions(selection);
+    let tiles = capture_region_clipped(tile_layer, min_x, min_y, width, height);
     let clipboard = TileClipboard {
         width,
         height,
@@ -1657,6 +1659,51 @@ mod tests {
     }
 
     #[test]
+    fn rotate_tile_selection_clockwise_can_extend_beyond_map_bounds() {
+        let mut state = test_state(Tool::Select, 1);
+        let map_width = state
+            .session
+            .as_ref()
+            .expect("session")
+            .document()
+            .map
+            .width;
+        let last_x = map_width - 1;
+        if let Some(session) = state.session.as_mut() {
+            session
+                .edit(|document| {
+                    let layer = document.map.layers[0].as_tile_mut().expect("tile layer");
+                    layer.set_tile(last_x, 0, 91)?;
+                    layer.set_tile(last_x, 1, 92)?;
+                    Ok(())
+                })
+                .expect("seed edge column");
+        }
+        select_tile_region(&mut state, last_x as i32, 0, last_x as i32, 1);
+
+        rotate_tile_selection_clockwise(&mut state);
+
+        let layer = state
+            .session
+            .as_ref()
+            .expect("session")
+            .document()
+            .map
+            .layers[0]
+            .as_tile()
+            .expect("tile layer");
+        assert_eq!(layer.tile_at(last_x, 0), Some(92));
+        assert_eq!(layer.tile_at(last_x, 1), Some(0));
+        assert_eq!(
+            state.tile_selection,
+            Some(TileSelectionRegion {
+                start_cell: (last_x as i32, 0),
+                end_cell: (last_x as i32 + 1, 0),
+            })
+        );
+    }
+
+    #[test]
     fn delete_tile_selection_clears_region_tiles() {
         let mut state = test_state(Tool::Select, 1);
         select_tile_region(&mut state, 1, 1, 2, 2);
@@ -1677,5 +1724,57 @@ mod tests {
                 assert_eq!(layer.tile_at(x, y), Some(0));
             }
         }
+    }
+
+    #[test]
+    fn placing_selection_clips_tiles_that_extend_past_the_map_edge() {
+        let mut state = test_state(Tool::Select, 1);
+        let map_width = state
+            .session
+            .as_ref()
+            .expect("session")
+            .document()
+            .map
+            .width;
+        let last_x = map_width - 1;
+
+        if let Some(session) = state.session.as_mut() {
+            session
+                .edit(|document| {
+                    let layer = document.map.layers[0].as_tile_mut().expect("tile layer");
+                    layer.set_tile(1, 1, 51)?;
+                    layer.set_tile(2, 1, 52)?;
+                    layer.set_tile(last_x, 2, 7)?;
+                    Ok(())
+                })
+                .expect("seed source tiles");
+        }
+
+        select_tile_region(&mut state, 1, 1, 2, 1);
+        copy_tile_selection(&mut state);
+        state.tile_selection = Some(TileSelectionRegion {
+            start_cell: (last_x as i32, 2),
+            end_cell: (last_x as i32 + 1, 2),
+        });
+
+        place_tile_selection_transfer(&mut state);
+
+        let layer = state
+            .session
+            .as_ref()
+            .expect("session")
+            .document()
+            .map
+            .layers[0]
+            .as_tile()
+            .expect("tile layer");
+        assert_eq!(layer.tile_at(last_x, 2), Some(51));
+        assert_eq!(
+            state.tile_selection,
+            Some(TileSelectionRegion {
+                start_cell: (last_x as i32, 2),
+                end_cell: (last_x as i32 + 1, 2),
+            })
+        );
     }
 }

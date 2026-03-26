@@ -10,11 +10,11 @@ use taled_core::{EditorSession, Layer, ObjectShape};
 use crate::{
     app_state::{AppState, MobileScreen, MobileTransition, PaletteTile, TileSelectionRegion, Tool},
     edit_ops::{
-        cancel_tile_selection_transfer, copy_tile_selection, create_object,
-        cut_tile_selection, delete_selected_object, delete_tile_selection,
-        flip_tile_selection_horizontally, flip_tile_selection_vertically, nudge_selected_object,
-        place_tile_selection_transfer, rename_selected_object, rotate_tile_selection_clockwise,
-        selected_object_view, toggle_layer_lock, toggle_layer_visibility,
+        cancel_tile_selection_transfer, copy_tile_selection, create_object, cut_tile_selection,
+        delete_selected_object, delete_tile_selection, flip_tile_selection_horizontally,
+        flip_tile_selection_vertically, nudge_selected_object, place_tile_selection_transfer,
+        rename_selected_object, rotate_tile_selection_clockwise, selected_object_view,
+        toggle_layer_lock, toggle_layer_visibility,
     },
     embedded_samples::{embedded_sample, embedded_sample_thumb, embedded_samples},
     session_ops::{
@@ -429,10 +429,12 @@ fn tile_selection_action_bar_style(
     let map = &session.document().map;
     let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
     let zoom = f64::from(snapshot.zoom_percent) / 100.0;
-    let left = f64::from(snapshot.pan_x) + f64::from(min_x * map.tile_width) * zoom;
-    let right = f64::from(snapshot.pan_x) + f64::from((max_x + 1) * map.tile_width) * zoom;
-    let top = f64::from(snapshot.pan_y) + f64::from(min_y * map.tile_height) * zoom;
-    let bottom = f64::from(snapshot.pan_y) + f64::from((max_y + 1) * map.tile_height) * zoom;
+    let tile_width = f64::from(map.tile_width);
+    let tile_height = f64::from(map.tile_height);
+    let left = f64::from(snapshot.pan_x) + f64::from(min_x) * tile_width * zoom;
+    let right = f64::from(snapshot.pan_x) + f64::from(max_x + 1) * tile_width * zoom;
+    let top = f64::from(snapshot.pan_y) + f64::from(min_y) * tile_height * zoom;
+    let bottom = f64::from(snapshot.pan_y) + f64::from(max_y + 1) * tile_height * zoom;
     let (host_width, host_height) = snapshot.canvas_host_size.unwrap_or((384.0, 688.0));
     let max_left = (host_width - SELECTION_ACTION_BAR_WIDTH - SELECTION_ACTION_BAR_MARGIN)
         .max(SELECTION_ACTION_BAR_MARGIN);
@@ -451,7 +453,7 @@ fn tile_selection_action_bar_style(
     format!("left:{left_edge:.1}px;top:{top_edge:.1}px;")
 }
 
-fn selection_bounds(selection: TileSelectionRegion) -> (u32, u32, u32, u32) {
+fn selection_bounds(selection: TileSelectionRegion) -> (i32, i32, i32, i32) {
     (
         selection.start_cell.0.min(selection.end_cell.0),
         selection.start_cell.1.min(selection.end_cell.1),

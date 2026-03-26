@@ -319,6 +319,16 @@ fn cell_style(tile_width: u32, tile_height: u32, x: u32, y: u32) -> String {
     )
 }
 
+fn signed_cell_style(tile_width: u32, tile_height: u32, x: i32, y: i32) -> String {
+    format!(
+        "left:{}px;top:{}px;width:{}px;height:{}px;",
+        x * tile_width as i32,
+        y * tile_height as i32,
+        tile_width,
+        tile_height
+    )
+}
+
 fn preview_tile_style(
     document: &EditorDocument,
     image_cache: &BTreeMap<usize, String>,
@@ -329,6 +339,34 @@ fn preview_tile_style(
     let mut style = sprite_style(document, image_cache, gid, x, y)?;
     style.push_str("opacity:0.46;filter:saturate(0.92);");
     Some(style)
+}
+
+fn preview_tile_style_signed(
+    document: &EditorDocument,
+    image_cache: &BTreeMap<usize, String>,
+    gid: u32,
+    x: i32,
+    y: i32,
+) -> Option<String> {
+    let tile = document.map.tile_reference_for_gid(gid)?;
+    let image = image_cache.get(&tile.tileset_index)?;
+    let columns = tile.tileset.tileset.columns.max(1);
+    let tile_width = tile.tileset.tileset.tile_width;
+    let tile_height = tile.tileset.tileset.tile_height;
+    let source_x = (tile.local_id % columns) * tile_width;
+    let source_y = (tile.local_id / columns) * tile_height;
+
+    Some(format!(
+        "left:{}px;top:{}px;width:{}px;height:{}px;background-image:url('{image}');background-position:-{}px -{}px;background-size:{}px {}px;opacity:0.46;filter:saturate(0.92);",
+        x * document.map.tile_width as i32,
+        y * document.map.tile_height as i32,
+        document.map.tile_width,
+        document.map.tile_height,
+        source_x,
+        source_y,
+        tile.tileset.tileset.image.width,
+        tile.tileset.tileset.image.height,
+    ))
 }
 
 fn build_shape_fill_preview(
@@ -347,8 +385,8 @@ fn build_shape_fill_preview(
                         cell_style(document.map.tile_width, document.map.tile_height, x, y)
                     });
             tiles.push(ShapeFillPreviewTile {
-                x,
-                y,
+                x: x as i32,
+                y: y as i32,
                 style,
                 fallback: document
                     .map
@@ -416,8 +454,8 @@ struct TileSelectionTransferPreviewVisual {
 }
 
 struct ShapeFillPreviewTile {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
     style: String,
     fallback: bool,
 }
@@ -460,17 +498,11 @@ fn build_tile_selection_overlay(
     closing: bool,
     transfer_active: bool,
 ) -> TileSelectionOverlayVisual {
-    let (min_x, min_y, max_x, max_y) = (
-        selection.start_cell.0.min(selection.end_cell.0),
-        selection.start_cell.1.min(selection.end_cell.1),
-        selection.start_cell.0.max(selection.end_cell.0),
-        selection.start_cell.1.max(selection.end_cell.1),
-    );
-    let width = (max_x - min_x + 1) * document.map.tile_width;
-    let height = (max_y - min_y + 1) * document.map.tile_height;
-    let show_handles =
-        !transfer_active && (width > document.map.tile_width || height > document.map.tile_height);
-    let region_style = preview_frame_style(
+    let (min_x, min_y, max_x, max_y) = selection_bounds(selection);
+    let width_in_cells = max_x - min_x + 1;
+    let height_in_cells = max_y - min_y + 1;
+    let show_handles = !transfer_active && (width_in_cells > 1 || height_in_cells > 1);
+    let region_style = signed_preview_frame_style(
         document.map.tile_width,
         document.map.tile_height,
         min_x,
@@ -508,14 +540,16 @@ fn active_tile_selection_transfer_preview(
 
     for local_y in 0..transfer.height {
         for local_x in 0..transfer.width {
-            let x = min_x + local_x;
-            let y = min_y + local_y;
+            let x = min_x + local_x as i32;
+            let y = min_y + local_y as i32;
             let gid = transfer.tiles[(local_y * transfer.width + local_x) as usize];
             if gid == 0 {
                 continue;
             }
-            let style = preview_tile_style(document, &snapshot.image_cache, gid, x, y)
-                .unwrap_or_else(|| cell_style(document.map.tile_width, document.map.tile_height, x, y));
+            let style = preview_tile_style_signed(document, &snapshot.image_cache, gid, x, y)
+                .unwrap_or_else(|| {
+                    signed_cell_style(document.map.tile_width, document.map.tile_height, x, y)
+                });
             tiles.push(ShapeFillPreviewTile {
                 x,
                 y,
@@ -528,7 +562,7 @@ fn active_tile_selection_transfer_preview(
     Some(TileSelectionTransferPreviewVisual { tiles })
 }
 
-fn selection_bounds(selection: TileSelectionRegion) -> (u32, u32, u32, u32) {
+fn selection_bounds(selection: TileSelectionRegion) -> (i32, i32, i32, i32) {
     (
         selection.start_cell.0.min(selection.end_cell.0),
         selection.start_cell.1.min(selection.end_cell.1),
@@ -554,4 +588,21 @@ impl TileSelectionHandleVisual {
     const fn new(position: &'static str, style: &'static str) -> Self {
         Self { position, style }
     }
+}
+
+fn signed_preview_frame_style(
+    tile_width: u32,
+    tile_height: u32,
+    min_x: i32,
+    min_y: i32,
+    max_x: i32,
+    max_y: i32,
+) -> String {
+    format!(
+        "left:{}px;top:{}px;width:{}px;height:{}px;",
+        min_x * tile_width as i32,
+        min_y * tile_height as i32,
+        ((max_x - min_x + 1) as u32) * tile_width,
+        ((max_y - min_y + 1) as u32) * tile_height,
+    )
 }
