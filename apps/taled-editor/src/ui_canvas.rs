@@ -276,9 +276,9 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                             div {
                                 key: "tile-selection-transfer-preview-{tile.x}-{tile.y}",
                                 class: if tile.fallback {
-                                    "shape-fill-preview-tile fallback"
+                                    "shape-fill-preview-tile tile-selection-transfer-preview-tile fallback"
                                 } else {
-                                    "tile-preview shape-fill-preview-tile"
+                                    "tile-preview shape-fill-preview-tile tile-selection-transfer-preview-tile"
                                 },
                                 style: "{tile.style}",
                             }

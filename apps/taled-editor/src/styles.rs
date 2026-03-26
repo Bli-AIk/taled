@@ -181,6 +181,9 @@ pub(crate) const STYLES: &str = r#"
     z-index: 4;
     pointer-events: none;
   }
+  .tile-selection-transfer-preview-tile {
+    opacity: 0.82;
+  }
   .shape-fill-preview-tile.fallback {
     background: rgba(203, 213, 225, 0.20);
   }
@@ -212,10 +215,7 @@ pub(crate) const STYLES: &str = r#"
   }
   .tile-selection-region {
     z-index: 6;
-    background: rgba(58, 174, 255, 0.16);
-    box-shadow:
-      inset 0 0 0 0.5px rgba(58, 174, 255, 0.92),
-      0 0 10px rgba(58, 174, 255, 0.18);
+    background: rgba(0, 0, 0, 0.16);
     animation: tile-selection-fade-in 160ms ease-out;
   }
   .tile-selection-region-cells {
@@ -224,17 +224,30 @@ pub(crate) const STYLES: &str = r#"
   }
   .tile-selection-irregular-bounds {
     z-index: 5;
-    background: rgba(58, 174, 255, 0.04);
-    border: 0.5px dashed rgba(90, 196, 255, 0.54);
+    overflow: visible;
+    background: rgba(0, 0, 0, 0.12);
     animation: tile-selection-fade-in 160ms ease-out;
   }
+  .tile-selection-irregular-bounds::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 0.5px dashed rgba(243, 246, 250, 0.58);
+    pointer-events: none;
+    animation: tile-selection-border-pulse 880ms ease-in-out infinite;
+  }
   .tile-selection-irregular-bounds.preview {
-    background: rgba(58, 174, 255, 0.025);
-    border-color: rgba(90, 196, 255, 0.42);
+    background: rgba(0, 0, 0, 0.08);
+  }
+  .tile-selection-irregular-bounds.preview::after {
+    border-color: rgba(243, 246, 250, 0.42);
   }
   .tile-selection-irregular-bounds.closing {
-    background: rgba(58, 174, 255, 0.025);
-    border-color: rgba(90, 196, 255, 0.38);
+    background: rgba(0, 0, 0, 0.08);
+    animation: tile-selection-fade-out 170ms ease-out forwards;
+  }
+  .tile-selection-irregular-bounds.closing::after {
+    border-color: rgba(243, 246, 250, 0.34);
     animation: tile-selection-fade-out 170ms ease-out forwards;
   }
   .tile-selection-region-cells.preview {
@@ -244,25 +257,23 @@ pub(crate) const STYLES: &str = r#"
     animation: tile-selection-fade-out 170ms ease-out forwards;
   }
   .tile-selection-cell-fragment {
-    background: rgba(58, 174, 255, 0.14);
-    box-shadow: inset 0 0 0 0.5px rgba(90, 196, 255, 0.84);
+    background: rgba(0, 0, 0, 0.16);
+    box-shadow: inset 0 0 0 0.5px rgba(244, 247, 251, 0.18);
   }
   .tile-selection-region.preview {
-    background: rgba(58, 174, 255, 0.11);
-    box-shadow:
-      inset 0 0 0 0.5px rgba(58, 174, 255, 0.74),
-      0 0 8px rgba(58, 174, 255, 0.14);
+    background: rgba(0, 0, 0, 0.10);
   }
   .tile-selection-region.closing {
-    background: rgba(58, 174, 255, 0.11);
-    box-shadow:
-      inset 0 0 0 0.5px rgba(58, 174, 255, 0.62),
-      0 0 7px rgba(58, 174, 255, 0.10);
+    background: rgba(0, 0, 0, 0.10);
     animation: tile-selection-fade-out 170ms ease-out forwards;
   }
   .tile-selection-frame {
     inset: 0;
-    border: 0.5px solid rgba(90, 196, 255, 0.94);
+    border: 0.5px solid rgba(244, 247, 251, 0.92);
+    box-shadow:
+      inset 0 0 0 0.5px rgba(19, 23, 28, 0.20),
+      0 0 5px rgba(255, 255, 255, 0.08);
+    animation: tile-selection-border-pulse 880ms ease-in-out infinite;
   }
   .tile-selection-handle-dot {
     position: absolute;
@@ -270,20 +281,20 @@ pub(crate) const STYLES: &str = r#"
     width: 10px;
     height: 10px;
     border-radius: 999px;
-    background: #eef8ff;
-    border: 0.5px solid rgba(90, 196, 255, 0.98);
+    background: rgba(245, 247, 250, 0.94);
+    border: 0.5px solid rgba(244, 247, 251, 0.98);
     box-shadow:
-      0 0 0 1px rgba(28, 106, 158, 0.52),
-      0 0 10px rgba(58, 174, 255, 0.24);
+      0 0 0 1px rgba(19, 23, 28, 0.42),
+      0 0 7px rgba(255, 255, 255, 0.12);
   }
   .tile-selection-handle.ghost {
     pointer-events: none;
   }
   .tile-selection-handle-dot.ghost {
     inset: 6px;
-    background: rgba(7, 17, 27, 0.18);
-    border: 0.5px solid rgba(173, 228, 255, 0.72);
-    box-shadow: 0 0 0 1px rgba(28, 106, 158, 0.24);
+    background: rgba(19, 23, 28, 0.18);
+    border: 0.5px solid rgba(244, 247, 251, 0.64);
+    box-shadow: 0 0 0 1px rgba(19, 23, 28, 0.18);
   }
   @keyframes tile-selection-fade-in {
     from {
@@ -299,6 +310,14 @@ pub(crate) const STYLES: &str = r#"
     }
     to {
       opacity: 0;
+    }
+  }
+  @keyframes tile-selection-border-pulse {
+    0%, 100% {
+      opacity: 0.42;
+    }
+    50% {
+      opacity: 0.96;
     }
   }
   .canvas.camera-transition {
