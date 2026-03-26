@@ -5,9 +5,10 @@ use taled_core::{EditorDocument, ObjectShape};
 
 use crate::{
     app_state::{AppState, TileSelectionRegion, Tool},
-    edit_ops::apply_cell_tool,
+    edit_ops::{apply_cell_tool, dismiss_tile_selection},
     platform::log,
     touch_ops::{
+        cell_from_surface,
         handle_touch_pointer_cancel, handle_touch_pointer_down, handle_touch_pointer_move,
         handle_touch_pointer_up, should_ignore_synthetic_click,
     },
@@ -109,6 +110,13 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                             center_canvas_if_needed(&mut state.write(), rect.size.width, rect.size.height);
                         }
                     }
+                },
+                onclick: move |event| {
+                    let mut state = state.write();
+                    if should_ignore_synthetic_click(&mut state) {
+                        return;
+                    }
+                    dismiss_selection_from_outside_map_click(&mut state, event.data().element_coordinates().x, event.data().element_coordinates().y);
                 },
                 onpointerdown: move |event| handle_touch_pointer_down(&mut state.write(), event),
                 onpointermove: move |event| handle_touch_pointer_move(&mut state.write(), event),
@@ -588,6 +596,28 @@ impl TileSelectionHandleVisual {
     const fn new(position: &'static str, style: &'static str) -> Self {
         Self { position, style }
     }
+}
+
+fn dismiss_selection_from_outside_map_click(state: &mut AppState, x: f64, y: f64) {
+    if state.tool != Tool::Select || state.tile_selection.is_none() {
+        return;
+    }
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let active_layer = session.document().map.layer(state.active_layer);
+    if active_layer.is_none_or(|layer| layer.as_tile().is_none()) {
+        return;
+    }
+    if cell_from_surface(state, x, y).is_some() {
+        return;
+    }
+
+    if state.tile_selection_transfer.is_some() {
+        return;
+    }
+    dismiss_tile_selection(state);
+    state.status = "Selection cleared.".to_string();
 }
 
 fn signed_preview_frame_style(

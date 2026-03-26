@@ -75,12 +75,12 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
     let outside_existing_selection = selects_tile_region(state)
         && state.tile_selection_transfer.is_none()
         && selection_resize_handle.is_none()
-        && state
-            .tile_selection
-            .zip(hit_cell)
-            .is_some_and(|(selection, cell)| {
+        && state.tile_selection.is_some()
+        && hit_cell.is_none_or(|cell| {
+            state.tile_selection.is_some_and(|selection| {
                 !selection_contains_cell(selection, (cell.0 as i32, cell.1 as i32))
-            });
+            })
+        });
     let anchor_cell = selection_resize_handle
         .and_then(|handle| {
             state
@@ -417,6 +417,11 @@ fn apply_tile_region_touch_tool(
 ) {
     if outside_existing_selection {
         if preserve_existing_selection {
+            return;
+        }
+        if cell_from_surface(state, x, y).is_none() {
+            crate::edit_ops::dismiss_tile_selection(state);
+            state.status = "Selection cleared.".to_string();
             return;
         }
         let _ = apply_outside_selection_tap(state, x, y);
@@ -1059,7 +1064,7 @@ fn touch_distance(first: ActiveTouchPointer, second: ActiveTouchPointer) -> f64 
     (dx * dx + dy * dy).sqrt()
 }
 
-fn cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(u32, u32)> {
+pub(crate) fn cell_from_surface(state: &AppState, x: f64, y: f64) -> Option<(u32, u32)> {
     let session = state.session.as_ref()?;
     let map = &session.document().map;
     let (cell_x, cell_y) = signed_cell_from_surface(state, x, y)?;
