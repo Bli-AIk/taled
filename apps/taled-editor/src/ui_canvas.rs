@@ -5,8 +5,9 @@ use taled_core::{EditorDocument, ObjectShape};
 
 use crate::{
     app_state::{
-        selection_bounds, selection_cells_are_rectangular, selection_cells_from_region, AppState,
-        TileSelectionRegion, Tool,
+        is_tile_selection_tool, selection_bounds, selection_cells_are_rectangular,
+        selection_cells_from_region, selection_region_from_cells, AppState, TileSelectionRegion,
+        Tool,
     },
     edit_ops::{apply_cell_tool, dismiss_tile_selection},
     platform::log,
@@ -180,6 +181,7 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                                                 state.tile_selection = None;
                                                 state.tile_selection_cells = None;
                                                 state.tile_selection_preview = None;
+                                                state.tile_selection_preview_cells = None;
                                             }
                                         }
                                     }
@@ -517,7 +519,7 @@ fn active_tile_selection_overlay(
     document: &EditorDocument,
     snapshot: &AppState,
 ) -> Option<TileSelectionOverlayVisual> {
-    if snapshot.tool != Tool::Select {
+    if !is_tile_selection_tool(snapshot.tool) {
         return None;
     }
     let active_layer = document.map.layer(snapshot.active_layer)?;
@@ -525,7 +527,10 @@ fn active_tile_selection_overlay(
 
     let closing_region = snapshot.tile_selection_closing;
     let (selection, selection_cells, preview, closing) =
-        if let Some(selection) = snapshot.tile_selection_preview {
+        if let Some(preview_cells) = snapshot.tile_selection_preview_cells.clone() {
+            let selection = selection_region_from_cells(&preview_cells)?;
+            (selection, preview_cells, true, false)
+        } else if let Some(selection) = snapshot.tile_selection_preview {
             (
                 selection,
                 selection_cells_from_region(selection),
@@ -680,7 +685,7 @@ impl TileSelectionHandleVisual {
 }
 
 fn dismiss_selection_from_outside_map_click(state: &mut AppState, x: f64, y: f64) {
-    if state.tool != Tool::Select || state.tile_selection.is_none() {
+    if !is_tile_selection_tool(state.tool) || state.tile_selection.is_none() {
         return;
     }
     let Some(session) = state.session.as_ref() else {

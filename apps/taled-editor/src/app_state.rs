@@ -23,6 +23,8 @@ pub(crate) enum Tool {
     ShapeFill,
     Erase,
     Select,
+    MagicWand,
+    SelectSameTile,
     AddRectangle,
     AddPoint,
 }
@@ -69,6 +71,7 @@ pub(crate) struct SingleTouchGesture {
     pub(crate) drag_active: bool,
     pub(crate) outside_existing_selection: bool,
     pub(crate) anchor_cell: Option<(i32, i32)>,
+    pub(crate) selection_match_gids: BTreeSet<u32>,
     pub(crate) resize_handle: Option<TileSelectionHandle>,
     pub(crate) selection_move_drag_offset: Option<(i32, i32)>,
     pub(crate) last_applied_cell: Option<(u32, u32)>,
@@ -145,6 +148,7 @@ pub(crate) struct AppState {
     pub(crate) tile_selection: Option<TileSelectionRegion>,
     pub(crate) tile_selection_cells: Option<BTreeSet<(i32, i32)>>,
     pub(crate) tile_selection_preview: Option<TileSelectionRegion>,
+    pub(crate) tile_selection_preview_cells: Option<BTreeSet<(i32, i32)>>,
     pub(crate) tile_selection_closing: Option<TileSelectionRegion>,
     pub(crate) tile_selection_closing_cells: Option<BTreeSet<(i32, i32)>>,
     pub(crate) tile_selection_closing_started_at: Option<Instant>,
@@ -196,6 +200,7 @@ impl Default for AppState {
                 tile_selection: None,
                 tile_selection_cells: None,
                 tile_selection_preview: None,
+                tile_selection_preview_cells: None,
                 tile_selection_closing: None,
                 tile_selection_closing_cells: None,
                 tile_selection_closing_started_at: None,
@@ -245,6 +250,7 @@ impl Default for AppState {
                 tile_selection: None,
                 tile_selection_cells: None,
                 tile_selection_preview: None,
+                tile_selection_preview_cells: None,
                 tile_selection_closing: None,
                 tile_selection_closing_cells: None,
                 tile_selection_closing_started_at: None,
@@ -298,6 +304,7 @@ impl Default for AppState {
                 tile_selection: None,
                 tile_selection_cells: None,
                 tile_selection_preview: None,
+                tile_selection_preview_cells: None,
                 tile_selection_closing: None,
                 tile_selection_closing_cells: None,
                 tile_selection_closing_started_at: None,
@@ -408,6 +415,10 @@ pub(crate) fn selection_cells_are_rectangular(
     let (min_x, min_y, max_x, max_y) = selection_bounds(region);
     let expected = ((max_x - min_x + 1) * (max_y - min_y + 1)) as usize;
     cells.len() == expected
+}
+
+pub(crate) fn is_tile_selection_tool(tool: Tool) -> bool {
+    matches!(tool, Tool::Select | Tool::MagicWand | Tool::SelectSameTile)
 }
 
 fn default_status_message() -> String {

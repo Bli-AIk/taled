@@ -9,8 +9,8 @@ use taled_core::{EditorSession, Layer, ObjectShape};
 
 use crate::{
     app_state::{
-        selection_bounds, AppState, MobileScreen, MobileTransition, PaletteTile,
-        TileSelectionMode, Tool,
+        is_tile_selection_tool, selection_bounds, AppState, MobileScreen, MobileTransition,
+        PaletteTile, TileSelectionMode, Tool,
     },
     edit_ops::{
         cancel_tile_selection_transfer, copy_tile_selection, create_object, cut_tile_selection,
@@ -343,7 +343,10 @@ fn tile_selection_action_bar(
     session: &EditorSession,
     state: Signal<AppState>,
 ) -> Element {
-    if snapshot.tool != Tool::Select || snapshot.tile_selection_preview.is_some() {
+    if !is_tile_selection_tool(snapshot.tool)
+        || snapshot.tile_selection_preview.is_some()
+        || snapshot.tile_selection_preview_cells.is_some()
+    {
         return rsx! { Fragment {} };
     }
     let (selection, closing) = if let Some(selection) = snapshot.tile_selection {
@@ -1132,6 +1135,7 @@ fn render_objects(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                                     state.tile_selection = None;
                                     state.tile_selection_cells = None;
                                     state.tile_selection_preview = None;
+                                    state.tile_selection_preview_cells = None;
                                     state.tile_selection_closing = None;
                                     state.tile_selection_closing_cells = None;
                                     state.tile_selection_closing_started_at = None;
@@ -1477,7 +1481,7 @@ fn review_tool_side_panel(
     state: Signal<AppState>,
     kind: ReviewToolbarKind,
 ) -> Element {
-    let selection_mode_active = kind == ReviewToolbarKind::Tile && snapshot.tool == Tool::Select;
+    let selection_mode_active = kind == ReviewToolbarKind::Tile && is_tile_selection_tool(snapshot.tool);
     rsx! {
         div {
             class: if selection_mode_active {
@@ -1871,17 +1875,21 @@ fn review_tool_row(
                             "Rect Select",
                             None,
                         )}
-                        {review_placeholder_tool_button(
+                        {review_tool_button(
+                            snapshot,
                             state,
+                            Tool::MagicWand,
                             ReviewToolGlyph::MagicWand,
                             "Magic Wand",
-                            "Magic Wand is not implemented yet."
+                            None,
                         )}
-                        {review_placeholder_tool_button(
+                        {review_tool_button(
+                            snapshot,
                             state,
+                            Tool::SelectSameTile,
                             ReviewToolGlyph::SelectSameTile,
                             "Same Tile",
-                            "Select Same Tile is not implemented yet."
+                            None,
                         )}
                     },
                     ReviewToolbarKind::Object => rsx! {
@@ -2015,6 +2023,7 @@ fn review_tool_button(
                 state.tool = tool;
                 state.shape_fill_preview = None;
                 state.tile_selection_preview = None;
+                state.tile_selection_preview_cells = None;
             },
             div { class: "review-tool-icon", {review_tool_icon(&glyph)} }
             span { "{label}" }
@@ -2493,7 +2502,14 @@ fn toolbar_supports_tool(kind: ReviewToolbarKind, tool: Tool) -> bool {
     match kind {
         ReviewToolbarKind::Tile => matches!(
             tool,
-            Tool::Hand | Tool::Paint | Tool::Fill | Tool::ShapeFill | Tool::Erase | Tool::Select
+            Tool::Hand
+                | Tool::Paint
+                | Tool::Fill
+                | Tool::ShapeFill
+                | Tool::Erase
+                | Tool::Select
+                | Tool::MagicWand
+                | Tool::SelectSameTile
         ),
         ReviewToolbarKind::Object => {
             matches!(tool, Tool::Select | Tool::AddRectangle | Tool::AddPoint)
@@ -2509,6 +2525,7 @@ fn set_review_active_layer_kind(state: &mut AppState, layer_index: usize, kind: 
     state.tile_selection = None;
     state.tile_selection_cells = None;
     state.tile_selection_preview = None;
+    state.tile_selection_preview_cells = None;
     state.tile_selection_closing = None;
     state.tile_selection_closing_cells = None;
     state.tile_selection_closing_started_at = None;

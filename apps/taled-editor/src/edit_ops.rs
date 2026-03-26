@@ -26,6 +26,7 @@ fn set_tile_selection_cells(state: &mut AppState, cells: BTreeSet<(i32, i32)>) {
         state.tile_selection_closing_started_at = None;
         state.tile_selection_last_tap_at = None;
         state.tile_selection_preview = None;
+        state.tile_selection_preview_cells = None;
         state.selected_object = None;
         state.selected_cell = None;
     } else {
@@ -33,18 +34,10 @@ fn set_tile_selection_cells(state: &mut AppState, cells: BTreeSet<(i32, i32)>) {
     }
 }
 
-pub(crate) fn apply_tile_selection_mode_region(
+pub(crate) fn apply_tile_selection_mode_cells(
     state: &mut AppState,
-    start_x: i32,
-    start_y: i32,
-    end_x: i32,
-    end_y: i32,
+    region_cells: BTreeSet<(i32, i32)>,
 ) {
-    let region = TileSelectionRegion {
-        start_cell: (start_x, start_y),
-        end_cell: (end_x, end_y),
-    };
-    let region_cells = selection_cells_from_region(region);
     let next_cells = match state.tile_selection_mode {
         TileSelectionMode::Replace => region_cells,
         TileSelectionMode::Add => state
@@ -91,6 +84,20 @@ pub(crate) fn apply_tile_selection_mode_region(
         max_x,
         max_y
     );
+}
+
+pub(crate) fn apply_tile_selection_mode_region(
+    state: &mut AppState,
+    start_x: i32,
+    start_y: i32,
+    end_x: i32,
+    end_y: i32,
+) {
+    let region = TileSelectionRegion {
+        start_cell: (start_x, start_y),
+        end_cell: (end_x, end_y),
+    };
+    apply_tile_selection_mode_cells(state, selection_cells_from_region(region));
 }
 
 fn selection_mode_label(mode: TileSelectionMode) -> &'static str {
@@ -186,6 +193,12 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
                 select_tile_region(state, x as i32, y as i32, x as i32, y as i32);
             }
         }
+        Tool::MagicWand => {
+            let _ = apply_magic_wand_selection(state, x, y, None);
+        }
+        Tool::SelectSameTile => {
+            let _ = apply_select_same_tile_selection(state, x, y, None);
+        }
         Tool::AddRectangle => create_object_at(state, ObjectShape::Rectangle, x, y),
         Tool::AddPoint => create_object_at(state, ObjectShape::Point, x, y),
     }
@@ -209,6 +222,193 @@ pub(crate) fn select_tile_region(
         "Selected region {}x{} from ({}, {}) to ({}, {}).",
         width, height, start_x, start_y, end_x, end_y
     );
+}
+
+pub(crate) fn preview_magic_wand_selection(
+    state: &mut AppState,
+    x: u32,
+    y: u32,
+    sampled_gids: &BTreeSet<u32>,
+) -> bool {
+    preview_matching_tile_selection(state, Tool::MagicWand, x, y, sampled_gids)
+}
+
+pub(crate) fn preview_select_same_tile_selection(
+    state: &mut AppState,
+    x: u32,
+    y: u32,
+    sampled_gids: &BTreeSet<u32>,
+) -> bool {
+    preview_matching_tile_selection(state, Tool::SelectSameTile, x, y, sampled_gids)
+}
+
+pub(crate) fn apply_magic_wand_selection(
+    state: &mut AppState,
+    x: u32,
+    y: u32,
+    sampled_gids: Option<&BTreeSet<u32>>,
+) -> bool {
+    apply_matching_tile_selection(state, Tool::MagicWand, x, y, sampled_gids)
+}
+
+pub(crate) fn apply_select_same_tile_selection(
+    state: &mut AppState,
+    x: u32,
+    y: u32,
+    sampled_gids: Option<&BTreeSet<u32>>,
+) -> bool {
+    apply_matching_tile_selection(state, Tool::SelectSameTile, x, y, sampled_gids)
+}
+
+fn preview_matching_tile_selection(
+    state: &mut AppState,
+    tool: Tool,
+    x: u32,
+    y: u32,
+    sampled_gids: &BTreeSet<u32>,
+) -> bool {
+    let Some(preview_cells) = matching_tile_selection_cells(state, tool, x, y, sampled_gids) else {
+        state.tile_selection_preview = None;
+        state.tile_selection_preview_cells = None;
+        return false;
+    };
+    let Some(preview_region) = selection_region_from_cells(&preview_cells) else {
+        state.tile_selection_preview = None;
+        state.tile_selection_preview_cells = None;
+        return false;
+    };
+    state.tile_selection_preview = Some(preview_region);
+    state.tile_selection_preview_cells = Some(preview_cells);
+    true
+}
+
+fn apply_matching_tile_selection(
+    state: &mut AppState,
+    tool: Tool,
+    x: u32,
+    y: u32,
+    sampled_gids: Option<&BTreeSet<u32>>,
+) -> bool {
+    let gids = sampled_gids
+        .cloned()
+        .filter(|gids| !gids.is_empty())
+        .or_else(|| active_tile_gid(state, x, y).map(|gid| BTreeSet::from([gid])));
+    let Some(gids) = gids else {
+        state.status = "No tile under the cursor.".to_string();
+        return false;
+    };
+    let Some(selection_cells) = matching_tile_selection_cells(state, tool, x, y, &gids) else {
+        state.status = "Nothing matched the current tile.".to_string();
+        return false;
+    };
+
+    apply_tile_selection_mode_cells(state, selection_cells);
+    true
+}
+
+fn matching_tile_selection_cells(
+    state: &AppState,
+    tool: Tool,
+    x: u32,
+    y: u32,
+    sampled_gids: &BTreeSet<u32>,
+) -> Option<BTreeSet<(i32, i32)>> {
+    let tile_layer = active_tile_layer(state)?;
+    if !tile_layer_contains_cell(tile_layer, x as i32, y as i32) {
+        return None;
+    }
+
+    match tool {
+        Tool::MagicWand => Some(magic_wand_cells(tile_layer, x, y, sampled_gids)),
+        Tool::SelectSameTile => Some(select_same_tile_cells(tile_layer, sampled_gids)),
+        _ => None,
+    }
+}
+
+fn active_tile_layer(state: &AppState) -> Option<&taled_core::TileLayer> {
+    state
+        .session
+        .as_ref()
+        .and_then(|session| session.document().map.layer(state.active_layer))
+        .and_then(Layer::as_tile)
+}
+
+pub(crate) fn active_tile_gid(state: &AppState, x: u32, y: u32) -> Option<u32> {
+    active_tile_layer(state)?.tile_at(x, y)
+}
+
+fn magic_wand_cells(
+    tile_layer: &taled_core::TileLayer,
+    start_x: u32,
+    start_y: u32,
+    sampled_gids: &BTreeSet<u32>,
+) -> BTreeSet<(i32, i32)> {
+    if sampled_gids.is_empty() {
+        return BTreeSet::new();
+    }
+
+    let Some(target_gid) = tile_layer.tile_at(start_x, start_y) else {
+        return BTreeSet::new();
+    };
+    if !sampled_gids.contains(&target_gid) {
+        return BTreeSet::new();
+    }
+
+    let mut result = BTreeSet::new();
+    let mut queue = VecDeque::from([(start_x, start_y)]);
+    let mut visited = vec![false; tile_layer.tiles.len()];
+
+    while let Some((cell_x, cell_y)) = queue.pop_front() {
+        let Some(index) = tile_layer.index_of(cell_x, cell_y) else {
+            continue;
+        };
+        if visited[index] {
+            continue;
+        }
+        visited[index] = true;
+
+        let gid = tile_layer.tiles[index];
+        if !sampled_gids.contains(&gid) {
+            continue;
+        }
+
+        result.insert((cell_x as i32, cell_y as i32));
+
+        if cell_x > 0 {
+            queue.push_back((cell_x - 1, cell_y));
+        }
+        if cell_x + 1 < tile_layer.width {
+            queue.push_back((cell_x + 1, cell_y));
+        }
+        if cell_y > 0 {
+            queue.push_back((cell_x, cell_y - 1));
+        }
+        if cell_y + 1 < tile_layer.height {
+            queue.push_back((cell_x, cell_y + 1));
+        }
+    }
+
+    result
+}
+
+fn select_same_tile_cells(
+    tile_layer: &taled_core::TileLayer,
+    sampled_gids: &BTreeSet<u32>,
+) -> BTreeSet<(i32, i32)> {
+    let mut result = BTreeSet::new();
+    if sampled_gids.is_empty() {
+        return result;
+    }
+
+    for y in 0..tile_layer.height {
+        for x in 0..tile_layer.width {
+            if tile_layer.tile_at(x, y).is_some_and(|gid| sampled_gids.contains(&gid)) {
+                result.insert((x as i32, y as i32));
+            }
+        }
+    }
+
+    result
 }
 
 pub(crate) fn handle_tile_selection_tap(state: &mut AppState, x: u32, y: u32) -> bool {
@@ -264,6 +464,7 @@ pub(crate) fn handle_tile_selection_tap(state: &mut AppState, x: u32, y: u32) ->
 pub(crate) fn dismiss_tile_selection(state: &mut AppState) {
     state.tile_selection_last_tap_at = None;
     state.tile_selection_preview = None;
+    state.tile_selection_preview_cells = None;
     if let (Some(selection), Some(selection_cells)) =
         (state.tile_selection.take(), state.tile_selection_cells.take())
     {
@@ -300,6 +501,7 @@ pub(crate) fn copy_tile_selection(state: &mut AppState) {
     state.tile_clipboard = Some(clipboard);
     state.tile_selection_transfer = Some(transfer);
     state.tile_selection_preview = None;
+    state.tile_selection_preview_cells = None;
     state.tile_selection_closing = None;
     state.tile_selection_closing_cells = None;
     state.tile_selection_closing_started_at = None;
@@ -385,6 +587,7 @@ pub(crate) fn cut_tile_selection(state: &mut AppState) {
                 ..transfer
             });
             state.tile_selection_preview = None;
+            state.tile_selection_preview_cells = None;
             state.tile_selection_closing = None;
             state.tile_selection_closing_cells = None;
             state.tile_selection_closing_started_at = None;
@@ -1262,6 +1465,7 @@ fn delete_tile_selection_source_and_exit(state: &mut AppState) {
         state.tile_selection = None;
         state.tile_selection_cells = None;
         state.tile_selection_preview = None;
+        state.tile_selection_preview_cells = None;
         state.status = "Deleted the source selection and exited move mode.".to_string();
         return;
     }
@@ -1284,6 +1488,7 @@ fn delete_tile_selection_source_and_exit(state: &mut AppState) {
             state.tile_selection = None;
             state.tile_selection_cells = None;
             state.tile_selection_preview = None;
+            state.tile_selection_preview_cells = None;
             state.status = "Deleted the source selection and exited move mode.".to_string();
         }
         Err(error) => {
@@ -1427,12 +1632,14 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
     use std::path::PathBuf;
 
     use taled_core::EditorSession;
 
     use super::{
-        apply_cell_tool, apply_shape_fill_rect, apply_tile_selection_mode_region,
+        apply_cell_tool, apply_magic_wand_selection, apply_select_same_tile_selection,
+        apply_shape_fill_rect, apply_tile_selection_mode_region,
         copy_tile_selection, cut_tile_selection, delete_tile_selection,
         flip_tile_selection_horizontally, flip_tile_selection_vertically,
         handle_tile_selection_tap, place_tile_selection_transfer, rotate_tile_selection_clockwise,
@@ -1517,6 +1724,95 @@ mod tests {
         assert_eq!(layer.tile_at(5, 4), Some(2));
         assert!(session.can_undo());
         assert!(!session.can_redo());
+    }
+
+    #[test]
+    fn magic_wand_selects_only_the_connected_matching_region() {
+        let mut state = test_state(Tool::MagicWand, 1);
+
+        if let Some(session) = state.session.as_mut() {
+            session
+                .edit(|document| {
+                    let layer = document.map.layers[0].as_tile_mut().expect("tile layer");
+                    layer.set_tile(0, 0, 97)?;
+                    layer.set_tile(1, 0, 97)?;
+                    layer.set_tile(0, 1, 97)?;
+                    layer.set_tile(1, 1, 97)?;
+                    layer.set_tile(4, 3, 97)?;
+                    layer.set_tile(3, 4, 97)?;
+                    layer.set_tile(4, 4, 97)?;
+                    Ok(())
+                })
+                .expect("seed region");
+        }
+
+        let applied = apply_magic_wand_selection(&mut state, 0, 0, None);
+
+        assert!(applied);
+        let cells = state.tile_selection_cells.expect("selection cells");
+        assert!(cells.contains(&(0, 0)));
+        assert!(cells.contains(&(1, 1)));
+        assert!(!cells.contains(&(4, 4)));
+        assert_eq!(cells.len(), 4);
+    }
+
+    #[test]
+    fn select_same_tile_selects_all_cells_matching_sampled_tiles() {
+        let mut state = test_state(Tool::SelectSameTile, 1);
+
+        if let Some(session) = state.session.as_mut() {
+            session
+                .edit(|document| {
+                    let layer = document.map.layers[0].as_tile_mut().expect("tile layer");
+                    layer.set_tile(0, 0, 96)?;
+                    layer.set_tile(2, 1, 96)?;
+                    layer.set_tile(4, 3, 96)?;
+                    layer.set_tile(4, 4, 2)?;
+                    Ok(())
+                })
+                .expect("seed same-tile region");
+        }
+
+        let applied = apply_select_same_tile_selection(&mut state, 0, 0, None);
+
+        assert!(applied);
+        let cells = state.tile_selection_cells.expect("selection cells");
+        assert!(cells.contains(&(0, 0)));
+        assert!(cells.contains(&(2, 1)));
+        assert!(cells.contains(&(4, 3)));
+        assert!(!cells.contains(&(4, 4)));
+    }
+
+    #[test]
+    fn same_tile_add_mode_can_union_multiple_sampled_tile_values() {
+        let mut state = test_state(Tool::SelectSameTile, 1);
+
+        if let Some(session) = state.session.as_mut() {
+            session
+                .edit(|document| {
+                    let layer = document.map.layers[0].as_tile_mut().expect("tile layer");
+                    layer.set_tile(0, 0, 7)?;
+                    layer.set_tile(2, 0, 7)?;
+                    layer.set_tile(0, 2, 8)?;
+                    layer.set_tile(2, 2, 8)?;
+                    Ok(())
+                })
+                .expect("seed multiple tiles");
+        }
+
+        let sampled = BTreeSet::from([7, 8]);
+        state.tile_selection_mode = TileSelectionMode::Add;
+        select_tile_region(&mut state, 4, 4, 4, 4);
+
+        let applied = apply_select_same_tile_selection(&mut state, 0, 0, Some(&sampled));
+
+        assert!(applied);
+        let cells = state.tile_selection_cells.expect("selection cells");
+        assert!(cells.contains(&(4, 4)));
+        assert!(cells.contains(&(0, 0)));
+        assert!(cells.contains(&(2, 0)));
+        assert!(cells.contains(&(0, 2)));
+        assert!(cells.contains(&(2, 2)));
     }
 
     #[test]

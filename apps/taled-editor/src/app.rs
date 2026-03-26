@@ -217,6 +217,7 @@ fn render_layers_section(snapshot: &AppState, mut state: Signal<AppState>) -> El
                                 state.tile_selection = None;
                                 state.tile_selection_cells = None;
                                 state.tile_selection_preview = None;
+                                state.tile_selection_preview_cells = None;
                                 state.tile_selection_closing = None;
                                 state.tile_selection_closing_cells = None;
                                 state.tile_selection_closing_started_at = None;
