@@ -20,6 +20,7 @@ use crate::{
         clear_tile_selection_immediately, handle_tile_selection_tap, preview_magic_wand_selection,
         preview_select_same_tile_selection,
     },
+    ui_canvas::refresh_flat_tile_layer_cache_if_needed,
 };
 
 const LONG_PRESS_DURATION: Duration = Duration::from_millis(260);
@@ -209,6 +210,7 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
         if delta_x.abs() >= 0.5 || delta_y.abs() >= 0.5 {
             state.pan_x += delta_x.round() as i32;
             state.pan_y += delta_y.round() as i32;
+            refresh_flat_tile_layer_cache_if_needed(state);
             log_touch_resolution(state, "hand-pan", point.x, point.y);
         }
         return;
@@ -1140,6 +1142,7 @@ fn update_pinch_gesture(state: &mut AppState) {
     state.zoom_percent = new_zoom_percent;
     state.pan_x = (current_center_x - gesture.world_center_x * new_zoom).round() as i32;
     state.pan_y = (current_center_y - gesture.world_center_y * new_zoom).round() as i32;
+    refresh_flat_tile_layer_cache_if_needed(state);
     state.status = format!("Zoom {}%.", state.zoom_percent);
     log_pinch_probe(
         state,

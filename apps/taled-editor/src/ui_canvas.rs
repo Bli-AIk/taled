@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, time::Duration};
 
+use base64::Engine;
 use dioxus::prelude::*;
 use taled_core::{EditorDocument, ObjectShape};
 
@@ -55,6 +56,12 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
     let has_tile_selection_overlay = tile_selection_overlay.is_some();
     let tile_selection_transfer_preview =
         active_tile_selection_transfer_preview(document, snapshot);
+    let has_flat_tile_layers = snapshot.flat_tile_layers_data_url.is_some();
+    let live_active_tile_styles = if has_flat_tile_layers {
+        Vec::new()
+    } else {
+        collect_visible_tile_styles(document, snapshot)
+    };
 
     rsx! {
         div {
@@ -119,7 +126,11 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                     if should_ignore_synthetic_click(&mut state) {
                         return;
                     }
-                    dismiss_selection_from_outside_map_click(&mut state, event.data().element_coordinates().x, event.data().element_coordinates().y);
+                    handle_canvas_click(
+                        &mut state,
+                        event.data().element_coordinates().x,
+                        event.data().element_coordinates().y,
+                    );
                 },
                 onpointerdown: move |event| handle_touch_pointer_down(&mut state.write(), event),
                 onpointermove: move |event| handle_touch_pointer_move(&mut state.write(), event),
@@ -129,25 +140,22 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                     class: canvas_class,
                     style: canvas_style,
                     ontransitionend: move |_| state.write().camera_transition_active = false,
-                    for (layer_index, layer) in map.layers.iter().enumerate() {
-                        if let Some(tile_layer) = layer.as_tile() {
-                            if tile_layer.visible {
-                                for y in 0..tile_layer.height {
-                                    for x in 0..tile_layer.width {
-                                        if let Some(style) = tile_layer
-                                            .tile_at(x, y)
-                                            .filter(|gid| *gid != 0)
-                                            .and_then(|gid| sprite_style(document, &snapshot.image_cache, gid, x, y))
-                                        {
-                                            div {
-                                                key: "tile-{layer_index}-{x}-{y}",
-                                                class: "tile-sprite",
-                                                style: style,
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    if let (Some(data_url), Some(style)) = (
+                        snapshot.flat_tile_layers_data_url.as_ref(),
+                        flat_tile_layers_style(snapshot, map),
+                    ) {
+                        img {
+                            class: "canvas-flat-layer",
+                            src: "{data_url}",
+                            alt: "",
+                            style: "{style}",
+                        }
+                    }
+                    for (x, y, style) in live_active_tile_styles.iter() {
+                        div {
+                            key: "tile-{x}-{y}",
+                            class: "tile-sprite",
+                            style: "{style}",
                         }
                     }
 
@@ -286,30 +294,263 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                         }
                     })}
 
-                    for y in 0..map.height {
-                        for x in 0..map.width {
-                            div {
-                                key: "cell-{x}-{y}",
-                                class: if !has_tile_selection_overlay && snapshot.selected_cell == Some((x, y)) {
-                                    "cell-hitbox selected"
-                                } else {
-                                    "cell-hitbox"
-                                },
-                                style: cell_style(map.tile_width, map.tile_height, x, y),
-                                onclick: move |_| {
-                                    let mut state = state.write();
-                                    if should_ignore_synthetic_click(&mut state) {
-                                        return;
-                                    }
-                                    apply_cell_tool(&mut state, x, y);
-                                },
-                            }
+                    if let Some((selected_x, selected_y)) =
+                        (!has_tile_selection_overlay).then_some(snapshot.selected_cell).flatten()
+                    {
+                        div {
+                            key: "selected-cell-{selected_x}-{selected_y}",
+                            class: "cell-hitbox selected",
+                            style: cell_style(map.tile_width, map.tile_height, selected_x, selected_y),
                         }
                     }
                 }
             }
         }
     }
+}
+
+#[derive(Clone, Copy)]
+struct VisibleCellBounds {
+    min_x: u32,
+    max_x: u32,
+    min_y: u32,
+    max_y: u32,
+}
+
+fn visible_cell_bounds(snapshot: &AppState, map: &taled_core::Map) -> VisibleCellBounds {
+    let (host_width, host_height) = snapshot.canvas_host_size.unwrap_or((384.0, 500.0));
+    let zoom = (f64::from(snapshot.zoom_percent) / 100.0).max(0.01);
+    let tile_width = f64::from(map.tile_width.max(1));
+    let tile_height = f64::from(map.tile_height.max(1));
+    let margin_x = tile_width;
+    let margin_y = tile_height;
+
+    let world_left = (-f64::from(snapshot.pan_x) - margin_x * zoom) / zoom;
+    let world_top = (-f64::from(snapshot.pan_y) - margin_y * zoom) / zoom;
+    let world_right = (host_width - f64::from(snapshot.pan_x) + margin_x * zoom) / zoom;
+    let world_bottom = (host_height - f64::from(snapshot.pan_y) + margin_y * zoom) / zoom;
+
+    let min_x = (world_left / tile_width).floor().max(0.0) as u32;
+    let min_y = (world_top / tile_height).floor().max(0.0) as u32;
+    let max_x = (world_right / tile_width).ceil().max(0.0) as u32;
+    let max_y = (world_bottom / tile_height).ceil().max(0.0) as u32;
+
+    VisibleCellBounds {
+        min_x: min_x.min(map.width),
+        max_x: max_x.max(min_x + 1).min(map.width),
+        min_y: min_y.min(map.height),
+        max_y: max_y.max(min_y + 1).min(map.height),
+    }
+}
+
+fn expanded_visible_cell_bounds(snapshot: &AppState, map: &taled_core::Map) -> VisibleCellBounds {
+    const CACHE_MARGIN_TILES: u32 = 4;
+
+    let visible = visible_cell_bounds(snapshot, map);
+    VisibleCellBounds {
+        min_x: visible.min_x.saturating_sub(CACHE_MARGIN_TILES),
+        max_x: visible.max_x.saturating_add(CACHE_MARGIN_TILES).min(map.width),
+        min_y: visible.min_y.saturating_sub(CACHE_MARGIN_TILES),
+        max_y: visible.max_y.saturating_add(CACHE_MARGIN_TILES).min(map.height),
+    }
+}
+
+fn flat_tile_layers_style(snapshot: &AppState, map: &taled_core::Map) -> Option<String> {
+    let (min_x, max_x, min_y, max_y) = snapshot.flat_tile_layers_cell_bounds?;
+    Some(format!(
+        "left:{}px;top:{}px;width:{}px;height:{}px;",
+        min_x * map.tile_width,
+        min_y * map.tile_height,
+        (max_x.saturating_sub(min_x)).max(1) * map.tile_width,
+        (max_y.saturating_sub(min_y)).max(1) * map.tile_height,
+    ))
+}
+
+pub(crate) fn rebuild_flat_tile_layer_cache(state: &mut AppState) {
+    let Some(session) = state.session.as_ref() else {
+        state.flat_tile_layers_data_url = None;
+        state.flat_tile_layers_cell_bounds = None;
+        return;
+    };
+
+    let document = session.document();
+    let map = &document.map;
+    let cache_bounds = expanded_visible_cell_bounds(state, map);
+    let slice_width = (cache_bounds.max_x.saturating_sub(cache_bounds.min_x)).max(1) * map.tile_width;
+    let slice_height =
+        (cache_bounds.max_y.saturating_sub(cache_bounds.min_y)).max(1) * map.tile_height;
+    let mut svg = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" shape-rendering=\"crispEdges\">",
+        slice_width,
+        slice_height,
+        slice_width,
+        slice_height
+    );
+    let mut defs = BTreeMap::new();
+    let mut body = String::new();
+    let mut wrote_any = false;
+
+    for layer in &map.layers {
+        let Some(tile_layer) = layer.as_tile() else {
+            continue;
+        };
+        if !tile_layer.visible {
+            continue;
+        }
+        if let Some(layer_svg) = flat_tile_layer_slice_svg(
+            map,
+            &state.image_cache,
+            tile_layer,
+            cache_bounds,
+            &mut defs,
+        ) {
+            body.push_str(&layer_svg);
+            wrote_any = true;
+        }
+    }
+
+    if !wrote_any {
+        state.flat_tile_layers_data_url = None;
+        state.flat_tile_layers_cell_bounds = None;
+        return;
+    }
+
+    if !defs.is_empty() {
+        svg.push_str("<defs>");
+        for symbol in defs.values() {
+            svg.push_str(symbol);
+        }
+        svg.push_str("</defs>");
+    }
+    svg.push_str(&body);
+    svg.push_str("</svg>");
+    let encoded = base64::engine::general_purpose::STANDARD.encode(svg);
+    state.flat_tile_layers_data_url = Some(format!("data:image/svg+xml;base64,{encoded}"));
+    state.flat_tile_layers_cell_bounds = Some((
+        cache_bounds.min_x,
+        cache_bounds.max_x,
+        cache_bounds.min_y,
+        cache_bounds.max_y,
+    ));
+}
+
+fn flat_tile_symbol_svg(
+    map: &taled_core::Map,
+    image_cache: &BTreeMap<usize, String>,
+    gid: u32,
+) -> Option<String> {
+    let tile = map.tile_reference_for_gid(gid)?;
+    let image = image_cache.get(&tile.tileset_index)?;
+    let columns = tile.tileset.tileset.columns.max(1);
+    let tile_width = tile.tileset.tileset.tile_width;
+    let tile_height = tile.tileset.tileset.tile_height;
+    let source_x = (tile.local_id % columns) * tile_width;
+    let source_y = (tile.local_id / columns) * tile_height;
+
+    Some(format!(
+        "<symbol id=\"tile-{gid}\" viewBox=\"{} {} {} {}\" preserveAspectRatio=\"none\"><image href=\"{}\" width=\"{}\" height=\"{}\"/></symbol>",
+        source_x,
+        source_y,
+        tile_width,
+        tile_height,
+        image,
+        tile.tileset.tileset.image.width,
+        tile.tileset.tileset.image.height,
+    ))
+}
+
+fn flat_tile_layer_tile_svg(
+    map: &taled_core::Map,
+    image_cache: &BTreeMap<usize, String>,
+    tile_layer: &taled_core::TileLayer,
+    x: u32,
+    y: u32,
+    cache_bounds: VisibleCellBounds,
+    defs: &mut BTreeMap<u32, String>,
+) -> Option<String> {
+    let gid = tile_layer.tile_at(x, y).filter(|gid| *gid != 0)?;
+    if let std::collections::btree_map::Entry::Vacant(entry) = defs.entry(gid) {
+        entry.insert(flat_tile_symbol_svg(map, image_cache, gid)?);
+    }
+
+    Some(format!(
+        "<use href=\"#tile-{gid}\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/>",
+        (x - cache_bounds.min_x) * map.tile_width,
+        (y - cache_bounds.min_y) * map.tile_height,
+        map.tile_width,
+        map.tile_height,
+    ))
+}
+
+fn collect_visible_tile_styles(
+    document: &EditorDocument,
+    snapshot: &AppState,
+) -> Vec<(u32, u32, String)> {
+    let visible_bounds = visible_cell_bounds(snapshot, &document.map);
+    document
+        .map
+        .layer(snapshot.active_layer)
+        .and_then(|layer| layer.as_tile())
+        .filter(|layer| layer.visible)
+        .map(|tile_layer| {
+            let max_y = visible_bounds.max_y.min(tile_layer.height);
+            let max_x = visible_bounds.max_x.min(tile_layer.width);
+            (visible_bounds.min_y..max_y)
+                .flat_map(|y| (visible_bounds.min_x..max_x).map(move |x| (x, y)))
+                .filter_map(|(x, y)| {
+                    let gid = tile_layer.tile_at(x, y).filter(|gid| *gid != 0)?;
+                    let style = sprite_style(document, &snapshot.image_cache, gid, x, y)?;
+                    Some((x, y, style))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn flat_tile_layer_slice_svg(
+    map: &taled_core::Map,
+    image_cache: &BTreeMap<usize, String>,
+    tile_layer: &taled_core::TileLayer,
+    cache_bounds: VisibleCellBounds,
+    defs: &mut BTreeMap<u32, String>,
+) -> Option<String> {
+    let mut layer_svg = String::new();
+
+    for y in cache_bounds.min_y..cache_bounds.max_y.min(tile_layer.height) {
+        for x in cache_bounds.min_x..cache_bounds.max_x.min(tile_layer.width) {
+            if let Some(tile_svg) =
+                flat_tile_layer_tile_svg(map, image_cache, tile_layer, x, y, cache_bounds, defs)
+            {
+                layer_svg.push_str(&tile_svg);
+            }
+        }
+    }
+
+    (!layer_svg.is_empty()).then_some(layer_svg)
+}
+
+pub(crate) fn refresh_flat_tile_layer_cache_if_needed(state: &mut AppState) {
+    let Some(session) = state.session.as_ref() else {
+        state.flat_tile_layers_data_url = None;
+        state.flat_tile_layers_cell_bounds = None;
+        return;
+    };
+
+    let visible = visible_cell_bounds(state, &session.document().map);
+    let Some((cache_min_x, cache_max_x, cache_min_y, cache_max_y)) =
+        state.flat_tile_layers_cell_bounds
+    else {
+        rebuild_flat_tile_layer_cache(state);
+        return;
+    };
+
+    let fits_horizontally = visible.min_x >= cache_min_x && visible.max_x <= cache_max_x;
+    let fits_vertically = visible.min_y >= cache_min_y && visible.max_y <= cache_max_y;
+    if fits_horizontally && fits_vertically {
+        return;
+    }
+
+    rebuild_flat_tile_layer_cache(state);
 }
 
 fn center_canvas_if_needed(state: &mut AppState, host_width: f64, host_height: f64) {
@@ -329,6 +570,7 @@ fn center_canvas_if_needed(state: &mut AppState, host_width: f64, host_height: f
     state.pan_x = ((host_width - map_width) * 0.5).round() as i32;
     state.pan_y = ((host_height - map_height) * 0.5).round() as i32;
     state.pending_canvas_center = false;
+    rebuild_flat_tile_layer_cache(state);
     log(format!(
         "touch:center-map host=({host_width:.1},{host_height:.1}) map=({map_width:.1},{map_height:.1}) pan=({}, {}) zoom={}",
         state.pan_x, state.pan_y, state.zoom_percent,
@@ -706,6 +948,22 @@ fn dismiss_selection_from_outside_map_click(state: &mut AppState, x: f64, y: f64
     }
     clear_tile_selection_immediately(state);
     state.status = "Selection cleared.".to_string();
+}
+
+fn handle_canvas_click(state: &mut AppState, x: f64, y: f64) {
+    dismiss_selection_from_outside_map_click(state, x, y);
+
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let active_layer = session.document().map.layer(state.active_layer);
+    if active_layer.is_none_or(|layer| layer.as_tile().is_none()) {
+        return;
+    }
+    let Some((cell_x, cell_y)) = cell_from_surface(state, x, y) else {
+        return;
+    };
+    apply_cell_tool(state, cell_x, cell_y);
 }
 
 fn signed_preview_frame_style(

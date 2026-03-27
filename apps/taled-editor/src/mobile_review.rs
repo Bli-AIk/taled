@@ -4,8 +4,12 @@ use std::{
 };
 
 use dioxus::prelude::*;
-use futures_timer::Delay;
 use taled_core::{EditorSession, Layer, ObjectShape};
+
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::future::TimeoutFuture;
+#[cfg(not(target_arch = "wasm32"))]
+use futures_timer::Delay;
 
 use crate::{
     app_state::{
@@ -27,6 +31,7 @@ use crate::{
         save_document,
     },
     theme::{ThemeChoice, ThemePalette, export_theme_json, import_theme_json, resolved_theme},
+    ui_canvas::rebuild_flat_tile_layer_cache,
     ui_inspector::collect_palette,
     ui_visuals::{object_icon_style, palette_tile_style},
 };
@@ -255,9 +260,33 @@ fn navigate_mobile_screen(state: &mut AppState, next: MobileScreen) {
     state.mobile_screen = next;
 }
 
+fn begin_loading_embedded_sample(mut state: Signal<AppState>, sample_path: &'static str) {
+    let sample_path = sample_path.to_string();
+    spawn(async move {
+        pause_for(Duration::from_millis(180)).await;
+        let mut app = state.write();
+        load_embedded_sample(&mut app, &sample_path);
+        app.loading_sample_path = None;
+        navigate_mobile_screen(&mut app, MobileScreen::Editor);
+    });
+}
+
+async fn pause_for(duration: Duration) {
+    #[cfg(target_arch = "wasm32")]
+    {
+        TimeoutFuture::new(duration.as_millis().clamp(0, u128::from(u32::MAX)) as u32).await;
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Delay::new(duration).await;
+    }
+}
+
 fn render_dashboard(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
     let page_key = review_page_key(snapshot, "dashboard");
     let page_class = review_page_class(snapshot, "review-page");
+    let any_loading = snapshot.loading_sample_path.is_some();
     rsx! {
         div { key: "{page_key}", class: "{page_class}",
             {review_top_bar("Project Dashboard".to_string(), None, None, state)}
@@ -275,13 +304,30 @@ fn render_dashboard(snapshot: &AppState, mut state: Signal<AppState>) -> Element
                     for sample in embedded_samples().iter() {
                         button {
                             key: "{sample.path}",
-                            class: "review-project-row",
+                            class: if snapshot.loading_sample_path.as_deref() == Some(sample.path) {
+                                "review-project-row loading"
+                            } else {
+                                "review-project-row"
+                            },
+                            disabled: any_loading,
                             onclick: {
                                 let sample_path = sample.path;
                                 move |_| {
-                                    let mut state = state.write();
-                                    load_embedded_sample(&mut state, sample_path);
-                                    navigate_mobile_screen(&mut state, MobileScreen::Editor);
+                                    let title = embedded_sample(sample_path)
+                                        .map_or_else(|| sample_path.to_string(), |sample| sample.title.to_string());
+                                    {
+                                        let mut app = state.write();
+                                        if app.loading_sample_path.is_some() {
+                                            return;
+                                        }
+                                        app.loading_sample_path = Some(sample_path.to_string());
+                                        app.status = l10n::text_with_args(
+                                            app.resolved_language(),
+                                            "dashboard-loading-status",
+                                            &[("sample", title)],
+                                        );
+                                    }
+                                    begin_loading_embedded_sample(state, sample_path);
                                 }
                             },
                             img {
@@ -292,7 +338,11 @@ fn render_dashboard(snapshot: &AppState, mut state: Signal<AppState>) -> Element
                             div { class: "review-project-copy",
                                 div { class: "review-project-title", "{sample.title}" }
                                 div { class: "review-project-meta", "{sample.subtitle}" }
-                                div { class: "review-project-meta", "{sample.meta}" }
+                                if snapshot.loading_sample_path.as_deref() == Some(sample.path) {
+                                    div { class: "review-project-loading", {t(snapshot, "dashboard-loading")} }
+                                } else {
+                                    div { class: "review-project-meta", "{sample.meta}" }
+                                }
                             }
                         }
                     }
@@ -926,7 +976,7 @@ fn spawn_pan_joystick_loop(
 ) {
     spawn(async move {
         loop {
-            Delay::new(JOYSTICK_LOOP_INTERVAL).await;
+            pause_for(JOYSTICK_LOOP_INTERVAL).await;
             if active_pointer.read().is_none() || *loop_token.read() != token {
                 break;
             }
@@ -952,7 +1002,7 @@ fn spawn_zoom_control_loop(
 ) {
     spawn(async move {
         loop {
-            Delay::new(ZOOM_LOOP_INTERVAL).await;
+            pause_for(ZOOM_LOOP_INTERVAL).await;
             if active_pointer.read().is_none() || *loop_token.read() != token {
                 break;
             }
@@ -3017,6 +3067,7 @@ fn set_review_active_layer_kind(state: &mut AppState, layer_index: usize, kind: 
             ReviewToolbarKind::Object => Tool::Select,
         };
     }
+    rebuild_flat_tile_layer_cache(state);
 }
 
 fn layer_thumb_variant(index: usize, layer: &Layer) -> &'static str {

@@ -17,6 +17,12 @@ use crate::{
 #[cfg(target_arch = "wasm32")]
 use crate::web_diag;
 
+#[cfg(any(target_arch = "wasm32", target_os = "android"))]
+const MOBILE_ONLY_SHELL: bool = true;
+
+#[cfg(not(any(target_arch = "wasm32", target_os = "android")))]
+const MOBILE_ONLY_SHELL: bool = false;
+
 #[component]
 pub(crate) fn App() -> Element {
     let state = use_signal(AppState::default);
@@ -32,16 +38,19 @@ pub(crate) fn App() -> Element {
     rsx! {
         style { "{STYLES}{MOBILE_REVIEW_STYLES}{theme_css}{THEME_STYLE_OVERRIDES}" }
         div { class: "app-shell",
-            {render_topbar(&snapshot, state)}
-            div { class: "workspace",
-                {render_desktop_left_panel(&snapshot, state)}
-                {render_canvas(&snapshot, state)}
-                div { class: "panel right desktop-panel",
-                    {render_palette(&snapshot, state)}
-                    {render_inspector(&snapshot, state)}
+            if MOBILE_ONLY_SHELL {
+                {render_mobile_shell(&snapshot, state)}
+            } else {
+                {render_topbar(&snapshot, state)}
+                div { class: "workspace",
+                    {render_desktop_left_panel(&snapshot, state)}
+                    {render_canvas(&snapshot, state)}
+                    div { class: "panel right desktop-panel",
+                        {render_palette(&snapshot, state)}
+                        {render_inspector(&snapshot, state)}
+                    }
                 }
             }
-            {render_mobile_shell(&snapshot, state)}
             {render_web_log_panel(&snapshot, state)}
         }
     }

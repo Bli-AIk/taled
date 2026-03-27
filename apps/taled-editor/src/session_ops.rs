@@ -6,7 +6,10 @@ use taled_core::{EditorSession, Layer};
 use crate::embedded_samples::{embedded_sample, embedded_samples};
 #[cfg(target_os = "android")]
 use crate::platform::log_path;
-use crate::{app_state::AppState, edit_ops::cancel_tile_selection_transfer, platform::log};
+use crate::{
+    app_state::AppState, edit_ops::cancel_tile_selection_transfer, platform::log,
+    ui_canvas::rebuild_flat_tile_layer_cache,
+};
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{demo::load_embedded_demo_session, platform::EMBEDDED_DEMO_MAP_PATH};
 
@@ -138,6 +141,7 @@ fn embedded_sample_paths() -> String {
 
 pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
     state.zoom_percent = (state.zoom_percent + delta).clamp(25, 400);
+    rebuild_flat_tile_layer_cache(state);
 }
 
 pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
@@ -159,6 +163,7 @@ pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
     state.zoom_percent = new_zoom_percent;
     state.pan_x = (center_x - world_center_x * new_zoom).round() as i32;
     state.pan_y = (center_y - world_center_y * new_zoom).round() as i32;
+    rebuild_flat_tile_layer_cache(state);
     state.status = format!("Zoom {}%.", state.zoom_percent);
 }
 
@@ -168,6 +173,7 @@ pub(crate) fn animate_camera_to_center(state: &mut AppState) {
     };
     state.pan_x = target_pan_x;
     state.pan_y = target_pan_y;
+    rebuild_flat_tile_layer_cache(state);
     state.camera_transition_active = true;
     state.status = "Centered camera.".to_string();
 }
@@ -179,6 +185,7 @@ pub(crate) fn animate_camera_to_fit_map(state: &mut AppState) {
     state.zoom_percent = target_zoom_percent;
     state.pan_x = target_pan_x;
     state.pan_y = target_pan_y;
+    rebuild_flat_tile_layer_cache(state);
     state.camera_transition_active = true;
     state.status = format!("Fit map to view at {}%.", state.zoom_percent);
 }
@@ -204,6 +211,7 @@ pub(crate) fn apply_undo(state: &mut AppState) {
 
     if session.undo() {
         normalize_after_history_change(state);
+        rebuild_flat_tile_layer_cache(state);
         state.status = "Undo applied.".to_string();
     } else {
         state.status = "Nothing to undo.".to_string();
@@ -219,6 +227,7 @@ pub(crate) fn apply_redo(state: &mut AppState) {
 
     if session.redo() {
         normalize_after_history_change(state);
+        rebuild_flat_tile_layer_cache(state);
         state.status = "Redo applied.".to_string();
     } else {
         state.status = "Nothing to redo.".to_string();
@@ -347,8 +356,11 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.suppress_click_until = None;
     state.canvas_host_scroll_offset = (0.0, 0.0);
     state.canvas_host_size = None;
+    state.flat_tile_layers_data_url = None;
+    state.flat_tile_layers_cell_bounds = None;
     state.image_cache = image_cache;
     state.session = Some(session);
+    rebuild_flat_tile_layer_cache(state);
 }
 
 fn default_mobile_center_pan(session: &EditorSession, zoom_percent: i32) -> (i32, i32) {
@@ -461,13 +473,70 @@ fn log_session_summary(session: &EditorSession, image_cache_len: usize) {
 }
 
 fn default_selected_gid(session: &EditorSession) -> u32 {
-    session
-        .document()
-        .map
-        .tilesets
+    let map = &session.document().map;
+
+    for layer in map.layers.iter().filter_map(Layer::as_tile) {
+        for gid in layer.tiles.iter().copied() {
+            if gid == 0 {
+                continue;
+            }
+
+            let Some(reference) = map.tile_reference_for_gid(gid) else {
+                continue;
+            };
+
+            if reference.tileset.tileset.name != "collision" {
+                return gid;
+            }
+        }
+    }
+
+    map.tilesets
         .iter()
         .find(|tileset| tileset.tileset.name != "collision" && tileset.tileset.tile_count > 1)
-        .or_else(|| session.document().map.tilesets.first())
+        .or_else(|| map.tilesets.first())
         .map(|tileset| tileset.first_gid)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use taled_core::EditorSession;
+
+    use super::default_selected_gid;
+    use crate::embedded_samples::embedded_sample_assets;
+
+    fn embedded_session(path: &str) -> EditorSession {
+        EditorSession::load_embedded(path, embedded_sample_assets())
+            .expect("embedded sample should load")
+    }
+
+    #[test]
+    fn default_selected_gid_prefers_used_non_collision_tile_for_theater() {
+        let session = embedded_session("maps/017-2.tmx");
+        let gid = default_selected_gid(&session);
+        let reference = session
+            .document()
+            .map
+            .tile_reference_for_gid(gid)
+            .expect("selected gid should resolve");
+
+        assert_ne!(gid, 0);
+        assert_ne!(reference.tileset.tileset.name, "collision");
+    }
+
+    #[test]
+    fn default_selected_gid_prefers_used_non_collision_tile_for_frontier() {
+        let session = embedded_session("maps/081-3.tmx");
+        let gid = default_selected_gid(&session);
+        let reference = session
+            .document()
+            .map
+            .tile_reference_for_gid(gid)
+            .expect("selected gid should resolve");
+
+        assert_ne!(gid, 0);
+        assert_ne!(reference.tileset.tileset.name, "collision");
+        assert_ne!(reference.local_id, 0);
+    }
 }

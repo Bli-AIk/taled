@@ -14,6 +14,7 @@ use crate::app_state::{
     selection_cells_from_mask, selection_cells_from_region, selection_mask_from_cells,
     selection_region_from_cells, shape_fill_cells,
 };
+use crate::ui_canvas::rebuild_flat_tile_layer_cache;
 
 const TILE_SELECTION_DOUBLE_TAP_WINDOW: Duration = Duration::from_millis(320);
 
@@ -1654,7 +1655,9 @@ where
         return Err(EditorError::Invalid("No map loaded.".to_string()));
     };
 
-    session.edit(edit)
+    session.edit(edit)?;
+    rebuild_flat_tile_layer_cache(state);
+    Ok(())
 }
 
 #[cfg(test)]

@@ -8,6 +8,9 @@ nav-layers = 图层
 nav-objects = 对象
 nav-properties = 属性
 
+dashboard-loading = 正在加载…
+dashboard-loading-status = 正在加载 { $sample }…
+
 settings-title = 全局设置
 settings-language-caption = 语言
 settings-language-auto = 自动

@@ -8,6 +8,9 @@ nav-layers = Layers
 nav-objects = Objects
 nav-properties = Properties
 
+dashboard-loading = Loading...
+dashboard-loading-status = Loading { $sample }...
+
 settings-title = App Settings
 settings-language-caption = Language
 settings-language-auto = Auto

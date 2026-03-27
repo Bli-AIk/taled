@@ -171,6 +171,13 @@ pub(crate) const STYLES: &str = r#"
     position: absolute;
     box-sizing: border-box;
   }
+  .canvas-flat-layer {
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    display: block;
+    image-rendering: pixelated;
+  }
   .tile-sprite {
     z-index: 1;
   }

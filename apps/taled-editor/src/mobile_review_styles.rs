@@ -216,6 +216,13 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     background: transparent;
     color: inherit;
     text-align: left;
+    transition: opacity 140ms ease, background-color 140ms ease;
+  }
+  .review-project-row.loading {
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .review-project-row:disabled {
+    opacity: 0.68;
   }
   .review-project-row:first-child {
     border-top: none;
@@ -236,6 +243,7 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     line-height: 1.15;
   }
   .review-project-meta,
+  .review-project-loading,
   .review-info-meta,
   .review-sync-meta,
   .review-script-row,
@@ -243,6 +251,10 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     color: #8f8f95;
     font-size: 13px;
     line-height: 1.3;
+  }
+  .review-project-loading {
+    color: #d7e2f2;
+    font-weight: 600;
   }
   .review-bottom-nav {
     flex: none;
