@@ -7,6 +7,7 @@ use crate::{
     app_state::{
         AppState, TileSelectionRegion, Tool, is_tile_selection_tool, selection_bounds,
         selection_cells_are_rectangular, selection_cells_from_region, selection_region_from_cells,
+        shape_fill_cells,
     },
     edit_ops::{apply_cell_tool, clear_tile_selection_immediately},
     platform::log,
@@ -429,24 +430,26 @@ fn build_shape_fill_preview(
 ) -> ShapeFillPreviewVisual {
     let (min_x, min_y, max_x, max_y) = preview_bounds(preview);
     let mut tiles = Vec::new();
+    let preview_cells = shape_fill_cells(
+        snapshot.shape_fill_mode,
+        preview.start_cell.0,
+        preview.start_cell.1,
+        preview.end_cell.0,
+        preview.end_cell.1,
+    );
 
-    for y in min_y..=max_y {
-        for x in min_x..=max_x {
-            let style =
-                preview_tile_style(document, &snapshot.image_cache, snapshot.selected_gid, x, y)
-                    .unwrap_or_else(|| {
-                        cell_style(document.map.tile_width, document.map.tile_height, x, y)
-                    });
-            tiles.push(ShapeFillPreviewTile {
-                x: x as i32,
-                y: y as i32,
-                style,
-                fallback: document
-                    .map
-                    .tile_reference_for_gid(snapshot.selected_gid)
-                    .is_none(),
-            });
-        }
+    for (x, y) in preview_cells {
+        let style = preview_tile_style(document, &snapshot.image_cache, snapshot.selected_gid, x, y)
+            .unwrap_or_else(|| cell_style(document.map.tile_width, document.map.tile_height, x, y));
+        tiles.push(ShapeFillPreviewTile {
+            x: x as i32,
+            y: y as i32,
+            style,
+            fallback: document
+                .map
+                .tile_reference_for_gid(snapshot.selected_gid)
+                .is_none(),
+        });
     }
 
     ShapeFillPreviewVisual {

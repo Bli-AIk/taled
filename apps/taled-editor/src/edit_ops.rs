@@ -9,9 +9,10 @@ use taled_core::{
 };
 
 use crate::app_state::{
-    AppState, TileClipboard, TileSelectionMode, TileSelectionRegion, TileSelectionTransfer,
-    TileSelectionTransferMode, Tool, selection_bounds, selection_cells_from_mask,
-    selection_cells_from_region, selection_mask_from_cells, selection_region_from_cells,
+    AppState, ShapeFillMode, TileClipboard, TileSelectionMode, TileSelectionRegion,
+    TileSelectionTransfer, TileSelectionTransferMode, Tool, selection_bounds,
+    selection_cells_from_mask, selection_cells_from_region, selection_mask_from_cells,
+    selection_region_from_cells, shape_fill_cells,
 };
 
 const TILE_SELECTION_DOUBLE_TAP_WINDOW: Duration = Duration::from_millis(320);
@@ -178,7 +179,7 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
             });
         }
         Tool::Fill => apply_fill(state, x, y),
-        Tool::ShapeFill => apply_shape_fill_rect(state, x, y, x, y),
+        Tool::ShapeFill => apply_shape_fill(state, x, y, x, y),
         Tool::Select => {
             if state
                 .session
@@ -836,7 +837,7 @@ pub(crate) fn cancel_tile_selection_transfer(state: &mut AppState) {
     state.tile_selection_last_tap_at = None;
 }
 
-pub(crate) fn apply_shape_fill_rect(
+pub(crate) fn apply_shape_fill(
     state: &mut AppState,
     start_x: u32,
     start_y: u32,
@@ -845,10 +846,9 @@ pub(crate) fn apply_shape_fill_rect(
 ) {
     let layer_index = state.active_layer;
     let gid = state.selected_gid;
-    let min_x = start_x.min(end_x);
-    let max_x = start_x.max(end_x);
-    let min_y = start_y.min(end_y);
-    let max_y = start_y.max(end_y);
+    let shape_fill_mode = state.shape_fill_mode;
+    let cells = shape_fill_cells(shape_fill_mode, start_x, start_y, end_x, end_y);
+    let cell_count = cells.len();
 
     apply_edit(state, move |document| {
         let layer = document
@@ -861,13 +861,17 @@ pub(crate) fn apply_shape_fill_rect(
         let tile_layer = layer
             .as_tile_mut()
             .ok_or_else(|| EditorError::Invalid("active layer is not a tile layer".to_string()))?;
-        for y in min_y..=max_y {
-            for x in min_x..=max_x {
-                tile_layer.set_tile(x, y, gid)?;
-            }
+        for (x, y) in &cells {
+            tile_layer.set_tile(*x, *y, gid)?;
         }
         Ok(())
     });
+
+    let label = match shape_fill_mode {
+        ShapeFillMode::Rectangle => "Rectangle",
+        ShapeFillMode::Ellipse => "Ellipse",
+    };
+    state.status = format!("Shape Fill ({label}) painted {cell_count} tiles.");
 }
 
 fn apply_fill(state: &mut AppState, x: u32, y: u32) {
@@ -1662,14 +1666,16 @@ mod tests {
 
     use super::{
         apply_cell_tool, apply_magic_wand_selection, apply_select_same_tile_selection,
-        apply_shape_fill_rect, apply_tile_selection_mode_region, copy_tile_selection,
+        apply_shape_fill, apply_tile_selection_mode_region, copy_tile_selection,
         cut_tile_selection, delete_tile_selection, flip_tile_selection_horizontally,
         flip_tile_selection_vertically, handle_tile_selection_tap, place_tile_selection_transfer,
         rotate_tile_selection_clockwise, select_tile_region,
     };
     use crate::app_state::{
-        AppState, TileSelectionMode, TileSelectionRegion, TileSelectionTransferMode, Tool,
+        AppState, ShapeFillMode, TileSelectionMode, TileSelectionRegion,
+        TileSelectionTransferMode, Tool,
     };
+    use crate::app_state::shape_fill_cells;
 
     fn sample_map_path() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -1690,6 +1696,21 @@ mod tests {
             selected_gid,
             tool,
             ..AppState::default()
+        }
+    }
+
+    fn seed_rectangle(state: &mut AppState, min_x: u32, min_y: u32, max_x: u32, max_y: u32, gid: u32) {
+        let cells = shape_fill_cells(ShapeFillMode::Rectangle, min_x, min_y, max_x, max_y);
+        if let Some(session) = state.session.as_mut() {
+            session
+                .edit(|document| {
+                    let layer = document.map.layers[0].as_tile_mut().expect("tile layer");
+                    cells
+                        .iter()
+                        .try_for_each(|(cell_x, cell_y)| layer.set_tile(*cell_x, *cell_y, gid))?;
+                    Ok(())
+                })
+                .expect("seed rectangle");
         }
     }
 
@@ -1730,8 +1751,9 @@ mod tests {
     #[test]
     fn shape_fill_paints_the_requested_rectangle() {
         let mut state = test_state(Tool::ShapeFill, 7);
+        state.shape_fill_mode = ShapeFillMode::Rectangle;
 
-        apply_shape_fill_rect(&mut state, 1, 1, 3, 2);
+        apply_shape_fill(&mut state, 1, 1, 3, 2);
 
         let session = state.session.as_ref().expect("session");
         let layer = session.document().map.layers[0]
@@ -1746,6 +1768,29 @@ mod tests {
         assert_eq!(layer.tile_at(5, 4), Some(2));
         assert!(session.can_undo());
         assert!(!session.can_redo());
+    }
+
+    #[test]
+    fn shape_fill_ellipse_skips_bounding_box_corners() {
+        let mut state = test_state(Tool::ShapeFill, 7);
+        state.shape_fill_mode = ShapeFillMode::Ellipse;
+        seed_rectangle(&mut state, 1, 1, 4, 4, 1);
+
+        apply_shape_fill(&mut state, 1, 1, 4, 4);
+
+        let session = state.session.as_ref().expect("session");
+        let layer = session.document().map.layers[0]
+            .as_tile()
+            .expect("tile layer");
+        assert_eq!(layer.tile_at(1, 1), Some(1));
+        assert_eq!(layer.tile_at(4, 1), Some(1));
+        assert_eq!(layer.tile_at(1, 4), Some(1));
+        assert_eq!(layer.tile_at(4, 4), Some(1));
+        assert_eq!(layer.tile_at(2, 1), Some(7));
+        assert_eq!(layer.tile_at(3, 1), Some(7));
+        assert_eq!(layer.tile_at(1, 2), Some(7));
+        assert_eq!(layer.tile_at(4, 3), Some(7));
+        assert!(session.can_undo());
     }
 
     #[test]

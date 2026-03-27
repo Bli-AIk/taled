@@ -9,8 +9,8 @@ use taled_core::{EditorSession, Layer, ObjectShape};
 
 use crate::{
     app_state::{
-        AppState, MobileScreen, MobileTransition, PaletteTile, TileSelectionMode, Tool,
-        is_tile_selection_tool, selection_bounds,
+        AppState, MobileScreen, MobileTransition, PaletteTile, ShapeFillMode, TileSelectionMode,
+        Tool, is_tile_selection_tool, selection_bounds,
     },
     edit_ops::{
         cancel_tile_selection_transfer, copy_tile_selection, create_object, cut_tile_selection,
@@ -1872,9 +1872,10 @@ fn review_tool_side_panel(
 ) -> Element {
     let selection_mode_active =
         kind == ReviewToolbarKind::Tile && is_tile_selection_tool(snapshot.tool);
+    let shape_fill_mode_active = kind == ReviewToolbarKind::Tile && snapshot.tool == Tool::ShapeFill;
     rsx! {
         div {
-            class: if selection_mode_active {
+            class: if selection_mode_active || shape_fill_mode_active {
                 "review-tile-strip-side active"
             } else {
                 "review-tile-strip-side"
@@ -1887,47 +1888,77 @@ fn review_tool_side_panel(
                 },
                 aria_hidden: (!selection_mode_active).to_string(),
                 {review_selection_mode_button(
+                    snapshot,
                     snapshot.tile_selection_mode == TileSelectionMode::Replace,
-                    "Replace",
-                    "Selection mode: Replace.",
+                    "selection-mode-replace",
+                    "selection-mode-status-replace",
                     ReviewToolGlyph::SelectionReplace,
                     TileSelectionMode::Replace,
                     state,
                 )}
                 {review_selection_mode_button(
+                    snapshot,
                     snapshot.tile_selection_mode == TileSelectionMode::Add,
-                    "Add",
-                    "Selection mode: Add.",
+                    "selection-mode-add",
+                    "selection-mode-status-add",
                     ReviewToolGlyph::SelectionAdd,
                     TileSelectionMode::Add,
                     state,
                 )}
                 {review_selection_mode_button(
+                    snapshot,
                     snapshot.tile_selection_mode == TileSelectionMode::Subtract,
-                    "Subtract",
-                    "Selection mode: Subtract.",
+                    "selection-mode-subtract",
+                    "selection-mode-status-subtract",
                     ReviewToolGlyph::SelectionSubtract,
                     TileSelectionMode::Subtract,
                     state,
                 )}
                 {review_selection_mode_button(
+                    snapshot,
                     snapshot.tile_selection_mode == TileSelectionMode::Intersect,
-                    "Intersect",
-                    "Selection mode: Intersect.",
+                    "selection-mode-intersect",
+                    "selection-mode-status-intersect",
                     ReviewToolGlyph::SelectionIntersect,
                     TileSelectionMode::Intersect,
                     state,
                 )}
             }
             div {
-                class: if selection_mode_active {
+                class: if shape_fill_mode_active {
+                    "review-tile-strip-side-pane review-tile-strip-side-pane-modes active"
+                } else {
+                    "review-tile-strip-side-pane review-tile-strip-side-pane-modes"
+                },
+                aria_hidden: (!shape_fill_mode_active).to_string(),
+                {review_shape_fill_mode_button(
+                    snapshot,
+                    snapshot.shape_fill_mode == ShapeFillMode::Rectangle,
+                    "shape-fill-mode-rectangle",
+                    "shape-fill-mode-status-rectangle",
+                    ReviewToolGlyph::RectangularSelect,
+                    ShapeFillMode::Rectangle,
+                    state,
+                )}
+                {review_shape_fill_mode_button(
+                    snapshot,
+                    snapshot.shape_fill_mode == ShapeFillMode::Ellipse,
+                    "shape-fill-mode-ellipse",
+                    "shape-fill-mode-status-ellipse",
+                    ReviewToolGlyph::InsertEllipse,
+                    ShapeFillMode::Ellipse,
+                    state,
+                )}
+            }
+            div {
+                class: if selection_mode_active || shape_fill_mode_active {
                     "review-tile-strip-side-pane review-tile-strip-side-empty"
                 } else {
                     "review-tile-strip-side-pane review-tile-strip-side-empty active"
                 },
-                aria_hidden: selection_mode_active.to_string(),
-                span { "No tool" }
-                span { "options" }
+                aria_hidden: (selection_mode_active || shape_fill_mode_active).to_string(),
+                span { {t(snapshot, "tile-strip-side-empty-line-1")} }
+                span { {t(snapshot, "tile-strip-side-empty-line-2")} }
             }
         }
     }
@@ -2356,9 +2387,10 @@ fn review_tool_row(
 }
 
 fn review_selection_mode_button(
+    snapshot: &AppState,
     active: bool,
-    label: &'static str,
-    status: &'static str,
+    label_key: &'static str,
+    status_key: &'static str,
     glyph: ReviewToolGlyph,
     mode: TileSelectionMode,
     mut state: Signal<AppState>,
@@ -2368,6 +2400,7 @@ fn review_selection_mode_button(
     } else {
         "review-tool-subbutton"
     };
+    let label = t(snapshot, label_key);
 
     rsx! {
         button {
@@ -2375,7 +2408,38 @@ fn review_selection_mode_button(
             onclick: move |_| {
                 let mut state = state.write();
                 state.tile_selection_mode = mode;
-                state.status = status.to_string();
+                state.status = l10n::text(state.resolved_language(), status_key);
+            },
+            div { class: "review-tool-subbutton-icon", {review_tool_icon(&glyph)} }
+            "{label}"
+        }
+    }
+}
+
+fn review_shape_fill_mode_button(
+    snapshot: &AppState,
+    active: bool,
+    label_key: &'static str,
+    status_key: &'static str,
+    glyph: ReviewToolGlyph,
+    mode: ShapeFillMode,
+    mut state: Signal<AppState>,
+) -> Element {
+    let class_name = if active {
+        "review-tool-subbutton active"
+    } else {
+        "review-tool-subbutton"
+    };
+    let label = t(snapshot, label_key);
+
+    rsx! {
+        button {
+            class: "{class_name}",
+            onclick: move |_| {
+                let mut state = state.write();
+                state.shape_fill_mode = mode;
+                state.status = l10n::text(state.resolved_language(), status_key);
+                state.shape_fill_preview = None;
             },
             div { class: "review-tool-subbutton-icon", {review_tool_icon(&glyph)} }
             "{label}"

@@ -16,7 +16,7 @@ use crate::{
     },
     edit_ops::{
         active_tile_gid, apply_cell_tool, apply_magic_wand_selection,
-        apply_select_same_tile_selection, apply_shape_fill_rect, apply_tile_selection_mode_region,
+        apply_select_same_tile_selection, apply_shape_fill, apply_tile_selection_mode_region,
         clear_tile_selection_immediately, handle_tile_selection_tap, preview_magic_wand_selection,
         preview_select_same_tile_selection,
     },
@@ -689,7 +689,7 @@ fn apply_touch_tool(
                 .map(|(cell_x, cell_y)| (cell_x.max(0) as u32, cell_y.max(0) as u32))
                 .unwrap_or((end_x, end_y));
             state.selected_cell = Some((end_x, end_y));
-            apply_shape_fill_rect(state, start_x, start_y, end_x, end_y);
+            apply_shape_fill(state, start_x, start_y, end_x, end_y);
         }
         _ => {
             let Some((cell_x, cell_y)) = cell_from_surface(state, x, y) else {

@@ -882,8 +882,13 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     flex-direction: column;
     gap: 3px;
     opacity: 0;
-    transform: translateX(10px);
-    transition: opacity 180ms ease, transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    visibility: hidden;
+    z-index: 0;
+    transform: translate3d(120%, 0, 0);
+    transition:
+      opacity 180ms ease,
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      visibility 0s linear 180ms;
     pointer-events: none;
     overflow-y: auto;
     overflow-x: hidden;
@@ -895,8 +900,11 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
   }
   .review-tile-strip-side-pane.active {
     opacity: 1;
-    transform: translateX(0);
+    visibility: visible;
+    z-index: 1;
+    transform: translate3d(0, 0, 0);
     pointer-events: auto;
+    transition-delay: 0s, 0s, 0s;
   }
   .review-tile-strip-side-empty {
     align-items: center;

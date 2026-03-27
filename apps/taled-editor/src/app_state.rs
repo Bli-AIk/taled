@@ -42,6 +42,12 @@ pub(crate) enum TileSelectionMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ShapeFillMode {
+    Rectangle,
+    Ellipse,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum MobileScreen {
     Dashboard,
     Editor,
@@ -161,6 +167,7 @@ pub(crate) struct AppState {
     pub(crate) tile_selection_last_tap_at: Option<Instant>,
     pub(crate) tile_selection_transfer: Option<TileSelectionTransfer>,
     pub(crate) tile_selection_mode: TileSelectionMode,
+    pub(crate) shape_fill_mode: ShapeFillMode,
     pub(crate) tool: Tool,
     pub(crate) layers_panel_expanded: bool,
     pub(crate) mobile_screen: MobileScreen,
@@ -220,6 +227,7 @@ impl Default for AppState {
                 tile_selection_last_tap_at: None,
                 tile_selection_transfer: None,
                 tile_selection_mode: TileSelectionMode::Replace,
+                shape_fill_mode: ShapeFillMode::Rectangle,
                 tool: Tool::Paint,
                 layers_panel_expanded: false,
                 mobile_screen,
@@ -277,6 +285,7 @@ impl Default for AppState {
                 tile_selection_last_tap_at: None,
                 tile_selection_transfer: None,
                 tile_selection_mode: TileSelectionMode::Replace,
+                shape_fill_mode: ShapeFillMode::Rectangle,
                 tool: Tool::Paint,
                 layers_panel_expanded: false,
                 mobile_screen: MobileScreen::Dashboard,
@@ -338,6 +347,7 @@ impl Default for AppState {
                 tile_selection_last_tap_at: None,
                 tile_selection_transfer: None,
                 tile_selection_mode: TileSelectionMode::Replace,
+                shape_fill_mode: ShapeFillMode::Rectangle,
                 tool: Tool::Paint,
                 layers_panel_expanded: false,
                 mobile_screen: MobileScreen::Editor,
@@ -454,6 +464,65 @@ pub(crate) fn selection_cells_are_rectangular(
     let (min_x, min_y, max_x, max_y) = selection_bounds(region);
     let expected = ((max_x - min_x + 1) * (max_y - min_y + 1)) as usize;
     cells.len() == expected
+}
+
+pub(crate) fn shape_fill_cells(
+    mode: ShapeFillMode,
+    start_x: u32,
+    start_y: u32,
+    end_x: u32,
+    end_y: u32,
+) -> BTreeSet<(u32, u32)> {
+    let min_x = start_x.min(end_x);
+    let max_x = start_x.max(end_x);
+    let min_y = start_y.min(end_y);
+    let max_y = start_y.max(end_y);
+    let mut cells = BTreeSet::new();
+
+    match mode {
+        ShapeFillMode::Rectangle => {
+            for y in min_y..=max_y {
+                for x in min_x..=max_x {
+                    cells.insert((x, y));
+                }
+            }
+        }
+        ShapeFillMode::Ellipse => {
+            let width = (max_x - min_x + 1) as f32;
+            let height = (max_y - min_y + 1) as f32;
+            let center_x = min_x as f32 + width / 2.0;
+            let center_y = min_y as f32 + height / 2.0;
+            let radius_x = width / 2.0;
+            let radius_y = height / 2.0;
+
+            cells.extend((min_y..=max_y).flat_map(|tile_y| {
+                (min_x..=max_x)
+                    .filter(move |&tile_x| {
+                        ellipse_contains_tile(
+                            center_x, center_y, radius_x, radius_y, tile_x, tile_y,
+                        )
+                    })
+                    .map(move |tile_x| (tile_x, tile_y))
+            }));
+        }
+    }
+
+    cells
+}
+
+fn ellipse_contains_tile(
+    center_x: f32,
+    center_y: f32,
+    radius_x: f32,
+    radius_y: f32,
+    tile_x: u32,
+    tile_y: u32,
+) -> bool {
+    let tile_center_x = tile_x as f32 + 0.5;
+    let tile_center_y = tile_y as f32 + 0.5;
+    let normalized_x = (tile_center_x - center_x) / radius_x.max(f32::EPSILON);
+    let normalized_y = (tile_center_y - center_y) / radius_y.max(f32::EPSILON);
+    normalized_x * normalized_x + normalized_y * normalized_y <= 1.0
 }
 
 pub(crate) fn is_tile_selection_tool(tool: Tool) -> bool {
