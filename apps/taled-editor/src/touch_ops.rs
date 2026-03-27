@@ -50,6 +50,7 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
     }
     event.prevent_default();
     suppress_synthetic_click(state);
+    state.camera_transition_active = false;
 
     let point = touch_surface_point(state, &event);
     upsert_touch_point(state, event.pointer_id(), point.x, point.y);
@@ -134,6 +135,8 @@ pub(crate) fn handle_touch_pointer_down(state: &mut AppState, event: Event<Point
         last_applied_cell: None,
         last_surface_x: point.x,
         last_surface_y: point.y,
+        pan_remainder_x: 0.0,
+        pan_remainder_y: 0.0,
     });
     state.shape_fill_preview = if state.tool == Tool::ShapeFill {
         anchor_cell.and_then(|cell| {
@@ -206,12 +209,28 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
             gesture.last_surface_x = point.x;
             gesture.last_surface_y = point.y;
             gesture.drag_active = true;
-            (delta_x, delta_y)
+            gesture.pan_remainder_x += delta_x;
+            gesture.pan_remainder_y += delta_y;
+            let apply_x = if gesture.pan_remainder_x.abs() >= 1.0 {
+                let integral = gesture.pan_remainder_x.trunc();
+                gesture.pan_remainder_x -= integral;
+                integral as i32
+            } else {
+                0
+            };
+            let apply_y = if gesture.pan_remainder_y.abs() >= 1.0 {
+                let integral = gesture.pan_remainder_y.trunc();
+                gesture.pan_remainder_y -= integral;
+                integral as i32
+            } else {
+                0
+            };
+            (apply_x, apply_y)
         };
 
-        if delta_x.abs() >= 0.5 || delta_y.abs() >= 0.5 {
-            state.pan_x += delta_x.round() as i32;
-            state.pan_y += delta_y.round() as i32;
+        if delta_x != 0 || delta_y != 0 {
+            state.pan_x += delta_x;
+            state.pan_y += delta_y;
             refresh_flat_tile_layer_cache_if_needed(state);
         }
         return;
@@ -1104,6 +1123,7 @@ fn initialize_pinch_gesture(state: &mut AppState) {
     let distance = touch_distance(first, second).max(MIN_PINCH_DISTANCE);
     let world_center_x = (center_x - f64::from(state.pan_x)) / zoom;
     let world_center_y = (center_y - f64::from(state.pan_y)) / zoom;
+    state.camera_transition_active = false;
 
     state.pinch_gesture = Some(PinchGesture {
         initial_distance: distance,
@@ -1517,6 +1537,8 @@ mod tests {
             last_applied_cell: None,
             last_surface_x: 0.0,
             last_surface_y: 0.0,
+            pan_remainder_x: 0.0,
+            pan_remainder_y: 0.0,
         };
 
         assert!(!should_preserve_existing_selection(&gesture));
@@ -1536,6 +1558,8 @@ mod tests {
             last_applied_cell: None,
             last_surface_x: 0.0,
             last_surface_y: 0.0,
+            pan_remainder_x: 0.0,
+            pan_remainder_y: 0.0,
         };
 
         assert!(should_preserve_existing_selection(&gesture));
@@ -1555,6 +1579,8 @@ mod tests {
             last_applied_cell: None,
             last_surface_x: 0.0,
             last_surface_y: 0.0,
+            pan_remainder_x: 0.0,
+            pan_remainder_y: 0.0,
         };
 
         assert!(should_preserve_existing_selection(&gesture));

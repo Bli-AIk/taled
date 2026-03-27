@@ -1,5 +1,11 @@
+#[cfg(target_os = "android")]
+use std::time::Duration;
+
 use dioxus::prelude::*;
 use taled_core::{EditorSession, Layer};
+
+#[cfg(target_os = "android")]
+use futures_timer::Delay;
 
 use crate::{
     app_state::{AppState, Tool},
@@ -32,6 +38,29 @@ pub(crate) fn App() -> Element {
     use_effect(move || {
         crate::platform::mark_app_rendered();
     });
+
+    #[cfg(target_os = "android")]
+    {
+        let mut back_state = state;
+        let _android_back_loop = use_future(move || async move {
+            loop {
+                Delay::new(Duration::from_millis(40)).await;
+                let back_presses = crate::platform::take_android_back_presses();
+                if back_presses == 0 {
+                    continue;
+                }
+                for _ in 0..back_presses {
+                    let handled = {
+                        let mut app = back_state.write();
+                        crate::mobile_review::handle_android_back(&mut app)
+                    };
+                    if !handled {
+                        crate::platform::finish_app();
+                    }
+                }
+            }
+        });
+    }
 
     let theme_css = runtime_theme_css(snapshot.theme_choice, &snapshot.custom_theme);
 

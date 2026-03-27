@@ -89,6 +89,8 @@ pub(crate) struct SingleTouchGesture {
     pub(crate) last_applied_cell: Option<(u32, u32)>,
     pub(crate) last_surface_x: f64,
     pub(crate) last_surface_y: f64,
+    pub(crate) pan_remainder_x: f64,
+    pub(crate) pan_remainder_y: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

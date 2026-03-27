@@ -942,6 +942,8 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     background: #486d35;
     background-repeat: no-repeat;
     background-position: center;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
   .review-tile-chip.selected {
     border: 2px solid #0a84ff;
@@ -985,6 +987,8 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     border: none;
     background-repeat: no-repeat;
     background-position: center;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
   .review-sheet-cell.active {
     box-shadow: inset 0 0 0 3px #0a84ff;
@@ -1542,6 +1546,12 @@ pub(crate) const MOBILE_REVIEW_STYLES: &str = r#"
     border-radius: 0;
     box-shadow: none;
     touch-action: none;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+  .review-map-live .canvas-flat-layer {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
   .review-map-live .cell-hitbox {
     border-color: rgba(255,255,255,0.03);

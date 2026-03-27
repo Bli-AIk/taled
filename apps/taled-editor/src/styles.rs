@@ -180,12 +180,15 @@ pub(crate) const STYLES: &str = r#"
     pointer-events: none;
     display: block;
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
     will-change: transform;
     transform: translateZ(0);
     contain: strict;
   }
   .tile-sprite {
     z-index: 1;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
   .tile-preview,
   .shape-fill-preview-tile {
@@ -193,6 +196,8 @@ pub(crate) const STYLES: &str = r#"
     box-sizing: border-box;
     z-index: 4;
     pointer-events: none;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
   .tile-selection-transfer-preview-tile {
     opacity: 0.82;
@@ -335,6 +340,11 @@ pub(crate) const STYLES: &str = r#"
   .canvas.camera-transition {
     transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
+  .canvas,
+  .canvas * {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
   .cell-hitbox {
     z-index: 2;
     background: transparent;
@@ -374,6 +384,8 @@ pub(crate) const STYLES: &str = r#"
     background-color: #081019;
     background-repeat: no-repeat;
     border: 1px solid rgba(138, 158, 181, 0.18);
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
   }
   .palette-tile.active {
     border: 2px solid #f7b267;

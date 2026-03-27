@@ -530,7 +530,7 @@ fn flat_tile_symbol_svg(
     let source_y = (tile.local_id / columns) * tile_height;
 
     Some(format!(
-        "<symbol id=\"tile-{gid}\" viewBox=\"{} {} {} {}\" preserveAspectRatio=\"none\"><image href=\"{}\" width=\"{}\" height=\"{}\"/></symbol>",
+        "<symbol id=\"tile-{gid}\" viewBox=\"{} {} {} {}\" preserveAspectRatio=\"none\"><image href=\"{}\" width=\"{}\" height=\"{}\" image-rendering=\"pixelated\" preserveAspectRatio=\"none\"/></symbol>",
         source_x,
         source_y,
         tile_width,
@@ -680,7 +680,7 @@ fn sprite_style(
     let source_y = (tile.local_id / columns) * tile_height;
 
     Some(format!(
-        "left:{}px;top:{}px;width:{}px;height:{}px;background-image:url('{image}');background-position:-{}px -{}px;background-size:{}px {}px;",
+        "left:{}px;top:{}px;width:{}px;height:{}px;background-image:url('{image}');background-position:-{}px -{}px;background-size:{}px {}px;image-rendering:pixelated;image-rendering:crisp-edges;",
         x * document.map.tile_width,
         y * document.map.tile_height,
         document.map.tile_width,
@@ -740,7 +740,7 @@ fn preview_tile_style_signed(
     let source_y = (tile.local_id / columns) * tile_height;
 
     Some(format!(
-        "left:{}px;top:{}px;width:{}px;height:{}px;background-image:url('{image}');background-position:-{}px -{}px;background-size:{}px {}px;opacity:0.46;filter:saturate(0.92);",
+        "left:{}px;top:{}px;width:{}px;height:{}px;background-image:url('{image}');background-position:-{}px -{}px;background-size:{}px {}px;image-rendering:pixelated;image-rendering:crisp-edges;opacity:0.46;filter:saturate(0.92);",
         x * document.map.tile_width as i32,
         y * document.map.tile_height as i32,
         document.map.tile_width,

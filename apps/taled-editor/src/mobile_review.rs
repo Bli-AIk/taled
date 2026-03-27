@@ -17,10 +17,11 @@ use crate::{
         Tool, is_tile_selection_tool, selection_bounds,
     },
     edit_ops::{
-        cancel_tile_selection_transfer, copy_tile_selection, create_object, cut_tile_selection,
-        delete_selected_object, delete_tile_selection, flip_tile_selection_horizontally,
-        flip_tile_selection_vertically, nudge_selected_object, place_tile_selection_transfer,
-        rename_selected_object, rotate_tile_selection_clockwise, selected_object_view,
+        cancel_tile_selection_transfer, clear_tile_selection_immediately, copy_tile_selection,
+        create_object, cut_tile_selection, delete_selected_object, delete_tile_selection,
+        flip_tile_selection_horizontally, flip_tile_selection_vertically, nudge_selected_object,
+        place_tile_selection_transfer, rename_selected_object, rotate_tile_selection_clockwise,
+        selected_object_view,
         toggle_layer_lock, toggle_layer_visibility,
     },
     embedded_samples::{embedded_sample, embedded_sample_thumb, embedded_samples},
@@ -258,6 +259,41 @@ fn navigate_mobile_screen(state: &mut AppState, next: MobileScreen) {
     };
     state.mobile_transition_nonce = state.mobile_transition_nonce.wrapping_add(1);
     state.mobile_screen = next;
+}
+
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub(crate) fn handle_android_back(state: &mut AppState) -> bool {
+    match state.mobile_screen {
+        MobileScreen::Dashboard => false,
+        MobileScreen::Editor => {
+            if state.layers_panel_expanded {
+                state.layers_panel_expanded = false;
+                return true;
+            }
+            if state.tile_selection_transfer.is_some() {
+                cancel_tile_selection_transfer(state);
+                clear_tile_selection_immediately(state);
+                return true;
+            }
+            navigate_mobile_screen(state, MobileScreen::Dashboard);
+            true
+        }
+        MobileScreen::Tilesets
+        | MobileScreen::Layers
+        | MobileScreen::Objects
+        | MobileScreen::Properties => {
+            navigate_mobile_screen(state, MobileScreen::Editor);
+            true
+        }
+        MobileScreen::Settings => {
+            navigate_mobile_screen(state, MobileScreen::Dashboard);
+            true
+        }
+        MobileScreen::Themes | MobileScreen::About => {
+            navigate_mobile_screen(state, MobileScreen::Settings);
+            true
+        }
+    }
 }
 
 fn begin_loading_embedded_sample(mut state: Signal<AppState>, sample_path: &'static str) {

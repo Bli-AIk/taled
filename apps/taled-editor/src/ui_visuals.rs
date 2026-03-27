@@ -57,7 +57,7 @@ pub(crate) fn palette_tile_style(
     );
 
     format!(
-        "background-image:{tile_preview};background-position:center;background-size:100% 100%;background-repeat:no-repeat;",
+        "background-image:{tile_preview};background-position:center;background-size:100% 100%;background-repeat:no-repeat;image-rendering:pixelated;image-rendering:crisp-edges;",
     )
 }
 
@@ -172,11 +172,11 @@ fn tile_preview_data_uri(
 ) -> String {
     svg_data_uri(&format!(
         concat!(
-            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {size} {size}' shape-rendering='crispEdges'>",
+            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {size} {size}' shape-rendering='crispEdges' style='image-rendering:pixelated'>",
             "<rect width='{size}' height='{size}' rx='10' fill='transparent'/>",
             "<svg x='{inset_x}' y='{inset_y}' width='{rendered_width}' height='{rendered_height}' ",
             "viewBox='{source_x} {source_y} {tile_width} {tile_height}' preserveAspectRatio='none'>",
-            "<image href='{image}' width='{atlas_width}' height='{atlas_height}'/>",
+            "<image href='{image}' width='{atlas_width}' height='{atlas_height}' image-rendering='pixelated' preserveAspectRatio='none'/>",
             "</svg>",
             "</svg>"
         ),

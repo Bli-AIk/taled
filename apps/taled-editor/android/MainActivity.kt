@@ -1,6 +1,7 @@
 package dev.dioxus.main
 
 import android.os.Bundle
+import androidx.activity.OnBackPressedCallback
 import io.github.taled.editor.BuildConfig
 import java.io.File
 import java.io.PrintWriter
@@ -9,11 +10,19 @@ import java.io.StringWriter
 typealias BuildConfig = BuildConfig
 
 class MainActivity : WryActivity() {
+    private external fun nativeOnBackPressed()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installCrashLogger()
         appendBootstrapLog("activity:onCreate:start")
         try {
             super.onCreate(savedInstanceState)
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    appendBootstrapLog("activity:onBackPressedDispatcher")
+                    nativeOnBackPressed()
+                }
+            })
             appendBootstrapLog("activity:onCreate:ok")
         } catch (throwable: Throwable) {
             appendBootstrapLog("activity:onCreate:throw\n${stackTrace(throwable)}")
