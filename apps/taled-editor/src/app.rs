@@ -4,6 +4,7 @@ use taled_core::{EditorSession, Layer};
 use crate::{
     app_state::{AppState, Tool},
     edit_ops::{cancel_tile_selection_transfer, toggle_layer_lock, toggle_layer_visibility},
+    l10n,
     mobile_review::render_mobile_shell,
     mobile_review_styles::MOBILE_REVIEW_STYLES,
     session_ops::{adjust_zoom, load_sample, open_document, save_as_document, save_document},
@@ -176,14 +177,14 @@ fn render_desktop_left_panel(snapshot: &AppState, mut state: Signal<AppState>) -
         div { class: "panel desktop-panel",
             h2 { "Tools" }
             div { class: "tool-grid",
-                {tool_button(snapshot, state, Tool::Hand, "Hand")}
-                {tool_button(snapshot, state, Tool::Paint, "Paint")}
-                {tool_button(snapshot, state, Tool::Fill, "Fill")}
-                {tool_button(snapshot, state, Tool::ShapeFill, "Shape Fill")}
-                {tool_button(snapshot, state, Tool::Erase, "Erase")}
-                {tool_button(snapshot, state, Tool::Select, "Select")}
-                {tool_button(snapshot, state, Tool::AddRectangle, "Rect")}
-                {tool_button(snapshot, state, Tool::AddPoint, "Point")}
+                {tool_button(snapshot, state, Tool::Hand, "tool-hand")}
+                {tool_button(snapshot, state, Tool::Paint, "tool-stamp")}
+                {tool_button(snapshot, state, Tool::Fill, "tool-fill")}
+                {tool_button(snapshot, state, Tool::ShapeFill, "tool-shape-fill")}
+                {tool_button(snapshot, state, Tool::Erase, "tool-eraser")}
+                {tool_button(snapshot, state, Tool::Select, "tool-select")}
+                {tool_button(snapshot, state, Tool::AddRectangle, "tool-insert-rect")}
+                {tool_button(snapshot, state, Tool::AddPoint, "tool-insert-point")}
             }
 
             h2 { "View" }
@@ -250,9 +251,10 @@ fn tool_button(
     snapshot: &AppState,
     mut state: Signal<AppState>,
     tool: Tool,
-    label: &'static str,
+    label_key: &'static str,
 ) -> Element {
     let class = if snapshot.tool == tool { "active" } else { "" };
+    let label = l10n::text(snapshot.resolved_language(), label_key);
     rsx! {
         button {
             class: class,

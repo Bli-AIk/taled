@@ -1676,6 +1676,7 @@ mod tests {
         TileSelectionTransferMode, Tool,
     };
     use crate::app_state::shape_fill_cells;
+    use crate::embedded_samples::embedded_sample_assets;
 
     fn sample_map_path() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -1687,6 +1688,19 @@ mod tests {
             .join("samples")
             .join("stage1-basic")
             .join("map.tmx")
+    }
+
+    fn embedded_test_state(path: &str, selected_gid: u32) -> AppState {
+        AppState {
+            session: Some(
+                EditorSession::load_embedded(path, embedded_sample_assets())
+                    .expect("embedded sample should load"),
+            ),
+            active_layer: 0,
+            selected_gid,
+            tool: Tool::Paint,
+            ..AppState::default()
+        }
     }
 
     fn test_state(tool: Tool, selected_gid: u32) -> AppState {
@@ -1746,6 +1760,34 @@ mod tests {
         assert_eq!(layer.tile_at(2, 0), Some(2));
         assert!(session.can_undo());
         assert!(!session.can_redo());
+    }
+
+    #[test]
+    fn theater_embedded_sample_accepts_tile_paint_edits() {
+        let mut state = embedded_test_state("maps/017-2.tmx", 3);
+
+        apply_cell_tool(&mut state, 0, 0);
+
+        let session = state.session.as_ref().expect("session");
+        let layer = session.document().map.layers[0]
+            .as_tile()
+            .expect("tile layer");
+        assert_eq!(layer.tile_at(0, 0), Some(3));
+        assert!(session.can_undo());
+    }
+
+    #[test]
+    fn frontier_embedded_sample_accepts_tile_paint_edits() {
+        let mut state = embedded_test_state("maps/081-3.tmx", 3);
+
+        apply_cell_tool(&mut state, 0, 0);
+
+        let session = state.session.as_ref().expect("session");
+        let layer = session.document().map.layers[0]
+            .as_tile()
+            .expect("tile layer");
+        assert_eq!(layer.tile_at(0, 0), Some(3));
+        assert!(session.can_undo());
     }
 
     #[test]

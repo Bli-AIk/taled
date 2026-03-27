@@ -94,6 +94,18 @@ fn t(snapshot: &AppState, key: &str) -> String {
     l10n::text(snapshot.resolved_language(), key)
 }
 
+fn tool_label(snapshot: &AppState, key: &'static str) -> String {
+    t(snapshot, key)
+}
+
+fn tool_unimplemented_status(snapshot: &AppState, label_key: &'static str) -> String {
+    l10n::text_with_args(
+        snapshot.resolved_language(),
+        "tool-status-not-implemented",
+        &[("tool", tool_label(snapshot, label_key))],
+    )
+}
+
 fn nav_label(snapshot: &AppState, item: ReviewNavItem) -> String {
     match item {
         ReviewNavItem::Projects => t(snapshot, "nav-projects"),
@@ -2265,34 +2277,34 @@ fn review_tool_row(
 
     rsx! {
         div { key: "{toolbar_key}", class: "review-tool-row-shell review-tool-row-swap",
-            {review_tool_button(snapshot, state, Tool::Hand, ReviewToolGlyph::Hand, "Hand", Some("review-tool review-tool-pinned"))}
+            {review_tool_button(snapshot, state, Tool::Hand, ReviewToolGlyph::Hand, "tool-hand", Some("review-tool review-tool-pinned"))}
             div { class: "review-tool-divider" }
             div { class: "{toolbar_class}",
                 match kind {
                     ReviewToolbarKind::Tile => rsx! {
-                        {review_tool_button(snapshot, state, Tool::Paint, ReviewToolGlyph::StampBrush, "Stamp", None)}
+                        {review_tool_button(snapshot, state, Tool::Paint, ReviewToolGlyph::StampBrush, "tool-stamp", None)}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::TerrainBrush,
-                            "Terrain",
-                            "Terrain Brush is not implemented yet."
+                            "tool-terrain-brush",
                         )}
-                        {review_tool_button(snapshot, state, Tool::Fill, ReviewToolGlyph::Fill, "Fill", None)}
+                        {review_tool_button(snapshot, state, Tool::Fill, ReviewToolGlyph::Fill, "tool-fill", None)}
                         {review_tool_button(
                             snapshot,
                             state,
                             Tool::ShapeFill,
                             ReviewToolGlyph::ShapeFill,
-                            "Shape Fill",
+                            "tool-shape-fill",
                             None,
                         )}
-                        {review_tool_button(snapshot, state, Tool::Erase, ReviewToolGlyph::Erase, "Eraser", None)}
+                        {review_tool_button(snapshot, state, Tool::Erase, ReviewToolGlyph::Erase, "tool-eraser", None)}
                         {review_tool_button(
                             snapshot,
                             state,
                             Tool::Select,
                             ReviewToolGlyph::RectangularSelect,
-                            "Rect Select",
+                            "tool-rect-select",
                             None,
                         )}
                         {review_tool_button(
@@ -2300,7 +2312,7 @@ fn review_tool_row(
                             state,
                             Tool::MagicWand,
                             ReviewToolGlyph::MagicWand,
-                            "Magic Wand",
+                            "tool-magic-wand",
                             None,
                         )}
                         {review_tool_button(
@@ -2308,7 +2320,7 @@ fn review_tool_row(
                             state,
                             Tool::SelectSameTile,
                             ReviewToolGlyph::SelectSameTile,
-                            "Same Tile",
+                            "tool-same-tile",
                             None,
                         )}
                     },
@@ -2318,27 +2330,27 @@ fn review_tool_row(
                             state,
                             Tool::Select,
                             ReviewToolGlyph::SelectObject,
-                            "Select Object",
+                            "tool-select-object",
                             None,
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::InsertTile,
-                            "Insert Tile",
-                            "Insert Tile Object is not implemented yet."
+                            "tool-insert-tile",
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::EditPolygons,
-                            "Edit Polygon",
-                            "Edit Polygon is not implemented yet."
+                            "tool-edit-polygon",
                         )}
                         {review_tool_button(
                             snapshot,
                             state,
                             Tool::AddRectangle,
                             ReviewToolGlyph::InsertRectangle,
-                            "Insert Rect",
+                            "tool-insert-rect",
                             None,
                         )}
                         {review_tool_button(
@@ -2346,38 +2358,38 @@ fn review_tool_row(
                             state,
                             Tool::AddPoint,
                             ReviewToolGlyph::InsertPoint,
-                            "Insert Point",
+                            "tool-insert-point",
                             None,
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::InsertEllipse,
-                            "Insert Ellipse",
-                            "Insert Ellipse is not implemented yet."
+                            "tool-insert-ellipse",
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::InsertCapsule,
-                            "Insert Capsule",
-                            "Insert Capsule is not implemented yet."
+                            "tool-insert-capsule",
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::InsertPolygon,
-                            "Insert Polygon",
-                            "Insert Polygon is not implemented yet."
+                            "tool-insert-polygon",
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::InsertTemplate,
-                            "Insert Template",
-                            "Insert Template is not implemented yet."
+                            "tool-insert-template",
                         )}
                         {review_placeholder_tool_button(
+                            snapshot,
                             state,
                             ReviewToolGlyph::InsertText,
-                            "Insert Text",
-                            "Insert Text is not implemented yet."
+                            "tool-insert-text",
                         )}
                     },
                 }
@@ -2452,7 +2464,7 @@ fn review_tool_button(
     mut state: Signal<AppState>,
     tool: Tool,
     glyph: ReviewToolGlyph,
-    label: &'static str,
+    label_key: &'static str,
     class_override: Option<&'static str>,
 ) -> Element {
     let class_name = if let Some(class_override) = class_override {
@@ -2466,6 +2478,7 @@ fn review_tool_button(
     } else {
         "review-tool".to_string()
     };
+    let label = tool_label(snapshot, label_key);
 
     rsx! {
         button {
@@ -2485,15 +2498,17 @@ fn review_tool_button(
 }
 
 fn review_placeholder_tool_button(
+    snapshot: &AppState,
     mut state: Signal<AppState>,
     glyph: ReviewToolGlyph,
-    label: &'static str,
-    status: &'static str,
+    label_key: &'static str,
 ) -> Element {
+    let label = tool_label(snapshot, label_key);
+    let status = tool_unimplemented_status(snapshot, label_key);
     rsx! {
         button {
             class: "review-tool placeholder",
-            onclick: move |_| state.write().status = status.to_string(),
+            onclick: move |_| state.write().status = status.clone(),
             div { class: "review-tool-icon", {review_tool_icon(&glyph)} }
             span { "{label}" }
         }
