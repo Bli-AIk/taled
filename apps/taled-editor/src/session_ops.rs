@@ -8,7 +8,7 @@ use crate::embedded_samples::{embedded_sample, embedded_samples};
 use crate::platform::log_path;
 use crate::{
     app_state::AppState, edit_ops::cancel_tile_selection_transfer, platform::log,
-    ui_canvas::rebuild_flat_tile_layer_cache,
+    ui_canvas::rebuild_render_caches,
 };
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{demo::load_embedded_demo_session, platform::EMBEDDED_DEMO_MAP_PATH};
@@ -141,7 +141,7 @@ fn embedded_sample_paths() -> String {
 
 pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
     state.zoom_percent = (state.zoom_percent + delta).clamp(25, 400);
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
 }
 
 pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
@@ -163,7 +163,7 @@ pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
     state.zoom_percent = new_zoom_percent;
     state.pan_x = (center_x - world_center_x * new_zoom).round() as i32;
     state.pan_y = (center_y - world_center_y * new_zoom).round() as i32;
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
     state.status = format!("Zoom {}%.", state.zoom_percent);
 }
 
@@ -173,7 +173,7 @@ pub(crate) fn animate_camera_to_center(state: &mut AppState) {
     };
     state.pan_x = target_pan_x;
     state.pan_y = target_pan_y;
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
     state.camera_transition_active = true;
     state.status = "Centered camera.".to_string();
 }
@@ -185,7 +185,7 @@ pub(crate) fn animate_camera_to_fit_map(state: &mut AppState) {
     state.zoom_percent = target_zoom_percent;
     state.pan_x = target_pan_x;
     state.pan_y = target_pan_y;
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
     state.camera_transition_active = true;
     state.status = format!("Fit map to view at {}%.", state.zoom_percent);
 }
@@ -211,7 +211,7 @@ pub(crate) fn apply_undo(state: &mut AppState) {
 
     if session.undo() {
         normalize_after_history_change(state);
-        rebuild_flat_tile_layer_cache(state);
+        rebuild_render_caches(state);
         state.status = "Undo applied.".to_string();
     } else {
         state.status = "Nothing to undo.".to_string();
@@ -227,7 +227,7 @@ pub(crate) fn apply_redo(state: &mut AppState) {
 
     if session.redo() {
         normalize_after_history_change(state);
-        rebuild_flat_tile_layer_cache(state);
+        rebuild_render_caches(state);
         state.status = "Redo applied.".to_string();
     } else {
         state.status = "Nothing to redo.".to_string();
@@ -309,6 +309,8 @@ fn normalize_after_history_change(state: &mut AppState) {
 }
 
 fn install_session(state: &mut AppState, session: EditorSession) {
+    let install_started_at_ms = perf_now_ms();
+    let image_cache_started_at_ms = perf_now_ms();
     let mut image_cache = BTreeMap::new();
     for (index, _) in session.document().map.tilesets.iter().enumerate() {
         match session.tileset_image_data_uri(index) {
@@ -323,11 +325,14 @@ fn install_session(state: &mut AppState, session: EditorSession) {
             }
         }
     }
+    let image_cache_duration_ms = perf_now_ms() - image_cache_started_at_ms;
 
     #[cfg(any(target_arch = "wasm32", target_os = "android"))]
     log_session_summary(&session, image_cache.len());
 
+    let selected_gid_started_at_ms = perf_now_ms();
     let selected_gid = default_selected_gid(&session);
+    let selected_gid_duration_ms = perf_now_ms() - selected_gid_started_at_ms;
     state.active_layer = 0;
     state.selected_gid = selected_gid;
     state.selected_cell = None;
@@ -356,11 +361,40 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.suppress_click_until = None;
     state.canvas_host_scroll_offset = (0.0, 0.0);
     state.canvas_host_size = None;
+    crate::ui_canvas::revoke_cache_urls(state);
     state.flat_tile_layers_data_url = None;
     state.flat_tile_layers_cell_bounds = None;
+    state.flat_object_layers_data_url = None;
+    state.flat_object_layers_cell_bounds = None;
+    state.active_tile_layer_data_url = None;
+    state.active_tile_layer_cell_bounds = None;
+    state.active_tile_layer_cache_dirty = false;
+    state.active_tile_layer_separated = false;
     state.image_cache = image_cache;
+    state.palette_styles = BTreeMap::new();
     state.session = Some(session);
-    rebuild_flat_tile_layer_cache(state);
+    log(format!(
+        "perf: install-session pre-cache image_cache_ms={image_cache_duration_ms:.1} default_gid_ms={selected_gid_duration_ms:.1} total_ms={:.1}",
+        perf_now_ms() - install_started_at_ms,
+    ));
+    rebuild_render_caches(state);
+    log(format!(
+        "perf: install-session complete total_ms={:.1}",
+        perf_now_ms() - install_started_at_ms,
+    ));
+}
+
+#[cfg(target_arch = "wasm32")]
+fn perf_now_ms() -> f64 {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn perf_now_ms() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs_f64() * 1_000.0)
+        .unwrap_or_default()
 }
 
 fn default_mobile_center_pan(session: &EditorSession, zoom_percent: i32) -> (i32, i32) {

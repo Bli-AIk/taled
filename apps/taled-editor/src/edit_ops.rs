@@ -14,7 +14,7 @@ use crate::app_state::{
     selection_cells_from_mask, selection_cells_from_region, selection_mask_from_cells,
     selection_region_from_cells, shape_fill_cells,
 };
-use crate::ui_canvas::rebuild_flat_tile_layer_cache;
+use crate::ui_canvas::{rebuild_active_tile_layer_cache, rebuild_render_caches};
 
 const TILE_SELECTION_DOUBLE_TAP_WINDOW: Duration = Duration::from_millis(320);
 
@@ -150,7 +150,7 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
         Tool::Hand => {}
         Tool::Paint => {
             let gid = state.selected_gid;
-            apply_edit(state, move |document| {
+            apply_tile_layer_content_edit(state, move |document| {
                 let layer = document.map.layer_mut(layer_index).ok_or_else(|| {
                     EditorError::Invalid(format!("unknown layer index {layer_index}"))
                 })?;
@@ -165,7 +165,7 @@ pub(crate) fn apply_cell_tool(state: &mut AppState, x: u32, y: u32) {
             });
         }
         Tool::Erase => {
-            apply_edit(state, move |document| {
+            apply_tile_layer_content_edit(state, move |document| {
                 let layer = document.map.layer_mut(layer_index).ok_or_else(|| {
                     EditorError::Invalid(format!("unknown layer index {layer_index}"))
                 })?;
@@ -645,7 +645,7 @@ pub(crate) fn flip_tile_selection_horizontally(state: &mut AppState) {
     let mask_for_edit = mask.clone();
     let next_mask_for_edit = next_mask.clone();
 
-    apply_edit(state, move |document| {
+    apply_tile_layer_content_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
         let snapshot = capture_region_clipped(tile_layer, min_x, min_y, width, height);
         let flipped_tiles = flip_tiles_horizontally(width, height, &snapshot);
@@ -689,7 +689,7 @@ pub(crate) fn flip_tile_selection_vertically(state: &mut AppState) {
     let mask_for_edit = mask.clone();
     let next_mask_for_edit = next_mask.clone();
 
-    apply_edit(state, move |document| {
+    apply_tile_layer_content_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
         let snapshot = capture_region_clipped(tile_layer, min_x, min_y, width, height);
         let flipped_tiles = flip_tiles_vertically(width, height, &snapshot);
@@ -739,7 +739,7 @@ pub(crate) fn rotate_tile_selection_clockwise(state: &mut AppState) {
     let mask_for_edit = mask.clone();
     let next_mask_for_edit = next_mask.clone();
 
-    apply_edit(state, move |document| {
+    apply_tile_layer_content_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
         let snapshot = capture_region_clipped(tile_layer, min_x, min_y, width, height);
         let rotated_tiles = rotate_tiles_clockwise(width, height, &snapshot);
@@ -778,7 +778,7 @@ pub(crate) fn delete_tile_selection(state: &mut AppState) {
     let (width, height) = selection_dimensions(selection);
     let mask = selection_mask_from_cells(selection, &selection_cells);
 
-    apply_edit(state, move |document| {
+    apply_tile_layer_content_edit(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, layer_index)?;
         clear_region_tiles_masked(tile_layer, min_x, min_y, width, height, &mask)
     });
@@ -829,6 +829,8 @@ pub(crate) fn cancel_tile_selection_transfer(state: &mut AppState) {
 
         if restore.is_err() {
             state.status = "Canceled move, but restoring the cut region failed.".to_string();
+        } else {
+            rebuild_active_tile_layer_cache(state);
         }
     }
 
@@ -851,7 +853,7 @@ pub(crate) fn apply_shape_fill(
     let cells = shape_fill_cells(shape_fill_mode, start_x, start_y, end_x, end_y);
     let cell_count = cells.len();
 
-    apply_edit(state, move |document| {
+    apply_tile_layer_content_edit(state, move |document| {
         let layer = document
             .map
             .layer_mut(layer_index)
@@ -879,7 +881,7 @@ fn apply_fill(state: &mut AppState, x: u32, y: u32) {
     let layer_index = state.active_layer;
     let replacement_gid = state.selected_gid;
 
-    apply_edit(state, move |document| {
+    apply_tile_layer_content_edit(state, move |document| {
         let layer = document
             .map
             .layer_mut(layer_index)
@@ -1447,7 +1449,7 @@ fn apply_tile_selection_transfer(state: &mut AppState, finalize: bool) -> bool {
         let width = transfer.width;
         let height = transfer.height;
         let mask = transfer.mask.clone();
-        apply_edit_result(state, move |document| {
+        apply_tile_layer_content_edit_result(state, move |document| {
             let tile_layer = selected_tile_layer_mut(document, target_layer)?;
             write_region_tiles_clipped(tile_layer, min_x, min_y, width, height, &tiles, Some(&mask))
         })
@@ -1455,6 +1457,9 @@ fn apply_tile_selection_transfer(state: &mut AppState, finalize: bool) -> bool {
 
     match apply_result {
         Ok(()) => {
+            if matches!(transfer.mode, TileSelectionTransferMode::Cut) {
+                rebuild_active_tile_layer_cache(state);
+            }
             let selection_cells = selection_cells_from_mask(
                 min_x,
                 min_y,
@@ -1498,7 +1503,7 @@ fn delete_tile_selection_source_and_exit(state: &mut AppState) {
         return;
     }
 
-    let deleted = apply_edit_result(state, move |document| {
+    let deleted = apply_tile_layer_content_edit_result(state, move |document| {
         let tile_layer = selected_tile_layer_mut(document, transfer.source_layer)?;
         clear_region_tiles_masked(
             tile_layer,
@@ -1646,6 +1651,16 @@ where
     }
 }
 
+fn apply_tile_layer_content_edit<F>(state: &mut AppState, edit: F)
+where
+    F: FnOnce(&mut taled_core::EditorDocument) -> Result<(), EditorError>,
+{
+    match apply_tile_layer_content_edit_result(state, edit) {
+        Ok(()) => state.status = "Edit applied.".to_string(),
+        Err(error) => state.status = format!("Edit failed: {error}"),
+    }
+}
+
 fn apply_edit_result<F>(state: &mut AppState, edit: F) -> Result<(), EditorError>
 where
     F: FnOnce(&mut taled_core::EditorDocument) -> Result<(), EditorError>,
@@ -1656,7 +1671,31 @@ where
     };
 
     session.edit(edit)?;
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
+    Ok(())
+}
+
+fn apply_tile_layer_content_edit_result<F>(state: &mut AppState, edit: F) -> Result<(), EditorError>
+where
+    F: FnOnce(&mut taled_core::EditorDocument) -> Result<(), EditorError>,
+{
+    let Some(session) = state.session.as_mut() else {
+        state.status = "No map loaded.".to_string();
+        return Err(EditorError::Invalid("No map loaded.".to_string()));
+    };
+
+    session.edit(edit)?;
+    if !state.active_tile_layer_separated {
+        state.active_tile_layer_separated = true;
+        rebuild_render_caches(state);
+        return Ok(());
+    }
+    if state.touch_edit_batch_active {
+        state.active_tile_layer_cache_dirty = true;
+    } else {
+        rebuild_active_tile_layer_cache(state);
+        state.active_tile_layer_cache_dirty = false;
+    }
     Ok(())
 }
 

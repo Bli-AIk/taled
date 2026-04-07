@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, time::Duration};
 
+#[cfg(not(target_arch = "wasm32"))]
 use base64::Engine;
 use dioxus::prelude::*;
 use taled_core::{EditorDocument, ObjectShape};
@@ -32,6 +33,7 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
 
     let document = session.document();
     let map = &document.map;
+    let visible_bounds = visible_cell_bounds(snapshot, map);
     let zoom = snapshot.zoom_percent as f32 / 100.0;
     let canvas_style = format!(
         "width:{}px;height:{}px;transform:translate3d({}px, {}px, 0) scale({zoom});",
@@ -56,11 +58,15 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
     let has_tile_selection_overlay = tile_selection_overlay.is_some();
     let tile_selection_transfer_preview =
         active_tile_selection_transfer_preview(document, snapshot);
-    let has_flat_tile_layers = snapshot.flat_tile_layers_data_url.is_some();
-    let live_active_tile_styles = if has_flat_tile_layers {
-        Vec::new()
-    } else {
+    let render_objects_live = matches!(snapshot.tool, Tool::Select | Tool::AddRectangle | Tool::AddPoint);
+    let show_cached_object_layers =
+        !render_objects_live && snapshot.flat_object_layers_data_url.is_some();
+    let show_live_active_tile_overlay = snapshot.touch_edit_batch_active
+        || (snapshot.active_tile_layer_separated && snapshot.active_tile_layer_data_url.is_none());
+    let live_active_tile_styles = if show_live_active_tile_overlay {
         collect_visible_tile_styles(document, snapshot)
+    } else {
+        Vec::new()
     };
 
     rsx! {
@@ -142,13 +148,26 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                     ontransitionend: move |_| state.write().camera_transition_active = false,
                     if let (Some(data_url), Some(style)) = (
                         snapshot.flat_tile_layers_data_url.as_ref(),
-                        flat_tile_layers_style(snapshot, map),
+                        flat_tile_cache_style(snapshot.flat_tile_layers_cell_bounds, map),
                     ) {
                         img {
                             class: "canvas-flat-layer",
                             src: "{data_url}",
                             alt: "",
                             style: "{style}",
+                        }
+                    }
+                    if snapshot.active_tile_layer_separated && !snapshot.touch_edit_batch_active {
+                        if let (Some(data_url), Some(style)) = (
+                            snapshot.active_tile_layer_data_url.as_ref(),
+                            flat_tile_cache_style(snapshot.active_tile_layer_cell_bounds, map),
+                        ) {
+                            img {
+                                class: "canvas-flat-layer canvas-active-layer",
+                                src: "{data_url}",
+                                alt: "",
+                                style: "{style}",
+                            }
                         }
                     }
                     for (x, y, style) in live_active_tile_styles.iter() {
@@ -158,37 +177,59 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
                             style: "{style}",
                         }
                     }
+                    if show_cached_object_layers {
+                        if let (Some(data_url), Some(style)) = (
+                            snapshot.flat_object_layers_data_url.as_ref(),
+                            flat_tile_cache_style(snapshot.flat_object_layers_cell_bounds, map),
+                        ) {
+                            img {
+                                class: "canvas-flat-layer canvas-object-layer",
+                                src: "{data_url}",
+                                alt: "",
+                                style: "{style}",
+                            }
+                        }
+                    }
 
-                    for (layer_index, layer) in map.layers.iter().enumerate() {
-                        if let Some(object_layer) = layer.as_object() {
-                            if object_layer.visible {
-                                for object in &object_layer.objects {
-                                    div {
-                                        key: "object-{layer_index}-{object.id}",
-                                        class: object_class(snapshot.selected_object, object.id, &object.shape),
-                                        style: object_overlay_style(
+                    if render_objects_live || !show_cached_object_layers {
+                        for (layer_index, layer) in map.layers.iter().enumerate() {
+                            if let Some(object_layer) = layer.as_object() {
+                                if object_layer.visible {
+                                    for object in &object_layer.objects {
+                                        if object_intersects_visible_bounds(
                                             object,
-                                            snapshot.tool == Tool::Select,
-                                            snapshot.selected_object == Some(object.id),
-                                            zoom,
-                                        ),
-                                        onclick: {
-                                            let object_id = object.id;
-                                            move |_| {
-                                                let mut state = state.write();
-                                                if should_ignore_synthetic_click(&mut state) {
-                                                    return;
+                                            visible_bounds,
+                                            map.tile_width,
+                                            map.tile_height,
+                                        ) {
+                                            div {
+                                                key: "object-{layer_index}-{object.id}",
+                                                class: object_class(snapshot.selected_object, object.id, &object.shape),
+                                                style: object_overlay_style(
+                                                    object,
+                                                    snapshot.tool == Tool::Select,
+                                                    snapshot.selected_object == Some(object.id),
+                                                    zoom,
+                                                ),
+                                                onclick: {
+                                                    let object_id = object.id;
+                                                    move |_| {
+                                                        let mut state = state.write();
+                                                        if should_ignore_synthetic_click(&mut state) {
+                                                            return;
+                                                        }
+                                                        if state.tool != Tool::Select {
+                                                            state.status = "Switch to Select before choosing objects.".to_string();
+                                                            return;
+                                                        }
+                                                        state.active_layer = layer_index;
+                                                        state.selected_object = Some(object_id);
+                                                        state.tile_selection = None;
+                                                        state.tile_selection_cells = None;
+                                                        state.tile_selection_preview = None;
+                                                        state.tile_selection_preview_cells = None;
+                                                    }
                                                 }
-                                                if state.tool != Tool::Select {
-                                                    state.status = "Switch to Select before choosing objects.".to_string();
-                                                    return;
-                                                }
-                                                state.active_layer = layer_index;
-                                                state.selected_object = Some(object_id);
-                                                state.tile_selection = None;
-                                                state.tile_selection_cells = None;
-                                                state.tile_selection_preview = None;
-                                                state.tile_selection_preview_cells = None;
                                             }
                                         }
                                     }
@@ -309,6 +350,37 @@ pub(crate) fn render_canvas(snapshot: &AppState, mut state: Signal<AppState>) ->
     }
 }
 
+fn object_intersects_visible_bounds(
+    object: &taled_core::MapObject,
+    visible_bounds: VisibleCellBounds,
+    tile_width: u32,
+    tile_height: u32,
+) -> bool {
+    let left = f64::from(visible_bounds.min_x * tile_width);
+    let top = f64::from(visible_bounds.min_y * tile_height);
+    let right = f64::from(visible_bounds.max_x * tile_width);
+    let bottom = f64::from(visible_bounds.max_y * tile_height);
+
+    let object_left = f64::from(object.x);
+    let object_top = match object.shape {
+        ObjectShape::Rectangle => f64::from(object.y),
+        ObjectShape::Point => f64::from(object.y) - 30.0,
+    };
+    let object_right = match object.shape {
+        ObjectShape::Rectangle => object_left + f64::from(object.width.max(1.0)),
+        ObjectShape::Point => object_left + 20.0,
+    };
+    let object_bottom = match object.shape {
+        ObjectShape::Rectangle => object_top + f64::from(object.height.max(1.0)),
+        ObjectShape::Point => f64::from(object.y),
+    };
+
+    object_right >= left
+        && object_left <= right
+        && object_bottom >= top
+        && object_top <= bottom
+}
+
 #[derive(Clone, Copy)]
 struct VisibleCellBounds {
     min_x: u32,
@@ -344,7 +416,7 @@ fn visible_cell_bounds(snapshot: &AppState, map: &taled_core::Map) -> VisibleCel
 }
 
 fn expanded_visible_cell_bounds(snapshot: &AppState, map: &taled_core::Map) -> VisibleCellBounds {
-    const CACHE_MARGIN_TILES: u32 = 4;
+    const CACHE_MARGIN_TILES: u32 = 8;
 
     let visible = visible_cell_bounds(snapshot, map);
     VisibleCellBounds {
@@ -378,17 +450,64 @@ fn visible_painted_tile_count(map: &taled_core::Map) -> usize {
         .sum()
 }
 
+fn painted_tile_count(tile_layer: &taled_core::TileLayer) -> usize {
+    tile_layer
+        .tiles
+        .iter()
+        .copied()
+        .filter(|gid| *gid != 0)
+        .count()
+}
+
+fn visible_object_count(map: &taled_core::Map) -> usize {
+    map.layers
+        .iter()
+        .filter_map(|layer| layer.as_object())
+        .filter(|layer| layer.visible)
+        .map(|layer| layer.objects.len())
+        .sum()
+}
+
 fn prefers_full_flat_tile_cache(map: &taled_core::Map) -> bool {
-    const MAX_FULL_CACHE_AXIS_PX: u32 = 4_096;
-    const MAX_FULL_CACHE_PAINTED_TILES: usize = 12_000;
+    const MAX_FULL_CACHE_AXIS_PX: u32 = 1_024;
+    const MAX_FULL_CACHE_PAINTED_TILES: usize = 2_000;
 
     map.total_pixel_width() <= MAX_FULL_CACHE_AXIS_PX
         && map.total_pixel_height() <= MAX_FULL_CACHE_AXIS_PX
         && visible_painted_tile_count(map) <= MAX_FULL_CACHE_PAINTED_TILES
 }
 
+fn prefers_full_flat_object_cache(map: &taled_core::Map) -> bool {
+    const MAX_FULL_CACHE_AXIS_PX: u32 = 4_096;
+    const MAX_FULL_CACHE_OBJECTS: usize = 2_000;
+
+    map.total_pixel_width() <= MAX_FULL_CACHE_AXIS_PX
+        && map.total_pixel_height() <= MAX_FULL_CACHE_AXIS_PX
+        && visible_object_count(map) <= MAX_FULL_CACHE_OBJECTS
+}
+
+fn prefers_active_tile_layer_cache(
+    map: &taled_core::Map,
+    tile_layer: &taled_core::TileLayer,
+) -> bool {
+    const MAX_ACTIVE_CACHE_AXIS_PX: u32 = 1_024;
+    const MAX_ACTIVE_CACHE_PAINTED_TILES: usize = 2_000;
+
+    map.total_pixel_width() <= MAX_ACTIVE_CACHE_AXIS_PX
+        && map.total_pixel_height() <= MAX_ACTIVE_CACHE_AXIS_PX
+        && painted_tile_count(tile_layer) <= MAX_ACTIVE_CACHE_PAINTED_TILES
+}
+
 fn flat_tile_cache_bounds(snapshot: &AppState, map: &taled_core::Map) -> VisibleCellBounds {
     if prefers_full_flat_tile_cache(map) {
+        full_map_cell_bounds(map)
+    } else {
+        expanded_visible_cell_bounds(snapshot, map)
+    }
+}
+
+fn flat_object_cache_bounds(snapshot: &AppState, map: &taled_core::Map) -> VisibleCellBounds {
+    if prefers_full_flat_object_cache(map) {
         full_map_cell_bounds(map)
     } else {
         expanded_visible_cell_bounds(snapshot, map)
@@ -408,8 +527,39 @@ fn perf_now_ms() -> f64 {
         .unwrap_or_default()
 }
 
-fn flat_tile_layers_style(snapshot: &AppState, map: &taled_core::Map) -> Option<String> {
-    let (min_x, max_x, min_y, max_y) = snapshot.flat_tile_layers_cell_bounds?;
+#[cfg(target_arch = "wasm32")]
+fn create_svg_url(svg: &str) -> String {
+    let array = js_sys::Array::new();
+    array.push(&wasm_bindgen::JsValue::from_str(svg));
+    let mut options = web_sys::BlobPropertyBag::new();
+    options.type_("image/svg+xml");
+    let Ok(blob) = web_sys::Blob::new_with_str_sequence_and_options(&array, &options) else {
+        return String::new();
+    };
+    web_sys::Url::create_object_url_with_blob(&blob).unwrap_or_default()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn create_svg_url(svg: &str) -> String {
+    let encoded = base64::engine::general_purpose::STANDARD.encode(svg);
+    format!("data:image/svg+xml;base64,{encoded}")
+}
+
+#[cfg(target_arch = "wasm32")]
+fn revoke_svg_url(url: &str) {
+    if url.starts_with("blob:") {
+        let _ = web_sys::Url::revoke_object_url(url);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn revoke_svg_url(_url: &str) {}
+
+fn flat_tile_cache_style(
+    cache_bounds: Option<(u32, u32, u32, u32)>,
+    map: &taled_core::Map,
+) -> Option<String> {
+    let (min_x, max_x, min_y, max_y) = cache_bounds?;
     Some(format!(
         "left:{}px;top:{}px;width:{}px;height:{}px;",
         min_x * map.tile_width,
@@ -417,6 +567,30 @@ fn flat_tile_layers_style(snapshot: &AppState, map: &taled_core::Map) -> Option<
         (max_x.saturating_sub(min_x)).max(1) * map.tile_width,
         (max_y.saturating_sub(min_y)).max(1) * map.tile_height,
     ))
+}
+
+pub(crate) fn revoke_cache_urls(state: &AppState) {
+    if let Some(url) = state.flat_tile_layers_data_url.as_ref() {
+        revoke_svg_url(url);
+    }
+    if let Some(url) = state.active_tile_layer_data_url.as_ref() {
+        revoke_svg_url(url);
+    }
+    if let Some(url) = state.flat_object_layers_data_url.as_ref() {
+        revoke_svg_url(url);
+    }
+}
+
+pub(crate) fn rebuild_render_caches(state: &mut AppState) {
+    rebuild_flat_tile_layer_cache(state);
+    rebuild_flat_object_layer_cache(state);
+    if state.active_tile_layer_separated {
+        rebuild_active_tile_layer_cache(state);
+    } else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        state.active_tile_layer_cache_dirty = false;
+    }
 }
 
 pub(crate) fn rebuild_flat_tile_layer_cache(state: &mut AppState) {
@@ -440,15 +614,23 @@ pub(crate) fn rebuild_flat_tile_layer_cache(state: &mut AppState) {
         "slice"
     };
 
-    let Some(svg) = build_flat_tile_layer_svg(map, &state.image_cache, cache_bounds) else {
+    let excluded_layer = state
+        .active_tile_layer_separated
+        .then(|| active_tile_layer_index(map, state.active_layer))
+        .flatten();
+    let Some(svg) = build_flat_tile_layers_svg(map, &state.image_cache, cache_bounds, excluded_layer)
+    else {
         state.flat_tile_layers_data_url = None;
         state.flat_tile_layers_cell_bounds = None;
         return;
     };
     let svg_bytes = svg.len();
-    let encoded = base64::engine::general_purpose::STANDARD.encode(svg);
+    if let Some(old_url) = state.flat_tile_layers_data_url.as_ref() {
+        revoke_svg_url(old_url);
+    }
+    let url = create_svg_url(&svg);
 
-    state.flat_tile_layers_data_url = Some(format!("data:image/svg+xml;base64,{encoded}"));
+    state.flat_tile_layers_data_url = Some(url);
     state.flat_tile_layers_cell_bounds = Some((
         cache_bounds.min_x,
         cache_bounds.max_x,
@@ -466,10 +648,246 @@ pub(crate) fn rebuild_flat_tile_layer_cache(state: &mut AppState) {
     ));
 }
 
-fn build_flat_tile_layer_svg(
+pub(crate) fn rebuild_active_tile_layer_cache(state: &mut AppState) {
+    let Some(session) = state.session.as_ref() else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+
+    let document = session.document();
+    let map = &document.map;
+    let Some(layer_index) = active_tile_layer_index(map, state.active_layer) else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+    let Some(tile_layer) = map.layer(layer_index).and_then(|layer| layer.as_tile()) else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+    if !tile_layer.visible {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    }
+    if !prefers_active_tile_layer_cache(map, tile_layer) {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    }
+
+    let started_at_ms = perf_now_ms();
+    let cache_bounds = flat_tile_cache_bounds(state, map);
+    let strategy = if cache_bounds.min_x == 0
+        && cache_bounds.min_y == 0
+        && cache_bounds.max_x == map.width
+        && cache_bounds.max_y == map.height
+    {
+        "full-map"
+    } else {
+        "slice"
+    };
+
+    let mut defs = BTreeMap::<String, String>::new();
+    let Some(layer_svg) =
+        flat_tile_layer_slice_svg(map, &state.image_cache, tile_layer, cache_bounds, &mut defs)
+    else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+
+    let mut svg = format!(
+        "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\" shape-rendering=\"crispEdges\">",
+        (cache_bounds.max_x.saturating_sub(cache_bounds.min_x)).max(1) * map.tile_width,
+        (cache_bounds.max_y.saturating_sub(cache_bounds.min_y)).max(1) * map.tile_height,
+        (cache_bounds.max_x.saturating_sub(cache_bounds.min_x)).max(1) * map.tile_width,
+        (cache_bounds.max_y.saturating_sub(cache_bounds.min_y)).max(1) * map.tile_height,
+    );
+    if !defs.is_empty() {
+        svg.push_str("<defs>");
+        for symbol in defs.values() {
+            svg.push_str(symbol);
+        }
+        svg.push_str("</defs>");
+    }
+    svg.push_str(&layer_svg);
+    svg.push_str("</svg>");
+
+    let svg_bytes = svg.len();
+    if let Some(old_url) = state.active_tile_layer_data_url.as_ref() {
+        revoke_svg_url(old_url);
+    }
+    let url = create_svg_url(&svg);
+    state.active_tile_layer_data_url = Some(url);
+    state.active_tile_layer_cell_bounds = Some((
+        cache_bounds.min_x,
+        cache_bounds.max_x,
+        cache_bounds.min_y,
+        cache_bounds.max_y,
+    ));
+    log(format!(
+        "perf: active-layer-cache rebuilt strategy={strategy} layer={} bounds=({}, {})..({}, {}) cache_bytes={} duration_ms={:.1}",
+        layer_index,
+        cache_bounds.min_x,
+        cache_bounds.min_y,
+        cache_bounds.max_x,
+        cache_bounds.max_y,
+        svg_bytes,
+        perf_now_ms() - started_at_ms,
+    ));
+}
+
+pub(crate) fn rebuild_flat_object_layer_cache(state: &mut AppState) {
+    let Some(session) = state.session.as_ref() else {
+        state.flat_object_layers_data_url = None;
+        state.flat_object_layers_cell_bounds = None;
+        return;
+    };
+
+    let document = session.document();
+    let map = &document.map;
+    let cache_bounds = flat_object_cache_bounds(state, map);
+    let strategy = if cache_bounds.min_x == 0
+        && cache_bounds.min_y == 0
+        && cache_bounds.max_x == map.width
+        && cache_bounds.max_y == map.height
+    {
+        "full-map"
+    } else {
+        "slice"
+    };
+    let started_at_ms = perf_now_ms();
+
+    let Some(svg) = build_flat_object_layers_svg(map, cache_bounds) else {
+        state.flat_object_layers_data_url = None;
+        state.flat_object_layers_cell_bounds = None;
+        return;
+    };
+
+    let svg_bytes = svg.len();
+    if let Some(old_url) = state.flat_object_layers_data_url.as_ref() {
+        revoke_svg_url(old_url);
+    }
+    let url = create_svg_url(&svg);
+    state.flat_object_layers_data_url = Some(url);
+    state.flat_object_layers_cell_bounds = Some((
+        cache_bounds.min_x,
+        cache_bounds.max_x,
+        cache_bounds.min_y,
+        cache_bounds.max_y,
+    ));
+    log(format!(
+        "perf: object-cache rebuilt strategy={strategy} bounds=({}, {})..({}, {}) cache_bytes={} duration_ms={:.1}",
+        cache_bounds.min_x,
+        cache_bounds.min_y,
+        cache_bounds.max_x,
+        cache_bounds.max_y,
+        svg_bytes,
+        perf_now_ms() - started_at_ms,
+    ));
+}
+
+fn active_tile_layer_index(map: &taled_core::Map, active_layer: usize) -> Option<usize> {
+    map.layer(active_layer)
+        .and_then(|layer| layer.as_tile())
+        .map(|_| active_layer)
+}
+
+fn build_flat_object_layers_svg(
+    map: &taled_core::Map,
+    cache_bounds: VisibleCellBounds,
+) -> Option<String> {
+    let slice_width = (cache_bounds.max_x.saturating_sub(cache_bounds.min_x)).max(1) * map.tile_width;
+    let slice_height =
+        (cache_bounds.max_y.saturating_sub(cache_bounds.min_y)).max(1) * map.tile_height;
+    let mut body = String::new();
+    let offset_x = f64::from(cache_bounds.min_x * map.tile_width);
+    let offset_y = f64::from(cache_bounds.min_y * map.tile_height);
+
+    for layer in &map.layers {
+        let Some(object_layer) = layer.as_object() else {
+            continue;
+        };
+        if !object_layer.visible {
+            continue;
+        }
+
+        for object in &object_layer.objects {
+            if let Some(object_svg) = flat_object_svg(
+                object,
+                cache_bounds,
+                map.tile_width,
+                map.tile_height,
+                offset_x,
+                offset_y,
+            ) {
+                body.push_str(&object_svg);
+            }
+        }
+    }
+
+    if body.is_empty() {
+        return None;
+    }
+
+    Some(format!(
+        concat!(
+            "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"{}\" viewBox=\"0 0 {} {}\">",
+            "<g shape-rendering=\"crispEdges\">{}</g>",
+            "</svg>"
+        ),
+        slice_width,
+        slice_height,
+        slice_width,
+        slice_height,
+        body,
+    ))
+}
+
+fn flat_object_svg(
+    object: &taled_core::MapObject,
+    visible_bounds: VisibleCellBounds,
+    tile_width: u32,
+    tile_height: u32,
+    offset_x: f64,
+    offset_y: f64,
+) -> Option<String> {
+    if !object_intersects_visible_bounds(object, visible_bounds, tile_width, tile_height) {
+        return None;
+    }
+
+    match object.shape {
+        ObjectShape::Rectangle => Some(format!(
+            concat!(
+                "<rect x=\"{:.2}\" y=\"{:.2}\" width=\"{:.2}\" height=\"{:.2}\" ",
+                "fill=\"rgba(128,128,128,0.168)\" stroke=\"#808080\" stroke-width=\"0.5\"/>"
+            ),
+            f64::from(object.x) - offset_x,
+            f64::from(object.y) - offset_y,
+            f64::from(object.width.max(1.0)),
+            f64::from(object.height.max(1.0)),
+        )),
+        ObjectShape::Point => Some(format!(
+            concat!(
+                "<g transform=\"translate({:.2},{:.2})\">",
+                "<path fill=\"rgba(128,128,128,0.168)\" fill-rule=\"evenodd\" stroke=\"#808080\" stroke-width=\"1\" ",
+                "d=\"M10 1C5.03 1 1 5.03 1 10c0 5.06 3.68 8.43 9 18 5.32-9.57 9-12.94 9-18 0-4.97-4.03-9-9-9Zm0 4.75a4.25 4.25 0 1 1 0 8.5a4.25 4.25 0 0 1 0-8.5Z\"/>",
+                "</g>"
+            ),
+            f64::from(object.x) - 10.0 - offset_x,
+            f64::from(object.y) - 30.0 - offset_y,
+        )),
+    }
+}
+
+fn build_flat_tile_layers_svg(
     map: &taled_core::Map,
     image_cache: &BTreeMap<usize, String>,
     cache_bounds: VisibleCellBounds,
+    excluded_layer_index: Option<usize>,
 ) -> Option<String> {
     let slice_width = (cache_bounds.max_x.saturating_sub(cache_bounds.min_x)).max(1) * map.tile_width;
     let slice_height =
@@ -481,11 +899,14 @@ fn build_flat_tile_layer_svg(
         slice_width,
         slice_height
     );
-    let mut defs = BTreeMap::new();
+    let mut defs = BTreeMap::<String, String>::new();
     let mut body = String::new();
     let mut wrote_any = false;
 
-    for layer in &map.layers {
+    for (layer_index, layer) in map.layers.iter().enumerate() {
+        if excluded_layer_index == Some(layer_index) {
+            continue;
+        }
         let Some(tile_layer) = layer.as_tile() else {
             continue;
         };
@@ -520,7 +941,7 @@ fn flat_tile_symbol_svg(
     map: &taled_core::Map,
     image_cache: &BTreeMap<usize, String>,
     gid: u32,
-) -> Option<String> {
+) -> Option<(String, String, String, String)> {
     let tile = map.tile_reference_for_gid(gid)?;
     let image = image_cache.get(&tile.tileset_index)?;
     let columns = tile.tileset.tileset.columns.max(1);
@@ -528,17 +949,31 @@ fn flat_tile_symbol_svg(
     let tile_height = tile.tileset.tileset.tile_height;
     let source_x = (tile.local_id % columns) * tile_width;
     let source_y = (tile.local_id / columns) * tile_height;
+    let image_id = format!("tileset-image-{}", tile.tileset_index);
+    let tile_id = format!("tile-{gid}");
 
-    Some(format!(
-        "<symbol id=\"tile-{gid}\" viewBox=\"{} {} {} {}\" preserveAspectRatio=\"none\"><image href=\"{}\" width=\"{}\" height=\"{}\" image-rendering=\"pixelated\" preserveAspectRatio=\"none\"/></symbol>",
+    let image_def = format!(
+        "<image id=\"{image_id}\" href=\"{image}\" width=\"{}\" height=\"{}\" image-rendering=\"pixelated\" preserveAspectRatio=\"none\"/>",
+        tile.tileset.tileset.image.width,
+        tile.tileset.tileset.image.height,
+    );
+    let tile_def = format!(
+        concat!(
+            "<symbol id=\"{}\" viewBox=\"{} {} {} {}\" preserveAspectRatio=\"none\">",
+            "<use href=\"#{}\" width=\"{}\" height=\"{}\" preserveAspectRatio=\"none\"/>",
+            "</symbol>"
+        ),
+        tile_id,
         source_x,
         source_y,
         tile_width,
         tile_height,
-        image,
+        image_id,
         tile.tileset.tileset.image.width,
         tile.tileset.tileset.image.height,
-    ))
+    );
+
+    Some((image_id, image_def, tile_id, tile_def))
 }
 
 fn flat_tile_layer_tile_svg(
@@ -548,12 +983,12 @@ fn flat_tile_layer_tile_svg(
     x: u32,
     y: u32,
     cache_bounds: VisibleCellBounds,
-    defs: &mut BTreeMap<u32, String>,
+    defs: &mut BTreeMap<String, String>,
 ) -> Option<String> {
     let gid = tile_layer.tile_at(x, y).filter(|gid| *gid != 0)?;
-    if let std::collections::btree_map::Entry::Vacant(entry) = defs.entry(gid) {
-        entry.insert(flat_tile_symbol_svg(map, image_cache, gid)?);
-    }
+    let (image_id, image_def, tile_id, tile_def) = flat_tile_symbol_svg(map, image_cache, gid)?;
+    defs.entry(image_id).or_insert(image_def);
+    defs.entry(tile_id).or_insert(tile_def);
 
     Some(format!(
         "<use href=\"#tile-{gid}\" x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/>",
@@ -594,7 +1029,7 @@ fn flat_tile_layer_slice_svg(
     image_cache: &BTreeMap<usize, String>,
     tile_layer: &taled_core::TileLayer,
     cache_bounds: VisibleCellBounds,
-    defs: &mut BTreeMap<u32, String>,
+    defs: &mut BTreeMap<String, String>,
 ) -> Option<String> {
     let mut layer_svg = String::new();
 
@@ -640,6 +1075,86 @@ pub(crate) fn refresh_flat_tile_layer_cache_if_needed(state: &mut AppState) {
     rebuild_flat_tile_layer_cache(state);
 }
 
+pub(crate) fn refresh_flat_object_layer_cache_if_needed(state: &mut AppState) {
+    let Some(session) = state.session.as_ref() else {
+        state.flat_object_layers_data_url = None;
+        state.flat_object_layers_cell_bounds = None;
+        return;
+    };
+
+    let map = &session.document().map;
+    let Some((cache_min_x, cache_max_x, cache_min_y, cache_max_y)) =
+        state.flat_object_layers_cell_bounds
+    else {
+        rebuild_flat_object_layer_cache(state);
+        return;
+    };
+
+    if cache_min_x == 0 && cache_min_y == 0 && cache_max_x == map.width && cache_max_y == map.height {
+        return;
+    }
+
+    let visible = visible_cell_bounds(state, map);
+    let fits_horizontally = visible.min_x >= cache_min_x && visible.max_x <= cache_max_x;
+    let fits_vertically = visible.min_y >= cache_min_y && visible.max_y <= cache_max_y;
+    if fits_horizontally && fits_vertically {
+        return;
+    }
+
+    rebuild_flat_object_layer_cache(state);
+}
+
+pub(crate) fn refresh_active_tile_layer_cache_if_needed(state: &mut AppState) {
+    let Some(session) = state.session.as_ref() else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+
+    let map = &session.document().map;
+    let Some(layer_index) = active_tile_layer_index(map, state.active_layer) else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+    let Some(tile_layer) = map.layer(layer_index).and_then(|layer| layer.as_tile()) else {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    };
+    if !tile_layer.visible || !prefers_active_tile_layer_cache(map, tile_layer) {
+        state.active_tile_layer_data_url = None;
+        state.active_tile_layer_cell_bounds = None;
+        return;
+    }
+
+    let visible = visible_cell_bounds(state, map);
+    let Some((cache_min_x, cache_max_x, cache_min_y, cache_max_y)) =
+        state.active_tile_layer_cell_bounds
+    else {
+        rebuild_active_tile_layer_cache(state);
+        return;
+    };
+
+    if cache_min_x == 0 && cache_min_y == 0 && cache_max_x == map.width && cache_max_y == map.height {
+        return;
+    }
+
+    let fits_horizontally = visible.min_x >= cache_min_x && visible.max_x <= cache_max_x;
+    let fits_vertically = visible.min_y >= cache_min_y && visible.max_y <= cache_max_y;
+    if fits_horizontally && fits_vertically {
+        return;
+    }
+
+    rebuild_active_tile_layer_cache(state);
+}
+
+pub(crate) fn refresh_render_caches_if_needed(state: &mut AppState) {
+    refresh_flat_tile_layer_cache_if_needed(state);
+    refresh_flat_object_layer_cache_if_needed(state);
+    refresh_active_tile_layer_cache_if_needed(state);
+}
+
 fn center_canvas_if_needed(state: &mut AppState, host_width: f64, host_height: f64) {
     if !state.pending_canvas_center || host_width <= 0.0 || host_height <= 0.0 {
         return;
@@ -657,7 +1172,7 @@ fn center_canvas_if_needed(state: &mut AppState, host_width: f64, host_height: f
     state.pan_x = ((host_width - map_width) * 0.5).round() as i32;
     state.pan_y = ((host_height - map_height) * 0.5).round() as i32;
     state.pending_canvas_center = false;
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
     log(format!(
         "touch:center-map host=({host_width:.1},{host_height:.1}) map=({map_width:.1},{map_height:.1}) pan=({}, {}) zoom={}",
         state.pan_x, state.pan_y, state.zoom_percent,

@@ -20,7 +20,10 @@ use crate::{
         clear_tile_selection_immediately, handle_tile_selection_tap, preview_magic_wand_selection,
         preview_select_same_tile_selection,
     },
-    ui_canvas::refresh_flat_tile_layer_cache_if_needed,
+    ui_canvas::{
+        rebuild_active_tile_layer_cache, rebuild_flat_tile_layer_cache,
+        refresh_render_caches_if_needed,
+    },
 };
 
 const LONG_PRESS_DURATION: Duration = Duration::from_millis(260);
@@ -231,7 +234,7 @@ pub(crate) fn handle_touch_pointer_move(state: &mut AppState, event: Event<Point
         if delta_x != 0 || delta_y != 0 {
             state.pan_x += delta_x;
             state.pan_y += delta_y;
-            refresh_flat_tile_layer_cache_if_needed(state);
+            refresh_render_caches_if_needed(state);
         }
         return;
     }
@@ -1030,10 +1033,17 @@ fn start_touch_edit_batch(state: &mut AppState) {
     if state.touch_edit_batch_active || !tool_batches_history(state.tool) {
         return;
     }
-    let Some(session) = state.session.as_mut() else {
-        return;
-    };
-    session.begin_history_batch();
+    {
+        let Some(session) = state.session.as_mut() else {
+            return;
+        };
+        session.begin_history_batch();
+    }
+    if !state.active_tile_layer_separated {
+        state.active_tile_layer_separated = true;
+        rebuild_flat_tile_layer_cache(state);
+    }
+    state.active_tile_layer_cache_dirty = false;
     state.touch_edit_batch_active = true;
 }
 
@@ -1047,6 +1057,10 @@ fn finish_touch_edit_batch(state: &mut AppState) {
         state.status = "Edit applied.".to_string();
     }
     state.touch_edit_batch_active = false;
+    if state.active_tile_layer_cache_dirty || state.active_tile_layer_data_url.is_none() {
+        rebuild_active_tile_layer_cache(state);
+        state.active_tile_layer_cache_dirty = false;
+    }
 }
 
 fn abort_touch_edit_batch(state: &mut AppState) {
@@ -1057,6 +1071,10 @@ fn abort_touch_edit_batch(state: &mut AppState) {
         session.abort_history_batch();
     }
     state.touch_edit_batch_active = false;
+    state.active_tile_layer_cache_dirty = false;
+    if state.active_tile_layer_separated && state.active_tile_layer_data_url.is_none() {
+        rebuild_active_tile_layer_cache(state);
+    }
 }
 
 fn suppress_synthetic_click(state: &mut AppState) {
@@ -1163,7 +1181,7 @@ fn update_pinch_gesture(state: &mut AppState) {
     state.zoom_percent = new_zoom_percent;
     state.pan_x = (current_center_x - gesture.world_center_x * new_zoom).round() as i32;
     state.pan_y = (current_center_y - gesture.world_center_y * new_zoom).round() as i32;
-    refresh_flat_tile_layer_cache_if_needed(state);
+    refresh_render_caches_if_needed(state);
     log_pinch_probe(
         state,
         "pinch-update",

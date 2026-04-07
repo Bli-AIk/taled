@@ -32,8 +32,8 @@ use crate::{
         save_document,
     },
     theme::{ThemeChoice, ThemePalette, export_theme_json, import_theme_json, resolved_theme},
-    ui_canvas::rebuild_flat_tile_layer_cache,
-    ui_inspector::collect_palette,
+    ui_canvas::rebuild_render_caches,
+    ui_inspector::{collect_palette, collect_palette_preview},
     ui_visuals::{object_icon_style, palette_tile_style},
 };
 
@@ -423,10 +423,7 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
     let toolbar_kind = active_toolbar_kind(session, snapshot.active_layer);
     let can_undo = session.can_undo();
     let can_redo = session.can_redo();
-    let palette: Vec<PaletteTile> = collect_palette(session.document())
-        .into_iter()
-        .take(24)
-        .collect();
+    let palette: Vec<PaletteTile> = collect_palette_preview(session.document(), 24);
     let grid_style = editor_grid_style(snapshot, session);
     let page_key = review_page_key(snapshot, "editor");
     let page_class = review_page_class(snapshot, "review-page review-editor-page");
@@ -450,7 +447,7 @@ fn render_editor(snapshot: &AppState, mut state: Signal<AppState>) -> Element {
                             } else {
                                 "review-tile-chip live"
                             },
-                            style: palette_tile_style(session.document(), &snapshot.image_cache, &tile),
+                            style: cached_palette_tile_style(snapshot, session.document(), &tile),
                             onclick: move |_| {
                                 let mut state = state.write();
                                 state.selected_gid = tile.gid;
@@ -1174,7 +1171,7 @@ fn render_tilesets(snapshot: &AppState, mut state: Signal<AppState>) -> Element 
                             } else {
                                 "review-sheet-cell live"
                             },
-                            style: palette_tile_style(session.document(), &snapshot.image_cache, &tile),
+                            style: cached_palette_tile_style(snapshot, session.document(), &tile),
                             onclick: move |_| {
                                 let mut state = state.write();
                                 state.selected_gid = tile.gid;
@@ -3050,6 +3047,18 @@ fn tileset_sheet_style(document: &taled_core::EditorDocument, selected_gid: u32)
     format!("grid-template-columns:repeat({columns}, minmax(0, 1fr));")
 }
 
+fn cached_palette_tile_style(
+    snapshot: &AppState,
+    document: &taled_core::EditorDocument,
+    tile: &PaletteTile,
+) -> String {
+    snapshot
+        .palette_styles
+        .get(&tile.gid)
+        .cloned()
+        .unwrap_or_else(|| palette_tile_style(document, &snapshot.image_cache, tile))
+}
+
 fn layer_kind_label(layer: &Layer) -> &'static str {
     if layer.as_tile().is_some() {
         "Tile Layer"
@@ -3103,7 +3112,7 @@ fn set_review_active_layer_kind(state: &mut AppState, layer_index: usize, kind: 
             ReviewToolbarKind::Object => Tool::Select,
         };
     }
-    rebuild_flat_tile_layer_cache(state);
+    rebuild_render_caches(state);
 }
 
 fn layer_thumb_variant(index: usize, layer: &Layer) -> &'static str {
