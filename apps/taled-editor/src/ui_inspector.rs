@@ -240,3 +240,28 @@ pub(crate) fn collect_palette(document: &EditorDocument) -> Vec<PaletteTile> {
     }
     palette
 }
+
+pub(crate) fn collect_palette_preview(
+    document: &EditorDocument,
+    limit: usize,
+) -> Vec<PaletteTile> {
+    let mut palette = Vec::with_capacity(limit);
+    if limit == 0 {
+        return palette;
+    }
+
+    'tilesets: for (tileset_index, tileset) in document.map.tilesets.iter().enumerate() {
+        for local_id in 0..tileset.tileset.tile_count {
+            palette.push(PaletteTile {
+                gid: tileset.first_gid + local_id,
+                tileset_index,
+                local_id,
+            });
+            if palette.len() >= limit {
+                break 'tilesets;
+            }
+        }
+    }
+
+    palette
+}

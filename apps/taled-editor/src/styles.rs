@@ -185,6 +185,12 @@ pub(crate) const STYLES: &str = r#"
     transform: translateZ(0);
     contain: strict;
   }
+  .canvas-active-layer {
+    z-index: 1;
+  }
+  .canvas-object-layer {
+    z-index: 2;
+  }
   .tile-sprite {
     z-index: 1;
     image-rendering: pixelated;

@@ -61,3 +61,12 @@ dioxus-bundle:
 
 ui-compare:
     ./scripts/ui_compare.sh
+
+perf-check sample="Theater":
+    ./scripts/perf_check.sh '{{sample}}'
+
+perf-check-theater:
+    ./scripts/perf_check.sh 'Theater'
+
+perf-check-frontier:
+    ./scripts/perf_check.sh 'Existential Frontier'
