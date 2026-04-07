@@ -7,8 +7,10 @@ use crate::embedded_samples::{embedded_sample, embedded_samples};
 #[cfg(target_os = "android")]
 use crate::platform::log_path;
 use crate::{
-    app_state::AppState, edit_ops::cancel_tile_selection_transfer, platform::log,
-    ui_canvas::rebuild_render_caches,
+    app_state::AppState,
+    edit_ops::cancel_tile_selection_transfer,
+    platform::log,
+    ui_canvas::{preload_tileset_images, rebuild_render_caches, rebuild_viewport_caches},
 };
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{demo::load_embedded_demo_session, platform::EMBEDDED_DEMO_MAP_PATH};
@@ -141,7 +143,7 @@ fn embedded_sample_paths() -> String {
 
 pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
     state.zoom_percent = (state.zoom_percent + delta).clamp(25, 400);
-    rebuild_render_caches(state);
+    rebuild_viewport_caches(state);
 }
 
 pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
@@ -163,7 +165,7 @@ pub(crate) fn adjust_zoom_around_view_center(state: &mut AppState, delta: i32) {
     state.zoom_percent = new_zoom_percent;
     state.pan_x = (center_x - world_center_x * new_zoom).round() as i32;
     state.pan_y = (center_y - world_center_y * new_zoom).round() as i32;
-    rebuild_render_caches(state);
+    rebuild_viewport_caches(state);
     state.status = format!("Zoom {}%.", state.zoom_percent);
 }
 
@@ -173,7 +175,7 @@ pub(crate) fn animate_camera_to_center(state: &mut AppState) {
     };
     state.pan_x = target_pan_x;
     state.pan_y = target_pan_y;
-    rebuild_render_caches(state);
+    rebuild_viewport_caches(state);
     state.camera_transition_active = true;
     state.status = "Centered camera.".to_string();
 }
@@ -185,7 +187,7 @@ pub(crate) fn animate_camera_to_fit_map(state: &mut AppState) {
     state.zoom_percent = target_zoom_percent;
     state.pan_x = target_pan_x;
     state.pan_y = target_pan_y;
-    rebuild_render_caches(state);
+    rebuild_viewport_caches(state);
     state.camera_transition_active = true;
     state.status = format!("Fit map to view at {}%.", state.zoom_percent);
 }
@@ -371,6 +373,7 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.active_tile_layer_cache_dirty = false;
     state.active_tile_layer_separated = false;
     state.image_cache = image_cache;
+    preload_tileset_images(&state.image_cache);
     state.palette_styles = BTreeMap::new();
     state.session = Some(session);
     log(format!(

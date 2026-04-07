@@ -6,10 +6,10 @@ use std::{
 use dioxus::prelude::*;
 use taled_core::{EditorSession, Layer, ObjectShape};
 
-#[cfg(target_arch = "wasm32")]
-use gloo_timers::future::TimeoutFuture;
 #[cfg(not(target_arch = "wasm32"))]
 use futures_timer::Delay;
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::future::TimeoutFuture;
 
 use crate::{
     app_state::{
@@ -21,8 +21,7 @@ use crate::{
         create_object, cut_tile_selection, delete_selected_object, delete_tile_selection,
         flip_tile_selection_horizontally, flip_tile_selection_vertically, nudge_selected_object,
         place_tile_selection_transfer, rename_selected_object, rotate_tile_selection_clockwise,
-        selected_object_view,
-        toggle_layer_lock, toggle_layer_visibility,
+        selected_object_view, toggle_layer_lock, toggle_layer_visibility,
     },
     embedded_samples::{embedded_sample, embedded_sample_thumb, embedded_samples},
     l10n::{self, AppLanguagePreference},
@@ -1967,7 +1966,8 @@ fn review_tool_side_panel(
 ) -> Element {
     let selection_mode_active =
         kind == ReviewToolbarKind::Tile && is_tile_selection_tool(snapshot.tool);
-    let shape_fill_mode_active = kind == ReviewToolbarKind::Tile && snapshot.tool == Tool::ShapeFill;
+    let shape_fill_mode_active =
+        kind == ReviewToolbarKind::Tile && snapshot.tool == Tool::ShapeFill;
     rsx! {
         div {
             class: if selection_mode_active || shape_fill_mode_active {

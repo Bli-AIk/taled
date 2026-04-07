@@ -3,19 +3,19 @@ use std::time::Instant;
 
 use taled_core::EditorSession;
 
+use crate::l10n::{
+    AppLanguagePreference, SupportedLanguage, detect_device_locale_tag, resolve_language,
+};
 #[cfg(target_os = "android")]
 use crate::platform::log_path;
 #[cfg(target_arch = "wasm32")]
 use crate::session_ops::load_sample;
+use crate::theme::{ThemeChoice, ThemePalette, default_custom_theme};
 #[cfg(any(target_arch = "wasm32", target_os = "android"))]
 use crate::{
     embedded_samples::embedded_samples,
     platform::{EMBEDDED_DEMO_MAP_PATH, log},
 };
-use crate::l10n::{
-    AppLanguagePreference, SupportedLanguage, detect_device_locale_tag, resolve_language,
-};
-use crate::theme::{ThemeChoice, ThemePalette, default_custom_theme};
 #[cfg(target_arch = "wasm32")]
 use web_sys::window;
 
