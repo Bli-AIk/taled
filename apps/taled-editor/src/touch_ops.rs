@@ -563,7 +563,9 @@ fn dismiss_existing_tile_selection(state: &mut AppState) {
 }
 
 fn should_clear_replace_selection_at_surface(state: &AppState, x: f64, y: f64) -> bool {
-    if state.tile_selection_mode != TileSelectionMode::Replace || state.tile_selection_transfer.is_some() {
+    if state.tile_selection_mode != TileSelectionMode::Replace
+        || state.tile_selection_transfer.is_some()
+    {
         return false;
     }
     if !is_preview_tile_selection_tool(state.tool) {

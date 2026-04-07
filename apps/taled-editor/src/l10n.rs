@@ -95,12 +95,10 @@ fn negotiate_device_language(device_locale_tag: &str) -> SupportedLanguage {
 pub(crate) fn language_name(preference_language: SupportedLanguage) -> String {
     match preference_language {
         SupportedLanguage::English => text(SupportedLanguage::English, "settings-language-english"),
-        SupportedLanguage::SimplifiedChinese => {
-            text(
-                SupportedLanguage::SimplifiedChinese,
-                "settings-language-zh-hans",
-            )
-        }
+        SupportedLanguage::SimplifiedChinese => text(
+            SupportedLanguage::SimplifiedChinese,
+            "settings-language-zh-hans",
+        ),
     }
 }
 

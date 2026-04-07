@@ -241,10 +241,7 @@ pub(crate) fn collect_palette(document: &EditorDocument) -> Vec<PaletteTile> {
     palette
 }
 
-pub(crate) fn collect_palette_preview(
-    document: &EditorDocument,
-    limit: usize,
-) -> Vec<PaletteTile> {
+pub(crate) fn collect_palette_preview(document: &EditorDocument, limit: usize) -> Vec<PaletteTile> {
     let mut palette = Vec::with_capacity(limit);
     if limit == 0 {
         return palette;

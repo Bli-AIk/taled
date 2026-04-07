@@ -497,7 +497,12 @@ fn detect_system_theme() -> ThemeAppearance {
     use web_sys::window;
 
     window()
-        .and_then(|window| window.match_media("(prefers-color-scheme: dark)").ok().flatten())
+        .and_then(|window| {
+            window
+                .match_media("(prefers-color-scheme: dark)")
+                .ok()
+                .flatten()
+        })
         .map(|query| {
             if query.matches() {
                 ThemeAppearance::Dark
