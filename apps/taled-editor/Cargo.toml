@@ -14,9 +14,13 @@ android_version = 33
 
 [dependencies]
 fluent-bundle.workspace = true
+fontdb = { workspace = true, optional = true }
 ply-engine.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sys-locale.workspace = true
 taled-core = { path = "../../crates/taled-core" }
 unic-langid.workspace = true
+
+[features]
+system-fonts = ["dep:fontdb"]

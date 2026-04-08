@@ -7,6 +7,8 @@ mod l10n;
 mod platform;
 mod screens;
 mod session_ops;
+#[cfg(feature = "system-fonts")]
+mod system_font;
 mod theme;
 mod ui;
 
@@ -38,9 +40,21 @@ fn window_conf() -> macroquad::conf::Conf {
 
 static DEFAULT_FONT: FontAsset = FontAsset::Path("assets/fonts/NotoSansCJK-Regular.ttc");
 
+/// Picks the best available CJK font at runtime.
+///
+/// With the `system-fonts` feature enabled, tries the OS-provided CJK font
+/// first (saving ~19 MB of bundled data). Falls back to the embedded asset.
+fn resolve_font() -> &'static FontAsset {
+    #[cfg(feature = "system-fonts")]
+    if let Some(font) = system_font::find_system_cjk_font() {
+        return font;
+    }
+    &DEFAULT_FONT
+}
+
 #[macroquad::main(window_conf)]
 async fn main() {
-    let mut ply = Ply::<()>::new(&DEFAULT_FONT).await;
+    let mut ply = Ply::<()>::new(resolve_font()).await;
     let mut state = AppState::new();
     load_embedded_sample(&mut state);
 
