@@ -93,7 +93,7 @@ pub(crate) fn render_canvas(
                 .floating(|f| f.offset((state.pan_x, state.pan_y)).passthrough())
                 .empty();
 
-            crate::screens::editor::render_floating_controls(ui, state, theme);
+            crate::screens::editor_toolbar::render_floating_controls(ui, state, theme);
         });
 }
 

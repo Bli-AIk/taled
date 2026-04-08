@@ -40,7 +40,11 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
 
             for (i, layer) in map.layers.iter().enumerate() {
                 let is_active = state.active_layer == i;
-                let bg = if is_active { theme.accent_soft } else { theme.surface };
+                let bg = if is_active {
+                    theme.accent_soft
+                } else {
+                    theme.surface
+                };
 
                 ui.element()
                     .id(("layer-row", i as u32))
@@ -110,7 +114,11 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                         // Lock icon (accent when locked)
                         let locked = layer.locked();
                         let lk_id = if locked { IconId::Lock } else { IconId::Unlock };
-                        let lk_c = if locked { theme.accent } else { theme.muted_text };
+                        let lk_c = if locked {
+                            theme.accent
+                        } else {
+                            theme.muted_text
+                        };
                         let lk_tex = state.icon_cache.get(lk_id);
                         ui.element()
                             .width(fixed!(18.0))

@@ -123,10 +123,7 @@ fn about_body_content(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
 }
 
 fn hero_section(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let logo_tex = state
-        .logo_texture
-        .clone()
-        .unwrap_or_else(Texture2D::empty);
+    let logo_tex = state.logo_texture.clone().unwrap_or_else(Texture2D::empty);
     ui.element()
         .id("about-hero")
         .width(grow!())
@@ -304,9 +301,7 @@ fn info_card_with_links(
                             ui.element()
                                 .width(grow!())
                                 .height(fit!())
-                                .layout(|l| {
-                                    l.direction(LeftToRight).align(Left, CenterY).gap(4)
-                                })
+                                .layout(|l| l.direction(LeftToRight).align(Left, CenterY).gap(4))
                                 .on_press(move |_, _| {})
                                 .children(|ui| {
                                     if ui.just_released() {
@@ -320,9 +315,7 @@ fn info_card_with_links(
                                         .overflow(|o| o.clip_x())
                                         .layout(|l| l.direction(TopToBottom).gap(2))
                                         .children(|ui| {
-                                            ui.text(&title, |t| {
-                                                t.font_size(14).color(theme.text)
-                                            });
+                                            ui.text(&title, |t| t.font_size(14).color(theme.text));
                                             ui.text(&url_owned, |t| {
                                                 t.font_size(12).color(LINK_URL_COLOR)
                                             });

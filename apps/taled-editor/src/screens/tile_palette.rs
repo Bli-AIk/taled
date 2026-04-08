@@ -40,8 +40,14 @@ pub(crate) fn render_tile_chip_grid(
 
     // Pre-compute indices for each row (column-first: col*2+row)
     let row_indices: [Vec<usize>; 2] = [
-        (0..num_cols).map(|c| c * 2).filter(|&i| i < palette.len()).collect(),
-        (0..num_cols).map(|c| c * 2 + 1).filter(|&i| i < palette.len()).collect(),
+        (0..num_cols)
+            .map(|c| c * 2)
+            .filter(|&i| i < palette.len())
+            .collect(),
+        (0..num_cols)
+            .map(|c| c * 2 + 1)
+            .filter(|&i| i < palette.len())
+            .collect(),
     ];
 
     for indices in &row_indices {
