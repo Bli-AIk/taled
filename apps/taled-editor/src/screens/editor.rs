@@ -73,7 +73,7 @@ fn render_editor_header(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
             ui.element()
                 .width(grow!())
                 .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
+                .layout(|l| l.align(Left, CenterY))
                 .children(|ui| {
                     ui.text(&title, |t| {
                         t.font_size(17).color(theme.text).alignment(CenterX)
@@ -172,7 +172,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                         .id("dpad-up")
                         .width(fixed!(24.0))
                         .height(fixed!(14.0))
-                        .layout(|l| l.align(CenterX, CenterY))
+                        .layout(|l| l.align(Left, CenterY))
                         .on_press(move |_, _| {})
                         .children(|ui| {
                             if ui.just_released() {
@@ -193,7 +193,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                                 .id("dpad-left")
                                 .width(fixed!(14.0))
                                 .height(fixed!(18.0))
-                                .layout(|l| l.align(CenterX, CenterY))
+                                .layout(|l| l.align(Left, CenterY))
                                 .on_press(move |_, _| {})
                                 .children(|ui| {
                                     if ui.just_released() {
@@ -215,7 +215,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                                 .id("dpad-right")
                                 .width(fixed!(14.0))
                                 .height(fixed!(18.0))
-                                .layout(|l| l.align(CenterX, CenterY))
+                                .layout(|l| l.align(Left, CenterY))
                                 .on_press(move |_, _| {})
                                 .children(|ui| {
                                     if ui.just_released() {
@@ -232,7 +232,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                         .id("dpad-down")
                         .width(fixed!(24.0))
                         .height(fixed!(14.0))
-                        .layout(|l| l.align(CenterX, CenterY))
+                        .layout(|l| l.align(Left, CenterY))
                         .on_press(move |_, _| {})
                         .children(|ui| {
                             if ui.just_released() {
@@ -264,7 +264,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                 .id("zoom-out")
                 .width(fixed!(36.0))
                 .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
+                .layout(|l| l.align(Left, CenterY))
                 .on_press(move |_, _| {})
                 .children(|ui| {
                     if ui.just_released() {
@@ -278,7 +278,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
             ui.element()
                 .width(fixed!(46.0))
                 .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
+                .layout(|l| l.align(Left, CenterY))
                 .children(|ui| {
                     let zoom_text = format!("{}%", state.zoom_percent);
                     ui.text(&zoom_text, |t| {
@@ -290,7 +290,7 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                 .id("zoom-in")
                 .width(fixed!(36.0))
                 .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
+                .layout(|l| l.align(Left, CenterY))
                 .on_press(move |_, _| {})
                 .children(|ui| {
                     if ui.just_released() {
@@ -303,16 +303,21 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
         });
 }
 
-#[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
+fn handle_tool_press(ui: &mut Ui, state: &mut AppState, tool: Tool) {
+    if ui.just_released() {
+        state.tool = tool;
+    }
+}
+
 fn render_toolbar(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let lang = state.resolved_language();
-    let tools: [(Tool, &str, &str); 6] = [
-        (Tool::Hand, "tool-hand", "✋"),
-        (Tool::Paint, "tool-stamp", "🖌"),
-        (Tool::Fill, "tool-fill", "🪣"),
-        (Tool::Erase, "tool-eraser", "🧹"),
-        (Tool::Select, "tool-rect-select", "⬚"),
-        (Tool::ShapeFill, "tool-shape-fill", "▩"),
+    let tools: [(Tool, &str); 6] = [
+        (Tool::Hand, "tool-hand"),
+        (Tool::Paint, "tool-stamp"),
+        (Tool::Fill, "tool-fill"),
+        (Tool::Erase, "tool-eraser"),
+        (Tool::Select, "tool-rect-select"),
+        (Tool::ShapeFill, "tool-shape-fill"),
     ];
 
     // Toolbar bg matches reference surface color #1c1c1e
@@ -331,7 +336,7 @@ fn render_toolbar(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                 .gap(4)
         })
         .children(|ui| {
-            for (i, (tool, label_key, icon)) in tools.iter().enumerate() {
+            for (i, (tool, label_key)) in tools.iter().enumerate() {
                 let is_active = state.tool == *tool;
                 let label = l10n::text(lang, label_key);
                 let tool_val = *tool;
@@ -342,6 +347,9 @@ fn render_toolbar(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                     Color::rgba(0.0, 0.0, 0.0, 0.0)
                 };
 
+                let icon_id = crate::icons::tool_icon_id(label_key);
+                let icon_tex = state.icon_cache.get(icon_id);
+
                 ui.element()
                     .id(("tool", i as u32))
                     .width(grow!())
@@ -351,10 +359,13 @@ fn render_toolbar(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                     .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(4))
                     .on_press(move |_, _| {})
                     .children(|ui| {
-                        if ui.just_released() {
-                            state.tool = tool_val;
-                        }
-                        ui.text(icon, |t| t.font_size(18).color(color).alignment(CenterX));
+                        handle_tool_press(ui, state, tool_val);
+                        ui.element()
+                            .width(fixed!(22.0))
+                            .height(fixed!(22.0))
+                            .background_color(color)
+                            .image(icon_tex)
+                            .empty();
                         ui.text(&label, |t| t.font_size(10).color(color).alignment(CenterX));
                     });
             }

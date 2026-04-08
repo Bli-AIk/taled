@@ -2,6 +2,7 @@ mod app_state;
 mod canvas;
 mod edit_ops;
 mod embedded_samples;
+mod icons;
 mod l10n;
 mod screens;
 mod session_ops;
@@ -45,9 +46,9 @@ async fn main() {
     loop {
         let theme = PlyTheme::from_choice(state.theme_choice, &state.custom_theme);
         clear_background(MacroquadColor::from_rgba(
-            theme.background.r as u8,
-            theme.background.g as u8,
-            theme.background.b as u8,
+            (theme.background_elevated.r * 255.0) as u8,
+            (theme.background_elevated.g * 255.0) as u8,
+            (theme.background_elevated.b * 255.0) as u8,
             255,
         ));
 

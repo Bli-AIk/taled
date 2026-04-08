@@ -119,7 +119,7 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                                         .height(fixed!(36.0))
                                         .background_color(theme.surface)
                                         .corner_radius(8.0)
-                                        .layout(|l| l.align(CenterX, CenterY))
+                                        .layout(|l| l.align(Left, CenterY))
                                         .children(|ui| {
                                             ui.text("◇", |t| {
                                                 t.font_size(18)

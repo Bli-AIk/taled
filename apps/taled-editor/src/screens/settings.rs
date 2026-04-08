@@ -135,7 +135,11 @@ fn title_only_header(ui: &mut Ui, theme: &PlyTheme, title: &str) {
         .height(fixed!(56.0))
         .background_color(theme.background_elevated)
         .border(|b| b.bottom(1).color(theme.border))
-        .layout(|l| l.align(CenterX, CenterY).padding((20, 16, 16, 16)))
+        .layout(|l| {
+            l.direction(TopToBottom)
+                .align(Left, CenterY)
+                .padding((0, 16, 0, 16))
+        })
         .children(|ui| {
             ui.text(title, |t| {
                 t.font_size(17).color(theme.text).alignment(CenterX)

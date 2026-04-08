@@ -4,6 +4,7 @@ use std::time::Instant;
 use ply_engine::prelude::Texture2D;
 use taled_core::EditorSession;
 
+use crate::icons::IconTintCache;
 use crate::l10n::{
     AppLanguagePreference, SupportedLanguage, detect_device_locale_tag, resolve_language,
 };
@@ -178,6 +179,7 @@ pub(crate) struct AppState {
     pub(crate) active_tileset: usize,
     pub(crate) camera_x: f32,
     pub(crate) camera_y: f32,
+    pub(crate) icon_cache: IconTintCache,
 }
 
 impl AppState {
@@ -227,6 +229,7 @@ impl AppState {
             active_tileset: 0,
             camera_x: 0.0,
             camera_y: 0.0,
+            icon_cache: IconTintCache::new(),
         }
     }
 

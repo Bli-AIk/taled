@@ -49,7 +49,7 @@ pub(crate) fn review_header(
             ui.element()
                 .width(grow!())
                 .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
+                .layout(|l| l.align(Left, CenterY))
                 .children(|ui| {
                     ui.text(title, |t| {
                         t.font_size(17).color(theme.text).alignment(CenterX)
@@ -117,7 +117,7 @@ pub(crate) fn page_header(
             ui.element()
                 .width(grow!())
                 .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
+                .layout(|l| l.align(Left, CenterY))
                 .children(|ui| {
                     ui.text(title, |t| {
                         t.font_size(17).color(theme.text).alignment(CenterX)
@@ -270,7 +270,7 @@ pub(crate) fn action_button(ui: &mut Ui, id: &'static str, label: &str, theme: &
         .height(fixed!(44.0))
         .background_color(theme.surface_elevated)
         .corner_radius(10.0)
-        .layout(|l| l.align(CenterX, CenterY))
+        .layout(|l| l.align(Left, CenterY))
         .on_press(move |_, _| {})
         .children(|ui| {
             if ui.just_released() {
@@ -289,7 +289,7 @@ pub(crate) fn section_label(ui: &mut Ui, theme: &PlyTheme, text: &str) {
     ui.element()
         .width(grow!())
         .height(fixed!(32.0))
-        .layout(|l| l.align(Left, Bottom).padding((0, 16, 4, 16)))
+        .layout(|l| l.align(Left, Bottom).padding((0, 0, 4, 0)))
         .children(|ui| {
             ui.text(text, |t| t.font_size(13).color(theme.muted_text));
         });
