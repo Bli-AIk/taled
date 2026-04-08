@@ -275,6 +275,19 @@ impl AppState {
     pub(crate) fn navigate(&mut self, screen: MobileScreen) {
         self.mobile_screen = screen;
     }
+
+    /// Navigate to the logical parent screen.
+    pub(crate) fn navigate_back(&mut self) {
+        self.mobile_screen = match self.mobile_screen {
+            MobileScreen::About | MobileScreen::Themes => MobileScreen::Settings,
+            MobileScreen::Tilesets
+            | MobileScreen::Layers
+            | MobileScreen::Objects
+            | MobileScreen::Properties => MobileScreen::Editor,
+            MobileScreen::Settings | MobileScreen::Editor => MobileScreen::Dashboard,
+            MobileScreen::Dashboard => MobileScreen::Dashboard,
+        };
+    }
 }
 
 #[allow(dead_code)]

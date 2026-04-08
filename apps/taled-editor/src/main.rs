@@ -4,6 +4,7 @@ mod edit_ops;
 mod embedded_samples;
 mod icons;
 mod l10n;
+mod platform;
 mod screens;
 mod session_ops;
 mod theme;
@@ -51,6 +52,10 @@ async fn main() {
             (theme.background_elevated.b * 255.0) as u8,
             255,
         ));
+
+        if platform::is_back_pressed() {
+            state.navigate_back();
+        }
 
         let mut ui = ply.begin();
 

@@ -26,86 +26,107 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         state,
     );
 
+    // Scroll container has NO padding — padding goes on the inner wrapper to
+    // prevent Ply's scroll_y from eating the right-side padding.
     ui.element()
         .id("about-body")
         .width(grow!())
         .height(grow!())
-        .layout(|l| l.direction(TopToBottom).gap(12).padding((14, 14, 0, 14)))
         .overflow(|o| o.scroll_y())
         .children(|ui| {
-            // Hero section
-            hero_section(ui, state, theme);
-
-            // License row card
-            row_card(
-                ui,
-                theme,
-                &l10n::text(state.resolved_language(), "settings-about-license-title"),
-                &l10n::text(state.resolved_language(), "settings-about-license-value"),
-            );
-
-            // Contributors disclosure card
-            disclosure_card(ui, state, theme);
-
-            // Repository card
-            info_card_with_links(
-                ui,
-                state,
-                theme,
-                &[
-                    "settings-about-repository-title",
-                    "settings-about-repository-description",
-                    "settings-about-repository-contributing",
-                ],
-                &[("settings-about-github", "https://github.com/Bli-AIk/taled")],
-            );
-
-            // Stack card
-            info_card_with_links(
-                ui,
-                state,
-                theme,
-                &[
-                    "settings-about-stack-title",
-                    "settings-about-stack-description",
-                ],
-                &[
-                    ("settings-about-ply", "https://ply.0xhiro.com/"),
-                    ("settings-about-rust", "https://www.rust-lang.org/community"),
-                    (
-                        "settings-about-rs-tiled",
-                        "https://github.com/mapeditor/rs-tiled",
-                    ),
-                    ("settings-about-fluent", "https://projectfluent.org/"),
-                    ("settings-about-crates", "https://crates.io/"),
-                ],
-            );
-
-            // Thanks card
-            info_card_with_links(
-                ui,
-                state,
-                theme,
-                &[
-                    "settings-about-thanks-title",
-                    "settings-about-thanks-description",
-                ],
-                &[
-                    ("settings-about-tiled", "https://www.mapeditor.org/"),
-                    ("settings-about-undertale", "https://undertale.com/"),
-                    ("settings-about-deltarune", "https://deltarune.com/"),
-                    (
-                        "settings-about-open-utdr",
-                        "https://github.com/Bli-AIk/open-utdr-maps",
-                    ),
-                ],
-            );
-
-            ui.element().width(grow!()).height(fixed!(20.0)).empty();
+            ui.element()
+                .width(grow!())
+                .height(fit!())
+                .layout(|l| l.direction(TopToBottom).gap(12).padding((14, 14, 0, 14)))
+                .children(|ui| {
+                    about_body_content(ui, state, theme);
+                });
         });
 
     let items = dashboard_nav_items();
     bottom_nav(ui, state, theme, &items, MobileScreen::Settings);
+}
+
+fn about_body_content(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    hero_section(ui, state, theme);
+
+    row_card(
+        ui,
+        theme,
+        &l10n::text(state.resolved_language(), "settings-about-license-title"),
+        &l10n::text(state.resolved_language(), "settings-about-license-value"),
+    );
+
+    disclosure_card(ui, state, theme);
+
+    info_card_with_links(
+        ui,
+        state,
+        theme,
+        &[
+            "settings-about-repository-title",
+            "settings-about-repository-description",
+            "settings-about-repository-contributing",
+        ],
+        &[("settings-about-github", "https://github.com/Bli-AIk/taled")],
+    );
+
+    info_card_with_links(
+        ui,
+        state,
+        theme,
+        &[
+            "settings-about-stack-title",
+            "settings-about-stack-description",
+        ],
+        &[
+            ("settings-about-ply", "https://plyx.iz.rs"),
+            ("settings-about-rust", "https://www.rust-lang.org/community"),
+            (
+                "settings-about-rs-tiled",
+                "https://github.com/mapeditor/rs-tiled",
+            ),
+            ("settings-about-fluent", "https://projectfluent.org/"),
+            ("settings-about-crates", "https://crates.io/"),
+        ],
+    );
+
+    // Dedicated Ply tribute card
+    info_card_with_links(
+        ui,
+        state,
+        theme,
+        &[
+            "settings-about-ply-tribute-title",
+            "settings-about-ply-tribute-description",
+            "settings-about-ply-tribute-star",
+        ],
+        &[(
+            "settings-about-ply-github",
+            "https://github.com/TheRedDeveloper/ply-engine",
+        )],
+    );
+
+    info_card_with_links(
+        ui,
+        state,
+        theme,
+        &[
+            "settings-about-thanks-title",
+            "settings-about-thanks-description",
+        ],
+        &[
+            ("settings-about-tiled", "https://www.mapeditor.org/"),
+            ("settings-about-undertale", "https://undertale.com/"),
+            ("settings-about-deltarune", "https://deltarune.com/"),
+            (
+                "settings-about-open-utdr",
+                "https://github.com/Bli-AIk/open-utdr-maps",
+            ),
+        ],
+    );
+
+    ui.element().width(grow!()).height(fixed!(20.0)).empty();
 }
 
 fn hero_section(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
@@ -286,13 +307,18 @@ fn info_card_with_links(
                     .children(|ui| {
                         for &(title_key, url) in links {
                             let title = l10n::text(lang, title_key);
+                            let url_owned = url.to_string();
                             ui.element()
                                 .width(grow!())
                                 .height(fit!())
                                 .layout(|l| {
                                     l.direction(LeftToRight).align(Left, CenterY).gap(4)
                                 })
+                                .on_press(move |_, _| {})
                                 .children(|ui| {
+                                    if ui.just_released() {
+                                        crate::platform::open_url(&url_owned);
+                                    }
                                     // Left: title + URL stacked
                                     ui.element()
                                         .width(grow!())
@@ -302,7 +328,7 @@ fn info_card_with_links(
                                             ui.text(&title, |t| {
                                                 t.font_size(14).color(theme.text)
                                             });
-                                            ui.text(url, |t| {
+                                            ui.text(&url_owned, |t| {
                                                 t.font_size(12).color(LINK_URL_COLOR)
                                             });
                                         });
