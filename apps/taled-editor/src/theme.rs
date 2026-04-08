@@ -2,6 +2,7 @@ use ply_engine::prelude::Color;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub(crate) enum ThemeChoice {
     System,
     Dark,
@@ -304,6 +305,7 @@ pub(crate) fn default_custom_theme() -> ThemePaletteData {
 }
 
 /// All built-in palettes for preview in the themes browser.
+#[allow(dead_code)]
 pub(crate) static PALETTES: [fn() -> PlyTheme; 7] = [
     PlyTheme::taled_dark,
     PlyTheme::taled_light,
@@ -340,6 +342,11 @@ pub(crate) fn theme_label(choice: ThemeChoice) -> &'static str {
         ThemeChoice::CatppuccinMocha => "settings-theme-catppuccin-mocha",
         ThemeChoice::Custom => "settings-theme-custom",
     }
+}
+
+pub(crate) fn theme_choice_display_label(state: &crate::app_state::AppState) -> String {
+    let key = theme_label(state.theme_choice);
+    crate::l10n::text(state.resolved_language(), key)
 }
 
 fn parse_css_color(s: &str) -> Color {

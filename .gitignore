@@ -51,3 +51,5 @@ pnpm-debug.log*
 # Old Bevy renderer artifacts
 crates/taled-bevy-renderer/
 apps/taled-editor/public/bevy/
+apps/taled-editor/build/
+apps/taled-editor/index.html

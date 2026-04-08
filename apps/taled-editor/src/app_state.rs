@@ -175,6 +175,9 @@ pub(crate) struct AppState {
     pub(crate) canvas_texture: Option<Texture2D>,
     pub(crate) canvas_dirty: bool,
     pub(crate) show_grid: bool,
+    pub(crate) active_tileset: usize,
+    pub(crate) camera_x: f32,
+    pub(crate) camera_y: f32,
 }
 
 impl AppState {
@@ -221,6 +224,9 @@ impl AppState {
             canvas_texture: None,
             canvas_dirty: true,
             show_grid: true,
+            active_tileset: 0,
+            camera_x: 0.0,
+            camera_y: 0.0,
         }
     }
 

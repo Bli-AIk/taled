@@ -31,12 +31,12 @@ pub(crate) fn render_canvas(
     state: &mut AppState,
     theme: &PlyTheme,
     _canvas_width: f32,
-    _canvas_height: f32,
+    canvas_height: f32,
 ) {
     ui.element()
         .id("canvas-area")
         .width(grow!())
-        .height(grow!())
+        .height(fixed!(canvas_height))
         .background_color(theme.canvas_base)
         .overflow(|o| o.clip())
         .children(|ui| {
@@ -65,8 +65,12 @@ pub(crate) fn render_canvas(
             );
 
             let show_grid = state.show_grid;
+            let cb = theme.canvas_base;
+            let cb_r = (cb.r * 255.0) as u8;
+            let cb_g = (cb.g * 255.0) as u8;
+            let cb_b = (cb.b * 255.0) as u8;
             let full_texture = render_to_texture(scaled_w, scaled_h, || {
-                clear_background(MacroquadColor::from_rgba(0, 0, 0, 0));
+                clear_background(MacroquadColor::from_rgba(cb_r, cb_g, cb_b, 255));
                 draw_texture_ex(
                     &map_texture,
                     0.0,
@@ -88,6 +92,8 @@ pub(crate) fn render_canvas(
                 .image(full_texture)
                 .floating(|f| f.offset((state.pan_x, state.pan_y)).passthrough())
                 .empty();
+
+            crate::screens::editor::render_floating_controls(ui, state, theme);
         });
 }
 

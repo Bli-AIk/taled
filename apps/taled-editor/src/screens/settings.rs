@@ -2,28 +2,20 @@ use ply_engine::prelude::*;
 
 use crate::app_state::{AppState, MobileScreen};
 use crate::l10n;
-use crate::theme::{PlyTheme, ThemeChoice};
+use crate::theme::PlyTheme;
 
-use super::widgets::{bottom_nav, dashboard_nav_items, page_header, section_label};
+use super::widgets::{HEADER_ACTION_COLOR, bottom_nav, dashboard_nav_items, section_label};
 
-#[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let title = l10n::text(state.resolved_language(), "settings-screen-title");
-    page_header(
-        ui,
-        theme,
-        &title,
-        Some(("← Back", MobileScreen::Dashboard)),
-        None,
-        state,
-    );
+    let title = l10n::text(state.resolved_language(), "settings-title");
+    // Settings uses title-only bar (no back button), matching Dioxus
+    title_only_header(ui, theme, &title);
 
-    // Content
     ui.element()
-        .id("settings-content")
+        .id("settings-body")
         .width(grow!())
         .height(grow!())
-        .layout(|l| l.direction(TopToBottom).padding((8, 16, 8, 16)).gap(4))
+        .layout(|l| l.direction(TopToBottom).padding((14, 14, 0, 14)).gap(12))
         .overflow(|o| {
             o.scroll_y().scrollbar(|s| {
                 s.width(3.0)
@@ -33,101 +25,279 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
             })
         })
         .children(|ui| {
-            section_label(ui, theme, "Theme");
+            // ── Language ──
+            section_label(
+                ui,
+                theme,
+                &l10n::text(state.resolved_language(), "settings-language-caption"),
+            );
+            settings_card_single(ui, theme, |ui, theme| {
+                info_row(
+                    ui,
+                    theme,
+                    &l10n::text(state.resolved_language(), "settings-language-caption"),
+                    "Auto",
+                );
+            });
 
-            let choices: [(ThemeChoice, &str); 8] = [
-                (ThemeChoice::System, "System"),
-                (ThemeChoice::Dark, "Dark"),
-                (ThemeChoice::Light, "Light"),
-                (ThemeChoice::CatppuccinLatte, "Catppuccin Latte"),
-                (ThemeChoice::CatppuccinFrappe, "Catppuccin Frappé"),
-                (ThemeChoice::CatppuccinMacchiato, "Catppuccin Macchiato"),
-                (ThemeChoice::CatppuccinMocha, "Catppuccin Mocha"),
-                (ThemeChoice::Custom, "Custom"),
-            ];
+            // ── Theme ──
+            section_label(
+                ui,
+                theme,
+                &l10n::text(state.resolved_language(), "settings-theme-caption"),
+            );
+            about_entry_card(
+                ui,
+                state,
+                theme,
+                &crate::theme::theme_choice_display_label(state),
+                &theme.name.clone(),
+                &l10n::text(state.resolved_language(), "settings-theme-description"),
+                &l10n::text(state.resolved_language(), "settings-theme-open"),
+                MobileScreen::Themes,
+            );
 
-            for (i, (choice, label)) in choices.iter().enumerate() {
-                let is_active = state.theme_choice == *choice;
-                let choice_val = *choice;
-                let bg = if is_active {
-                    theme.accent_soft
-                } else {
-                    theme.surface
-                };
-                let text_color = if is_active { theme.accent } else { theme.text };
+            // ── Diagnostics ──
+            section_label(
+                ui,
+                theme,
+                &l10n::text(state.resolved_language(), "settings-diagnostics-caption"),
+            );
+            info_note_card(
+                ui,
+                theme,
+                &[
+                    &l10n::text(state.resolved_language(), "settings-status-title"),
+                    &state.status.clone(),
+                ],
+            );
 
-                ui.element()
-                    .id(("theme-choice", i as u32))
-                    .width(grow!())
-                    .height(fixed!(44.0))
-                    .background_color(bg)
-                    .corner_radius(8.0)
-                    .layout(|l| {
-                        l.direction(LeftToRight)
-                            .align(Left, CenterY)
-                            .padding((0, 16, 0, 16))
-                    })
-                    .on_press(move |_, _| {})
-                    .children(|ui| {
-                        if ui.just_released() {
-                            state.theme_choice = choice_val;
-                        }
-                        ui.text(label, |t| t.font_size(15).color(text_color));
-                        ui.element().width(grow!()).height(fixed!(1.0)).empty();
-                        if is_active {
-                            ui.text("✓", |t| t.font_size(16).color(theme.accent));
-                        }
-                    });
-            }
+            // ── Export ──
+            section_label(
+                ui,
+                theme,
+                &l10n::text(state.resolved_language(), "settings-export-caption"),
+            );
+            settings_card(ui, theme, |ui, theme| {
+                toggle_row(
+                    ui,
+                    theme,
+                    "exp-json",
+                    &l10n::text(state.resolved_language(), "settings-export-json"),
+                    true,
+                );
+                separator_row(ui, theme);
+                toggle_row(
+                    ui,
+                    theme,
+                    "exp-xml",
+                    &l10n::text(state.resolved_language(), "settings-export-xml"),
+                    true,
+                );
+                separator_row(ui, theme);
+                toggle_row(
+                    ui,
+                    theme,
+                    "exp-png",
+                    &l10n::text(state.resolved_language(), "settings-export-png"),
+                    true,
+                );
+            });
 
-            ui.element().width(grow!()).height(fixed!(16.0)).empty();
+            // ── About ──
+            section_label(
+                ui,
+                theme,
+                &l10n::text(state.resolved_language(), "settings-about-caption"),
+            );
+            about_entry_card(
+                ui,
+                state,
+                theme,
+                "Taled",
+                &l10n::text(state.resolved_language(), "settings-about-description"),
+                "",
+                &l10n::text(state.resolved_language(), "settings-about-open"),
+                MobileScreen::About,
+            );
 
-            section_label(ui, theme, "Grid");
-
-            let grid_label = if state.show_grid {
-                "Hide Grid"
-            } else {
-                "Show Grid"
-            };
-            ui.element()
-                .id("toggle-grid")
-                .width(grow!())
-                .height(fixed!(44.0))
-                .background_color(theme.surface)
-                .corner_radius(8.0)
-                .layout(|l| {
-                    l.direction(LeftToRight)
-                        .align(Left, CenterY)
-                        .padding((0, 16, 0, 16))
-                })
-                .on_press(move |_, _| {})
-                .children(|ui| {
-                    if ui.just_released() {
-                        state.show_grid = !state.show_grid;
-                    }
-                    ui.text(grid_label, |t| t.font_size(15).color(theme.text));
-                });
-
-            ui.element().width(grow!()).height(fixed!(16.0)).empty();
-
-            section_label(ui, theme, "About");
-
-            ui.element()
-                .id("about-btn")
-                .width(grow!())
-                .height(fixed!(44.0))
-                .background_color(theme.surface)
-                .corner_radius(8.0)
-                .layout(|l| l.align(Left, CenterY).padding((0, 16, 0, 16)))
-                .on_press(move |_, _| {})
-                .children(|ui| {
-                    if ui.just_released() {
-                        state.navigate(MobileScreen::About);
-                    }
-                    ui.text("About Taled", |t| t.font_size(15).color(theme.text));
-                });
+            ui.element().width(grow!()).height(fixed!(20.0)).empty();
         });
 
     let items = dashboard_nav_items();
     bottom_nav(ui, state, theme, &items, MobileScreen::Settings);
+}
+
+fn title_only_header(ui: &mut Ui, theme: &PlyTheme, title: &str) {
+    ui.element()
+        .id("header")
+        .width(grow!())
+        .height(fixed!(56.0))
+        .background_color(theme.background_elevated)
+        .border(|b| b.bottom(1).color(theme.border))
+        .layout(|l| l.align(CenterX, CenterY).padding((20, 16, 16, 16)))
+        .children(|ui| {
+            ui.text(title, |t| {
+                t.font_size(17).color(theme.text).alignment(CenterX)
+            });
+        });
+}
+
+fn about_entry_card(
+    ui: &mut Ui,
+    state: &mut AppState,
+    theme: &PlyTheme,
+    title: &str,
+    subtitle: &str,
+    description: &str,
+    link_label: &str,
+    target: MobileScreen,
+) {
+    ui.element()
+        .id("entry-card")
+        .width(grow!())
+        .height(fit!())
+        .background_color(theme.surface)
+        .corner_radius(20.0)
+        .border(|b| b.all(1).color(theme.border))
+        .layout(|l| {
+            l.direction(TopToBottom)
+                .align(CenterX, Top)
+                .padding((14, 14, 14, 14))
+                .gap(14)
+        })
+        .children(|ui| {
+            ui.text(title, |t| {
+                t.font_size(16).color(theme.text).alignment(CenterX)
+            });
+            ui.text(subtitle, |t| {
+                t.font_size(13).color(theme.muted_text).alignment(CenterX)
+            });
+            if !description.is_empty() {
+                ui.text(description, |t| {
+                    t.font_size(13).color(theme.muted_text).alignment(CenterX)
+                });
+            }
+            ui.element()
+                .id("entry-link")
+                .width(fit!())
+                .height(fixed!(24.0))
+                .layout(|l| l.align(CenterX, CenterY))
+                .on_press(move |_, _| {})
+                .children(|ui| {
+                    if ui.just_released() {
+                        state.navigate(target);
+                    }
+                    ui.text(link_label, |t| t.font_size(14).color(HEADER_ACTION_COLOR));
+                });
+        });
+}
+
+fn settings_card(ui: &mut Ui, theme: &PlyTheme, content: impl FnOnce(&mut Ui, &PlyTheme)) {
+    ui.element()
+        .width(grow!())
+        .height(fit!())
+        .background_color(theme.surface)
+        .corner_radius(14.0)
+        .layout(|l| l.direction(TopToBottom).padding((0, 16, 0, 16)))
+        .children(|ui| {
+            content(ui, theme);
+        });
+}
+
+fn settings_card_single(ui: &mut Ui, theme: &PlyTheme, content: impl FnOnce(&mut Ui, &PlyTheme)) {
+    ui.element()
+        .width(grow!())
+        .height(fit!())
+        .background_color(theme.surface)
+        .corner_radius(20.0)
+        .border(|b| b.all(1).color(theme.border))
+        .layout(|l| l.direction(TopToBottom).padding((0, 16, 0, 16)))
+        .children(|ui| {
+            content(ui, theme);
+        });
+}
+
+fn info_note_card(ui: &mut Ui, theme: &PlyTheme, lines: &[&str]) {
+    ui.element()
+        .width(grow!())
+        .height(fit!())
+        .background_color(theme.surface)
+        .corner_radius(20.0)
+        .border(|b| b.all(1).color(theme.border))
+        .layout(|l| l.direction(TopToBottom).padding((14, 14, 14, 14)).gap(14))
+        .children(|ui| {
+            for (i, line) in lines.iter().enumerate() {
+                if i == 0 {
+                    ui.text(line, |t| t.font_size(16).color(theme.text));
+                } else {
+                    ui.text(line, |t| t.font_size(13).color(theme.muted_text));
+                }
+            }
+        });
+}
+
+fn toggle_row(ui: &mut Ui, theme: &PlyTheme, id: &'static str, label: &str, enabled: bool) {
+    ui.element()
+        .id(id)
+        .width(grow!())
+        .height(fixed!(44.0))
+        .layout(|l| l.direction(LeftToRight).align(Left, CenterY))
+        .children(|ui| {
+            ui.text(label, |t| t.font_size(15).color(theme.text));
+            ui.element().width(grow!()).height(fixed!(1.0)).empty();
+            let bg = if enabled {
+                theme.accent
+            } else {
+                theme.border_strong
+            };
+            ui.element()
+                .width(fixed!(52.0))
+                .height(fixed!(32.0))
+                .background_color(bg)
+                .corner_radius(16.0)
+                .layout(|l| {
+                    let align_x = if enabled { Right } else { Left };
+                    l.align(align_x, CenterY).padding((0, 3, 0, 3))
+                })
+                .children(|ui| {
+                    ui.element()
+                        .width(fixed!(26.0))
+                        .height(fixed!(26.0))
+                        .background_color(theme.accent_text)
+                        .corner_radius(13.0)
+                        .empty();
+                });
+        });
+}
+
+fn info_row(ui: &mut Ui, theme: &PlyTheme, label: &str, value: &str) {
+    let dropdown_bg = Color::from(0x242426_u32);
+    ui.element()
+        .width(grow!())
+        .height(fixed!(44.0))
+        .layout(|l| l.direction(LeftToRight).align(Left, CenterY))
+        .children(|ui| {
+            ui.text(label, |t| t.font_size(15).color(theme.text));
+            ui.element().width(grow!()).height(fixed!(1.0)).empty();
+            // Dropdown-style box matching Dioxus .review-select-input
+            ui.element()
+                .width(fixed!(132.0))
+                .height(fixed!(38.0))
+                .background_color(dropdown_bg)
+                .corner_radius(12.0)
+                .border(|b| b.all(1).color(theme.border))
+                .layout(|l| l.align(Left, CenterY).padding((0, 12, 0, 12)))
+                .children(|ui| {
+                    ui.text(value, |t| t.font_size(15).color(theme.text));
+                });
+        });
+}
+
+fn separator_row(ui: &mut Ui, theme: &PlyTheme) {
+    ui.element()
+        .width(grow!())
+        .height(fixed!(1.0))
+        .background_color(theme.border)
+        .empty();
 }

@@ -4,7 +4,74 @@ use crate::app_state::{AppState, MobileScreen};
 use crate::l10n;
 use crate::theme::PlyTheme;
 
-// ── Page header ─────────────────────────────────────────────
+/// Dioxus CSS `.review-header-action` / `.review-link-button` uses `#b6b6bb`.
+pub(crate) const HEADER_ACTION_COLOR: Color = Color::rgb(
+    0xb6 as f32 / 255.0,
+    0xb6 as f32 / 255.0,
+    0xbb as f32 / 255.0,
+);
+
+// ── Review-style page header (3-column grid: 92px | 1fr | 92px) ─────
+
+#[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
+pub(crate) fn review_header(
+    ui: &mut Ui,
+    theme: &PlyTheme,
+    title: &str,
+    left_label: Option<&str>,
+    right_label: Option<&str>,
+) {
+    ui.element()
+        .id("header")
+        .width(grow!())
+        .height(fixed!(56.0))
+        .background_color(theme.background_elevated)
+        .border(|b| b.bottom(1).color(theme.border))
+        .layout(|l| {
+            l.direction(LeftToRight)
+                .align(CenterX, CenterY)
+                .padding((20, 16, 16, 16))
+                .gap(6)
+        })
+        .children(|ui| {
+            // Left column (92px)
+            ui.element()
+                .width(fixed!(92.0))
+                .height(grow!())
+                .layout(|l| l.align(Left, CenterY))
+                .children(|ui| {
+                    if let Some(label) = left_label {
+                        ui.text(label, |t| t.font_size(14).color(HEADER_ACTION_COLOR));
+                    }
+                });
+
+            // Center: title
+            ui.element()
+                .width(grow!())
+                .height(grow!())
+                .layout(|l| l.align(CenterX, CenterY))
+                .children(|ui| {
+                    ui.text(title, |t| {
+                        t.font_size(17).color(theme.text).alignment(CenterX)
+                    });
+                });
+
+            // Right column (92px)
+            ui.element()
+                .width(fixed!(92.0))
+                .height(grow!())
+                .layout(|l| l.align(Right, CenterY))
+                .children(|ui| {
+                    if let Some(label) = right_label {
+                        ui.text(label, |t| {
+                            t.font_size(14).color(HEADER_ACTION_COLOR).alignment(Right)
+                        });
+                    }
+                });
+        });
+}
+
+// ── Page header with navigation ─────────────────────────────────────
 
 #[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
 pub(crate) fn page_header(
@@ -18,37 +85,38 @@ pub(crate) fn page_header(
     ui.element()
         .id("header")
         .width(grow!())
-        .height(fixed!(44.0))
+        .height(fixed!(56.0))
         .background_color(theme.background_elevated)
         .border(|b| b.bottom(1).color(theme.border))
         .layout(|l| {
             l.direction(LeftToRight)
                 .align(CenterX, CenterY)
-                .padding((0, 12, 0, 12))
+                .padding((20, 16, 16, 16))
+                .gap(6)
         })
         .children(|ui| {
-            // Left button
+            // Left column (92px)
             if let Some((label, target)) = left_action {
                 ui.element()
                     .id("header-left")
-                    .width(fixed!(60.0))
-                    .height(fixed!(32.0))
+                    .width(fixed!(92.0))
+                    .height(grow!())
                     .layout(|l| l.align(Left, CenterY))
                     .on_press(move |_, _| {})
                     .children(|ui| {
                         if ui.just_released() {
                             state.navigate(target);
                         }
-                        ui.text(label, |t| t.font_size(15).color(theme.accent));
+                        ui.text(label, |t| t.font_size(14).color(HEADER_ACTION_COLOR));
                     });
             } else {
-                ui.element().width(fixed!(60.0)).height(fixed!(1.0)).empty();
+                ui.element().width(fixed!(92.0)).height(fixed!(1.0)).empty();
             }
 
-            // Title
+            // Center: title
             ui.element()
                 .width(grow!())
-                .height(fixed!(32.0))
+                .height(grow!())
                 .layout(|l| l.align(CenterX, CenterY))
                 .children(|ui| {
                     ui.text(title, |t| {
@@ -56,12 +124,12 @@ pub(crate) fn page_header(
                     });
                 });
 
-            // Right button
+            // Right column (92px)
             if let Some((label, target)) = right_action {
                 ui.element()
                     .id("header-right")
-                    .width(fixed!(60.0))
-                    .height(fixed!(32.0))
+                    .width(fixed!(92.0))
+                    .height(grow!())
                     .layout(|l| l.align(Right, CenterY))
                     .on_press(move |_, _| {})
                     .children(|ui| {
@@ -69,16 +137,16 @@ pub(crate) fn page_header(
                             state.navigate(target);
                         }
                         ui.text(label, |t| {
-                            t.font_size(15).color(theme.accent).alignment(Right)
+                            t.font_size(14).color(HEADER_ACTION_COLOR).alignment(Right)
                         });
                     });
             } else {
-                ui.element().width(fixed!(60.0)).height(fixed!(1.0)).empty();
+                ui.element().width(fixed!(92.0)).height(fixed!(1.0)).empty();
             }
         });
 }
 
-// ── Bottom navigation bar ──────────────────────────────────
+// ── Bottom navigation bar ──────────────────────────────────────────
 
 pub(crate) struct NavItem {
     pub(crate) label_key: &'static str,
@@ -117,8 +185,8 @@ pub(crate) fn editor_nav_items() -> [NavItem; 4] {
             screen: MobileScreen::Objects,
         },
         NavItem {
-            label_key: "nav-settings",
-            screen: MobileScreen::Settings,
+            label_key: "nav-properties",
+            screen: MobileScreen::Properties,
         },
     ]
 }
@@ -134,10 +202,15 @@ pub(crate) fn bottom_nav(
     ui.element()
         .id("bottom-nav")
         .width(grow!())
-        .height(fixed!(56.0))
-        .background_color(theme.surface)
+        .height(fixed!(72.0))
+        .background_color(theme.background_elevated)
         .border(|b| b.top(1).color(theme.border))
-        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY))
+        .layout(|l| {
+            l.direction(LeftToRight)
+                .align(CenterX, CenterY)
+                .padding((10, 12, 22, 12))
+                .gap(8)
+        })
         .children(|ui| {
             for (i, item) in items.iter().enumerate() {
                 let is_active = item.screen == active;
@@ -152,19 +225,41 @@ pub(crate) fn bottom_nav(
                     .id(("nav-item", i as u32))
                     .width(grow!())
                     .height(grow!())
-                    .layout(|l| l.align(CenterX, CenterY).gap(2))
+                    .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(6))
                     .on_press(move |_, _| {})
                     .children(|ui| {
                         if ui.just_released() {
                             state.navigate(target);
                         }
-                        ui.text(&label, |t| t.font_size(11).color(color).alignment(CenterX));
+                        // Icon placeholder (24x24)
+                        ui.element()
+                            .width(fixed!(24.0))
+                            .height(fixed!(24.0))
+                            .layout(|l| l.align(CenterX, CenterY))
+                            .children(|ui| {
+                                let icon = nav_icon_text(item.label_key);
+                                ui.text(icon, |t| t.font_size(16).color(color).alignment(CenterX));
+                            });
+                        ui.text(&label, |t| t.font_size(12).color(color).alignment(CenterX));
                     });
             }
         });
 }
 
-// ── Reusable button ────────────────────────────────────────
+fn nav_icon_text(key: &str) -> &str {
+    match key {
+        "nav-projects" => "☰",
+        "nav-assets" => "📁",
+        "nav-tilesets" => "⊞",
+        "nav-layers" => "≡",
+        "nav-objects" => "◇",
+        "nav-properties" => "☰",
+        "nav-settings" => "⚙",
+        _ => "●",
+    }
+}
+
+// ── Reusable button ────────────────────────────────────────────────
 
 #[allow(dead_code)]
 pub(crate) fn action_button(ui: &mut Ui, id: &'static str, label: &str, theme: &PlyTheme) -> bool {
@@ -181,12 +276,6 @@ pub(crate) fn action_button(ui: &mut Ui, id: &'static str, label: &str, theme: &
             if ui.just_released() {
                 clicked = true;
             }
-            let bg = if ui.pressed() {
-                theme.border
-            } else {
-                theme.surface_elevated
-            };
-            let _ = bg;
             ui.text(label, |t| {
                 t.font_size(16).color(theme.text).alignment(CenterX)
             });
@@ -194,13 +283,13 @@ pub(crate) fn action_button(ui: &mut Ui, id: &'static str, label: &str, theme: &
     clicked
 }
 
-// ── Section header (category label) ────────────────────────
+// ── Section header (category label) ────────────────────────────────
 
 pub(crate) fn section_label(ui: &mut Ui, theme: &PlyTheme, text: &str) {
     ui.element()
         .width(grow!())
-        .height(fixed!(28.0))
-        .layout(|l| l.align(Left, Bottom).padding((0, 16, 0, 16)))
+        .height(fixed!(32.0))
+        .layout(|l| l.align(Left, Bottom).padding((0, 16, 4, 16)))
         .children(|ui| {
             ui.text(text, |t| t.font_size(13).color(theme.muted_text));
         });

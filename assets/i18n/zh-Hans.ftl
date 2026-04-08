@@ -73,6 +73,19 @@ settings-about-github = GitHub 仓库
 settings-about-contributors-show = 展开贡献者列表
 settings-about-contributors-hide = 收起贡献者列表
 
+properties-title = 属性
+properties-session-title = 会话操作
+properties-action-run = 运行
+properties-action-save = 保存
+properties-action-undo = 撤销
+properties-action-redo = 重做
+properties-action-reload = 重新载入
+properties-view-title = 视图
+properties-view-zoom = 缩放
+properties-view-theme = 主题
+properties-diagnostics-title = 诊断
+properties-export-title = 导出
+
 themes-title = 主题
 themes-current-title = 当前主题
 themes-built-in-title = 内置主题

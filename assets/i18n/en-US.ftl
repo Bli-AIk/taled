@@ -73,6 +73,19 @@ settings-about-github = GitHub Repository
 settings-about-contributors-show = Show contributor list
 settings-about-contributors-hide = Hide contributor list
 
+properties-title = Properties
+properties-session-title = Session Actions
+properties-action-run = Run
+properties-action-save = Save
+properties-action-undo = Undo
+properties-action-redo = Redo
+properties-action-reload = Reload Default
+properties-view-title = View
+properties-view-zoom = Zoom
+properties-view-theme = Theme
+properties-diagnostics-title = Diagnostics
+properties-export-title = Export
+
 themes-title = Themes
 themes-current-title = Current Theme
 themes-built-in-title = Built-in
