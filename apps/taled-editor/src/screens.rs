@@ -6,5 +6,6 @@ pub(crate) mod objects;
 pub(crate) mod properties;
 pub(crate) mod settings;
 pub(crate) mod themes;
+mod tile_palette;
 pub(crate) mod tilesets;
 pub(crate) mod widgets;

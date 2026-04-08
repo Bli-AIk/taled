@@ -1,11 +1,14 @@
 use ply_engine::prelude::*;
 
-use crate::app_state::{AppState, MobileScreen, Tool};
+use crate::app_state::{
+    is_tile_selection_tool, AppState, MobileScreen, ShapeFillMode, TileSelectionMode, Tool,
+};
 use crate::canvas::render_canvas;
 use crate::l10n;
 use crate::session_ops::adjust_zoom;
 use crate::theme::PlyTheme;
 
+use super::tile_palette::{collect_palette_preview, render_tile_chip_grid};
 use super::widgets::{bottom_nav, editor_nav_items};
 
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
@@ -149,143 +152,124 @@ fn render_tile_strip_shell(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) 
                         .empty();
                 });
 
-            // Right: tool side panel (62px, mostly empty in default state)
-            ui.element()
-                .id("tool-side-panel")
-                .width(fixed!(62.0))
-                .height(grow!())
-                .layout(|l| l.padding((8, 4, 8, 4)))
-                .empty();
+            // Right: tool side panel (62px)
+            render_tool_side_panel(ui, state, theme);
         });
 }
 
-struct PaletteTile {
-    gid: u32,
-    tileset_index: usize,
-    local_id: u32,
-}
-
-fn collect_palette_preview(state: &AppState, limit: usize) -> Vec<PaletteTile> {
-    let mut palette = Vec::with_capacity(limit);
-    let Some(session) = state.session.as_ref() else {
-        return palette;
-    };
-    for (tileset_index, tileset) in session.document().map.tilesets.iter().enumerate() {
-        for local_id in 0..tileset.tileset.tile_count {
-            palette.push(PaletteTile {
-                gid: tileset.first_gid + local_id,
-                tileset_index,
-                local_id,
-            });
-            if palette.len() >= limit {
-                return palette;
-            }
-        }
-    }
-    palette
-}
-
-/// Render tile chips in a 2-row column-first grid (matching CSS grid-auto-flow: column).
-fn render_tile_chip_grid(
-    ui: &mut Ui,
-    state: &mut AppState,
-    theme: &PlyTheme,
-    palette: &[PaletteTile],
-) {
-    let num_cols = palette.len().div_ceil(2);
-
-    // Pre-compute indices for each row (column-first: col*2+row)
-    let row_indices: [Vec<usize>; 2] = [
-        (0..num_cols).map(|c| c * 2).filter(|&i| i < palette.len()).collect(),
-        (0..num_cols).map(|c| c * 2 + 1).filter(|&i| i < palette.len()).collect(),
-    ];
-
-    for indices in &row_indices {
-        ui.element()
-            .width(fit!())
-            .height(fixed!(44.0))
-            .layout(|l| l.direction(LeftToRight).align(Left, Top).gap(6))
-            .children(|ui| {
-                for &idx in indices {
-                    render_tile_chip(ui, state, theme, &palette[idx]);
-                }
-            });
-    }
-}
-
-fn render_tile_chip(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, tile: &PaletteTile) {
-    let is_selected = state.selected_gid == tile.gid;
-    let chip_bg = Color::u_rgb(0x10, 0x11, 0x13);
-    let border_color = if is_selected {
-        theme.accent
-    } else {
-        theme.border
-    };
-    let border_width = if is_selected { 2 } else { 1 };
-
-    let tile_tex = crop_tile_texture(state, tile);
-    let gid = tile.gid;
+fn render_tool_side_panel(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    let lang = state.resolved_language();
+    let selection_active = is_tile_selection_tool(state.tool);
+    let shape_fill_active = state.tool == Tool::ShapeFill;
 
     ui.element()
-        .id(("tile-chip", gid))
-        .width(fixed!(44.0))
-        .height(fixed!(44.0))
-        .background_color(chip_bg)
-        .corner_radius(8.0)
-        .border(|b| b.all(border_width).color(border_color))
-        .overflow(|o| o.clip())
-        .layout(|l| l.align(CenterX, CenterY))
-        .on_press(move |_, _| {})
+        .id("tool-side-panel")
+        .width(fixed!(62.0))
+        .height(grow!())
+        .layout(|l| {
+            l.direction(TopToBottom)
+                .align(CenterX, CenterY)
+                .padding((8, 4, 8, 4))
+                .gap(3)
+        })
         .children(|ui| {
-            if ui.just_released() {
-                state.selected_gid = gid;
-            }
-            if let Some(tex) = tile_tex {
-                ui.element()
-                    .width(fixed!(40.0))
-                    .height(fixed!(40.0))
-                    .image(tex)
-                    .empty();
+            if selection_active {
+                render_selection_modes(ui, state, theme, lang);
+            } else if shape_fill_active {
+                render_shape_fill_modes(ui, state, theme, lang);
+            } else {
+                render_side_empty(ui, theme, lang);
             }
         });
 }
 
-fn crop_tile_texture(state: &AppState, tile: &PaletteTile) -> Option<Texture2D> {
-    let session = state.session.as_ref()?;
-    let texture = state.tileset_textures.get(&tile.tileset_index)?;
-    let tile_ref = session.document().map.tile_reference_for_gid(tile.gid)?;
-
-    let ts = &tile_ref.tileset.tileset;
-    let cols = ts.columns.max(1);
-    let tw = ts.tile_width as f32;
-    let th = ts.tile_height as f32;
-    let sx = (tile.local_id % cols) as f32 * tw;
-    let sy = (tile.local_id / cols) as f32 * th;
-
-    // Render the cropped tile into a small texture
-    let chip_size = 40.0;
-    let scale = (chip_size / tw).min(chip_size / th);
-    let rw = tw * scale;
-    let rh = th * scale;
-    let ox = (chip_size - rw) / 2.0;
-    let oy = (chip_size - rh) / 2.0;
-
-    let tex = render_to_texture(chip_size, chip_size, || {
-        clear_background(MacroquadColor::from_rgba(0x10, 0x11, 0x13, 255));
-        draw_texture_ex(
-            texture,
-            ox,
-            oy,
-            WHITE,
-            DrawTextureParams {
-                source: Some(Rect::new(sx, sy, tw, th)),
-                dest_size: Some(Vec2::new(rw, rh)),
-                ..Default::default()
-            },
-        );
+fn render_side_empty(ui: &mut Ui, theme: &PlyTheme, lang: l10n::SupportedLanguage) {
+    let empty_color = Color::u_rgb(0x6e, 0x6e, 0x73);
+    let _ = theme;
+    let line1 = l10n::text(lang, "tile-strip-side-empty-line-1");
+    let line2 = l10n::text(lang, "tile-strip-side-empty-line-2");
+    ui.text(&line1, |t| {
+        t.font_size(9).color(empty_color).alignment(CenterX)
     });
-    tex.set_filter(FilterMode::Nearest);
-    Some(tex)
+    ui.text(&line2, |t| {
+        t.font_size(9).color(empty_color).alignment(CenterX)
+    });
+}
+
+fn render_mode_button(
+    ui: &mut Ui,
+    id: &'static str,
+    label: &str,
+    active: bool,
+    glyph: &str,
+) {
+    let text_color = if active {
+        Color::u_rgb(0xff, 0xff, 0xff)
+    } else {
+        Color::u_rgb(0xd1, 0xd1, 0xd6)
+    };
+    let bg = if active {
+        Color::rgba(142.0, 142.0, 147.0, 0.18)
+    } else {
+        Color::rgba(0.0, 0.0, 0.0, 0.0)
+    };
+
+    ui.element()
+        .id(id)
+        .width(grow!())
+        .height(fixed!(34.0))
+        .background_color(bg)
+        .corner_radius(9.0)
+        .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(1))
+        .on_press(move |_, _| {})
+        .children(|ui| {
+            ui.text(glyph, |t| t.font_size(11).color(text_color).alignment(CenterX));
+            ui.text(label, |t| t.font_size(8).color(text_color).alignment(CenterX));
+        });
+}
+
+fn render_selection_modes(
+    ui: &mut Ui,
+    state: &mut AppState,
+    _theme: &PlyTheme,
+    lang: l10n::SupportedLanguage,
+) {
+    let modes: [(TileSelectionMode, &str, &str, &'static str); 4] = [
+        (TileSelectionMode::Replace, "selection-mode-replace", "□", "sel-replace"),
+        (TileSelectionMode::Add, "selection-mode-add", "□+", "sel-add"),
+        (TileSelectionMode::Subtract, "selection-mode-subtract", "□−", "sel-sub"),
+        (TileSelectionMode::Intersect, "selection-mode-intersect", "□□", "sel-inter"),
+    ];
+    for (mode, key, glyph, id) in &modes {
+        let active = state.tile_selection_mode == *mode;
+        let label = l10n::text(lang, key);
+        let mode_val = *mode;
+        render_mode_button(ui, id, &label, active, glyph);
+        if ui.just_released() {
+            state.tile_selection_mode = mode_val;
+        }
+    }
+}
+
+fn render_shape_fill_modes(
+    ui: &mut Ui,
+    state: &mut AppState,
+    _theme: &PlyTheme,
+    lang: l10n::SupportedLanguage,
+) {
+    let modes: [(ShapeFillMode, &str, &str, &'static str); 2] = [
+        (ShapeFillMode::Rectangle, "shape-fill-mode-rectangle", "▭", "shp-rect"),
+        (ShapeFillMode::Ellipse, "shape-fill-mode-ellipse", "◯", "shp-ellip"),
+    ];
+    for (mode, key, glyph, id) in &modes {
+        let active = state.shape_fill_mode == *mode;
+        let label = l10n::text(lang, key);
+        let mode_val = *mode;
+        render_mode_button(ui, id, &label, active, glyph);
+        if ui.just_released() {
+            state.shape_fill_mode = mode_val;
+        }
+    }
 }
 
 #[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
