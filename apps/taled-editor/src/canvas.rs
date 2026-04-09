@@ -25,6 +25,9 @@ pub(crate) fn load_tileset_textures(state: &mut AppState) {
     }
 }
 
+/// The Y coordinate where the canvas area begins (header + tile strip).
+pub(crate) const CANVAS_ORIGIN_Y: f32 = 170.0;
+
 /// Render the tile map canvas area.
 pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     ui.element()
@@ -33,7 +36,10 @@ pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme)
         .height(grow!())
         .background_color(theme.canvas_base)
         .overflow(|o| o.clip())
+        .on_press(move |_, _| {})
         .children(|ui| {
+            crate::touch_ops::handle_canvas_interaction(ui, state, CANVAS_ORIGIN_Y);
+
             let Some(session) = state.session.as_ref() else {
                 ui.text("No map loaded", |t| t.font_size(14).color(theme.muted_text));
                 return;
@@ -48,47 +54,131 @@ pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme)
             let scaled_w = map_px_w * zoom;
             let scaled_h = map_px_h * zoom;
 
-            let map_texture = render_tile_map(
-                map,
-                &state.tileset_textures,
-                state.active_layer,
-                tile_w,
-                tile_h,
-                map_px_w,
-                map_px_h,
-            );
-
-            let show_grid = state.show_grid;
-            let cb = theme.canvas_base;
-            let cb_r = (cb.r * 255.0) as u8;
-            let cb_g = (cb.g * 255.0) as u8;
-            let cb_b = (cb.b * 255.0) as u8;
-            let full_texture = render_to_texture(scaled_w, scaled_h, || {
-                clear_background(MacroquadColor::from_rgba(cb_r, cb_g, cb_b, 255));
-                draw_texture_ex(
-                    &map_texture,
-                    0.0,
-                    0.0,
-                    WHITE,
-                    DrawTextureParams {
-                        dest_size: Some(Vec2::new(scaled_w, scaled_h)),
-                        ..Default::default()
-                    },
+            // Only rebuild the canvas texture when content or zoom changed.
+            let needs_rebuild =
+                state.canvas_dirty || state.canvas_cached_zoom != state.zoom_percent;
+            if needs_rebuild || get_cached_canvas().is_none() {
+                build_and_cache_canvas(
+                    map,
+                    &state.tileset_textures,
+                    state.active_layer,
+                    state.show_grid,
+                    tile_w,
+                    tile_h,
+                    map_px_w,
+                    map_px_h,
+                    zoom,
+                    theme,
                 );
-                if show_grid {
-                    draw_grid(map.width, map.height, tile_w * zoom, tile_h * zoom, theme);
-                }
-            });
+                state.canvas_dirty = false;
+                state.canvas_cached_zoom = state.zoom_percent;
+            }
 
-            ui.element()
-                .width(fixed!(scaled_w))
-                .height(fixed!(scaled_h))
-                .image(full_texture)
-                .floating(|f| f.offset((state.pan_x, state.pan_y)).passthrough())
-                .empty();
+            if let Some(cached) = get_cached_canvas() {
+                ui.element()
+                    .width(fixed!(scaled_w))
+                    .height(fixed!(scaled_h))
+                    .image(cached)
+                    .floating(|f| {
+                        f.attach_parent()
+                            .offset((state.pan_x, state.pan_y))
+                            .passthrough()
+                    })
+                    .empty();
+            }
 
             crate::screens::editor_toolbar::render_floating_controls(ui, state, theme);
+            render_debug_overlay(ui, &state.debug_info.clone());
         });
+}
+
+fn render_debug_overlay(ui: &mut Ui, info: &str) {
+    if info.is_empty() {
+        return;
+    }
+    ui.element()
+        .width(grow!())
+        .height(fixed!(16.0))
+        .floating(|f| f.attach_parent().offset((0.0, 0.0)).passthrough())
+        .children(|ui| {
+            ui.text(info, |t| {
+                t.font_size(10).color(Color::from((255u8, 255, 0, 200)))
+            });
+        });
+}
+
+/// Cache key for the composited canvas render target in the global TextureManager.
+const CANVAS_CACHE_KEY: &str = "taled-canvas";
+
+/// Build the composited canvas texture (tile map + optional grid) at the given zoom,
+/// and cache the RenderTarget in the global TextureManager to persist across frames.
+fn build_and_cache_canvas(
+    map: &taled_core::Map,
+    textures: &BTreeMap<usize, Texture2D>,
+    active_layer: usize,
+    show_grid: bool,
+    tile_w: f32,
+    tile_h: f32,
+    map_px_w: f32,
+    map_px_h: f32,
+    zoom: f32,
+    theme: &PlyTheme,
+) {
+    let scaled_w = map_px_w * zoom;
+    let scaled_h = map_px_h * zoom;
+    let map_texture = render_tile_map(
+        map,
+        textures,
+        active_layer,
+        tile_w,
+        tile_h,
+        map_px_w,
+        map_px_h,
+    );
+    map_texture.set_filter(FilterMode::Nearest);
+
+    let rt = render_target_msaa(scaled_w as u32, scaled_h as u32);
+    rt.texture.set_filter(FilterMode::Nearest);
+    let mut cam = Camera2D::from_display_rect(Rect::new(0.0, 0.0, scaled_w, scaled_h));
+    cam.render_target = Some(rt.clone());
+    set_camera(&cam);
+
+    let cb = theme.canvas_base;
+    clear_background(MacroquadColor::from_rgba(
+        (cb.r * 255.0) as u8,
+        (cb.g * 255.0) as u8,
+        (cb.b * 255.0) as u8,
+        255,
+    ));
+    draw_texture_ex(
+        &map_texture,
+        0.0,
+        0.0,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(Vec2::new(scaled_w, scaled_h)),
+            ..Default::default()
+        },
+    );
+    if show_grid {
+        draw_grid(map.width, map.height, tile_w * zoom, tile_h * zoom, theme);
+    }
+
+    set_default_camera();
+
+    ply_engine::renderer::TEXTURE_MANAGER
+        .lock()
+        .expect("texture manager lock")
+        .cache(CANVAS_CACHE_KEY.to_string(), rt);
+}
+
+/// Retrieve the cached canvas texture, keeping it alive in the TextureManager.
+fn get_cached_canvas() -> Option<Texture2D> {
+    ply_engine::renderer::TEXTURE_MANAGER
+        .lock()
+        .expect("texture manager lock")
+        .get(CANVAS_CACHE_KEY)
+        .cloned()
 }
 
 #[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
@@ -163,12 +253,8 @@ fn render_tile_map(
 }
 
 fn draw_grid(cols: u32, rows: u32, cell_w: f32, cell_h: f32, theme: &PlyTheme) {
-    let grid_color = MacroquadColor::new(
-        theme.grid_line.r / 255.0,
-        theme.grid_line.g / 255.0,
-        theme.grid_line.b / 255.0,
-        theme.grid_line.a / 255.0,
-    );
+    let g = theme.grid_line;
+    let grid_color = MacroquadColor::new(g.r, g.g, g.b, g.a);
     let total_w = cols as f32 * cell_w;
     let total_h = rows as f32 * cell_h;
 

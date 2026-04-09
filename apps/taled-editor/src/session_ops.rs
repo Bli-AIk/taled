@@ -1,3 +1,4 @@
+use ply_engine::prelude::*;
 use taled_core::{EditorSession, Layer};
 
 use crate::app_state::AppState;
@@ -24,7 +25,6 @@ pub(crate) fn load_sample_by_path(state: &mut AppState, path: &str) {
 
 fn install_session(state: &mut AppState, session: EditorSession) {
     let selected_gid = default_selected_gid(&session);
-    let (pan_x, pan_y) = default_center_pan(&session, state.zoom_percent);
     state.active_layer = 0;
     state.selected_gid = selected_gid;
     state.selected_cell = None;
@@ -41,8 +41,9 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.tile_selection_transfer = None;
     state.layers_panel_expanded = false;
     state.zoom_percent = 100;
-    state.pan_x = pan_x;
-    state.pan_y = pan_y;
+    state.pan_x = 0.0;
+    state.pan_y = 0.0;
+    state.pending_canvas_center = 3;
     state.camera_transition_active = false;
     state.active_touch_points.clear();
     state.single_touch_gesture = None;
@@ -54,7 +55,19 @@ fn install_session(state: &mut AppState, session: EditorSession) {
 }
 
 pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
-    state.zoom_percent = (state.zoom_percent + delta).clamp(25, 800);
+    // Zoom around the viewport center to keep the map visually stable.
+    let host_w = screen_width();
+    let host_h = screen_height() - crate::canvas::CANVAS_ORIGIN_Y - 140.0;
+    let current_zoom = state.zoom_percent as f32 / 100.0;
+    let new_zoom_percent = (state.zoom_percent + delta).clamp(25, 800);
+    let new_zoom = new_zoom_percent as f32 / 100.0;
+    let cx = host_w * 0.5;
+    let cy = host_h * 0.5;
+    let world_cx = (cx - state.pan_x) / current_zoom;
+    let world_cy = (cy - state.pan_y) / current_zoom;
+    state.zoom_percent = new_zoom_percent;
+    state.pan_x = (cx - world_cx * new_zoom).round();
+    state.pan_y = (cy - world_cy * new_zoom).round();
     state.canvas_dirty = true;
 }
 
@@ -135,16 +148,20 @@ fn normalize_after_history_change(state: &mut AppState) {
     state.tile_selection_transfer = None;
 }
 
-fn default_center_pan(session: &EditorSession, zoom_percent: i32) -> (f32, f32) {
-    const HOST_WIDTH: f32 = 384.0;
-    const HOST_HEIGHT: f32 = 400.0;
+pub(crate) fn default_center_pan(session: &EditorSession, zoom_percent: i32) -> (f32, f32, String) {
+    let host_w = screen_width();
+    let sh = screen_height();
+    let host_h = sh - crate::canvas::CANVAS_ORIGIN_Y - 140.0;
     let map = &session.document().map;
     let zoom = zoom_percent as f32 / 100.0;
     let map_w = map.total_pixel_width() as f32 * zoom;
     let map_h = map.total_pixel_height() as f32 * zoom;
-    let px = ((HOST_WIDTH - map_w) * 0.5).round();
-    let py = ((HOST_HEIGHT - map_h) * 0.5).round();
-    (px, py)
+    let px = ((host_w - map_w) * 0.5).round();
+    let py = ((host_h - map_h) * 0.5).round();
+    let dbg = format!(
+        "sw:{host_w:.0} sh:{sh:.0} hw:{host_w:.0} hh:{host_h:.0} mw:{map_w:.0} mh:{map_h:.0} → px:{px:.0} py:{py:.0}"
+    );
+    (px, py, dbg)
 }
 
 fn default_selected_gid(session: &EditorSession) -> u32 {

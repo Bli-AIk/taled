@@ -384,8 +384,9 @@ fn dpad_button(
         .on_press(move |_, _| {})
         .children(|ui| {
             if ui.just_released() {
-                state.camera_x += dx;
-                state.camera_y += dy;
+                state.pan_x += dx;
+                state.pan_y += dy;
+                state.canvas_dirty = true;
             }
             ui.text(glyph, |t| {
                 t.font_size(12).color(theme.muted_text).alignment(CenterX)

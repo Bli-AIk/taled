@@ -206,14 +206,17 @@ pub(crate) struct AppState {
     pub(crate) touch_edit_batch_active: bool,
     pub(crate) camera_transition_active: bool,
     pub(crate) status: String,
-    pub(crate) canvas_texture: Option<Texture2D>,
     pub(crate) canvas_dirty: bool,
+    /// Cached zoom percent for detecting zoom changes that need re-render.
+    pub(crate) canvas_cached_zoom: i32,
     pub(crate) show_grid: bool,
     pub(crate) active_tileset: usize,
-    pub(crate) camera_x: f32,
-    pub(crate) camera_y: f32,
     pub(crate) icon_cache: IconTintCache,
     pub(crate) logo_texture: Option<Texture2D>,
+    pub(crate) debug_info: String,
+    /// Frame countdown for deferred centering (0 = done, >0 = frames remaining).
+    pub(crate) pending_canvas_center: u8,
+    pub(crate) center_debug: String,
 }
 
 impl AppState {
@@ -257,18 +260,19 @@ impl AppState {
             touch_edit_batch_active: false,
             camera_transition_active: false,
             status: "Welcome to Taled".to_string(),
-            canvas_texture: None,
             canvas_dirty: true,
+            canvas_cached_zoom: 0,
             show_grid: true,
             active_tileset: 0,
-            camera_x: 0.0,
-            camera_y: 0.0,
             icon_cache: {
                 let mut cache = IconTintCache::new();
                 cache.preload_mode_icons();
                 cache
             },
             logo_texture: None,
+            debug_info: String::new(),
+            pending_canvas_center: 0,
+            center_debug: String::new(),
         }
     }
 
