@@ -10,6 +10,7 @@ mod session_ops;
 #[cfg(feature = "system-fonts")]
 mod system_font;
 mod theme;
+mod touch_ops;
 mod ui;
 
 use ply_engine::prelude::*;

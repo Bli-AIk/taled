@@ -1,0 +1,334 @@
+use std::time::Instant;
+
+use ply_engine::prelude::*;
+
+use crate::app_state::{AppState, PinchGesture, ShapeFillPreview, SingleTouchGesture, Tool};
+use crate::edit_ops;
+
+/// Duration before a held touch starts continuous painting.
+const LONG_PRESS_DURATION: std::time::Duration = std::time::Duration::from_millis(120);
+
+/// Minimum finger distance to recognise a pinch gesture.
+const MIN_PINCH_DISTANCE: f64 = 12.0;
+
+// ── Screen → Grid conversion ────────────────────────────────────────
+
+/// Convert macroquad screen coordinates to a valid in-bounds grid cell.
+pub(crate) fn cell_from_screen(
+    state: &AppState,
+    screen_x: f32,
+    screen_y: f32,
+    canvas_origin_y: f32,
+) -> Option<(u32, u32)> {
+    let (col, row) = signed_cell_from_screen(state, screen_x, screen_y, canvas_origin_y)?;
+    let session = state.session.as_ref()?;
+    let map = &session.document().map;
+    if col >= 0 && row >= 0 && (col as u32) < map.width && (row as u32) < map.height {
+        Some((col as u32, row as u32))
+    } else {
+        None
+    }
+}
+
+/// Convert screen coordinates to a possibly-negative grid cell.
+fn signed_cell_from_screen(
+    state: &AppState,
+    screen_x: f32,
+    screen_y: f32,
+    canvas_origin_y: f32,
+) -> Option<(i32, i32)> {
+    let session = state.session.as_ref()?;
+    let map = &session.document().map;
+    let zoom = state.zoom_percent as f32 / 100.0;
+    if zoom <= 0.0 {
+        return None;
+    }
+    let canvas_x = screen_x - state.pan_x;
+    let canvas_y = screen_y - canvas_origin_y - state.pan_y;
+    let world_x = canvas_x / zoom;
+    let world_y = canvas_y / zoom;
+    let col = (world_x / map.tile_width as f32).floor() as i32;
+    let row = (world_y / map.tile_height as f32).floor() as i32;
+    Some((col, row))
+}
+
+// ── Canvas interaction entry point ──────────────────────────────────
+
+/// Process pointer state within the canvas area each frame.
+///
+/// Called from `render_canvas` while inside the canvas-area children
+/// closure.  `canvas_origin_y` is the top of the canvas area in layout
+/// coordinates (header + tile strip height).
+pub(crate) fn handle_canvas_interaction(ui: &mut Ui, state: &mut AppState, canvas_origin_y: f32) {
+    if state.session.is_none() {
+        return;
+    }
+
+    // Deferred centering: apply for a few frames to ensure screen dimensions stabilize.
+    if state.pending_canvas_center > 0 {
+        let sw = screen_width();
+        if sw > 1.0 {
+            if let Some(session) = state.session.as_ref() {
+                let (px, py, dbg) =
+                    crate::session_ops::default_center_pan(session, state.zoom_percent);
+                state.pan_x = px;
+                state.pan_y = py;
+                state.center_debug = format!("F{} {dbg}", state.pending_canvas_center);
+            }
+            state.pending_canvas_center -= 1;
+            state.canvas_dirty = true;
+        }
+    }
+
+    let (mx, my) = mouse_position();
+    let touches = touches();
+    let dpi = screen_dpi_scale();
+    let tc = touches.len();
+    let sw = screen_width();
+    let sh = screen_height();
+    let cd = state.center_debug.clone();
+
+    // Pinch zoom with two fingers
+    if tc >= 2 {
+        finish_touch_edit_batch(state);
+        state.single_touch_gesture = None;
+        state.shape_fill_preview = None;
+        handle_pinch(&touches, state, canvas_origin_y);
+        let (t0, t1) = (touches[0].position / dpi, touches[1].position / dpi);
+        state.debug_info = format!(
+            "pinch tc:{tc} dpi:{dpi:.1} t0({:.0},{:.0}) t1({:.0},{:.0}) z:{} pan({:.0},{:.0}) [{cd}]",
+            t0.x, t0.y, t1.x, t1.y, state.zoom_percent, state.pan_x, state.pan_y
+        );
+        return;
+    }
+
+    // Clear pinch gesture when fewer than 2 fingers to prevent snap-back on next pinch.
+    state.pinch_gesture = None;
+
+    let jp = ui.just_pressed();
+    let p = ui.pressed();
+    let jr = ui.just_released();
+
+    // Single-touch / mouse
+    if jp {
+        state.pinch_gesture = None;
+        start_single_gesture(state, mx, my, canvas_origin_y);
+    } else if p {
+        handle_drag(state, mx, my, canvas_origin_y);
+    }
+
+    if jr {
+        handle_release(state, mx, my, canvas_origin_y);
+    }
+
+    state.debug_info = format!(
+        "sw:{sw:.0} sh:{sh:.0} pan({:.0},{:.0}) t:{:?} jp:{} p:{} jr:{} tc:{tc} [{cd}]",
+        state.pan_x, state.pan_y, state.tool, jp as u8, p as u8, jr as u8
+    );
+}
+
+// ── Gesture lifecycle ───────────────────────────────────────────────
+
+fn start_single_gesture(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) {
+    let anchor = cell_from_screen(state, mx, my, canvas_origin_y);
+    state.single_touch_gesture = Some(SingleTouchGesture {
+        pointer_id: 0,
+        started_at: Instant::now(),
+        drag_active: false,
+        anchor_cell: anchor.map(|(x, y)| (x as i32, y as i32)),
+        last_applied_cell: None,
+        last_surface_x: mx as f64,
+        last_surface_y: my as f64,
+        pan_remainder_x: 0.0,
+        pan_remainder_y: 0.0,
+    });
+
+    // Immediate action for single-tap tools
+    match state.tool {
+        Tool::Hand => {}
+        Tool::Paint | Tool::Erase => {
+            // Don't paint on initial press — wait for long-press or release
+        }
+        Tool::Fill
+        | Tool::MagicWand
+        | Tool::SelectSameTile
+        | Tool::AddRectangle
+        | Tool::AddPoint => {
+            // These fire on release, not press
+        }
+        Tool::Select | Tool::ShapeFill => {
+            // Drag-based — handled in handle_drag / handle_release
+        }
+    }
+
+    start_touch_edit_batch(state);
+}
+
+fn handle_drag(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) {
+    let Some(gesture) = state.single_touch_gesture.as_mut() else {
+        return;
+    };
+
+    let dx = mx as f64 - gesture.last_surface_x;
+    let dy = my as f64 - gesture.last_surface_y;
+    let tool = state.tool;
+
+    match tool {
+        Tool::Hand => {
+            state.pan_x += dx as f32;
+            state.pan_y += dy as f32;
+            state.canvas_dirty = true;
+            gesture.last_surface_x = mx as f64;
+            gesture.last_surface_y = my as f64;
+        }
+        Tool::Paint | Tool::Erase => {
+            let elapsed = gesture.started_at.elapsed();
+            let last = gesture.last_applied_cell;
+            let should_paint = elapsed >= LONG_PRESS_DURATION || gesture.drag_active;
+            gesture.drag_active = gesture.drag_active || should_paint;
+            gesture.last_surface_x = mx as f64;
+            gesture.last_surface_y = my as f64;
+            if should_paint
+                && let Some(cell) = cell_from_screen(state, mx, my, canvas_origin_y)
+                && last != Some(cell)
+            {
+                edit_ops::apply_cell_tool(state, cell.0, cell.1);
+                if let Some(g) = state.single_touch_gesture.as_mut() {
+                    g.last_applied_cell = Some(cell);
+                }
+            }
+        }
+        Tool::ShapeFill => {
+            gesture.drag_active = true;
+            gesture.last_surface_x = mx as f64;
+            gesture.last_surface_y = my as f64;
+            let anchor = gesture.anchor_cell;
+            if let Some(anchor) = anchor
+                && let Some(current) = cell_from_screen(state, mx, my, canvas_origin_y)
+            {
+                state.shape_fill_preview = Some(ShapeFillPreview {
+                    start_cell: (anchor.0 as u32, anchor.1 as u32),
+                    end_cell: current,
+                });
+            }
+        }
+        Tool::Select => {
+            gesture.drag_active = true;
+            gesture.last_surface_x = mx as f64;
+            gesture.last_surface_y = my as f64;
+        }
+        _ => {
+            gesture.last_surface_x = mx as f64;
+            gesture.last_surface_y = my as f64;
+        }
+    }
+}
+
+fn handle_release(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) {
+    let gesture = state.single_touch_gesture.take();
+    let cell = cell_from_screen(state, mx, my, canvas_origin_y);
+
+    match state.tool {
+        Tool::Paint | Tool::Erase => {
+            let was_drag = gesture.as_ref().is_some_and(|g| g.drag_active);
+            if !was_drag && let Some((x, y)) = cell {
+                edit_ops::apply_cell_tool(state, x, y);
+            }
+        }
+        Tool::Fill => {
+            if let Some((x, y)) = cell {
+                edit_ops::apply_cell_tool(state, x, y);
+            }
+        }
+        Tool::ShapeFill => {
+            if let Some(preview) = state.shape_fill_preview.take() {
+                edit_ops::apply_shape_fill(
+                    state,
+                    preview.start_cell.0,
+                    preview.start_cell.1,
+                    preview.end_cell.0,
+                    preview.end_cell.1,
+                );
+            }
+        }
+        Tool::MagicWand | Tool::SelectSameTile => {
+            if let Some((x, y)) = cell {
+                edit_ops::apply_cell_tool(state, x, y);
+            }
+        }
+        Tool::Select => {
+            let was_drag = gesture.as_ref().is_some_and(|g| g.drag_active);
+            if was_drag
+                && let Some(g) = &gesture
+                && let Some(end) = cell
+                && let Some(anchor) = g.anchor_cell
+            {
+                edit_ops::select_tile_region(state, anchor.0, anchor.1, end.0 as i32, end.1 as i32);
+            } else if let Some((x, y)) = cell {
+                edit_ops::apply_cell_tool(state, x, y);
+            }
+        }
+        Tool::Hand => {}
+        _ => {}
+    }
+
+    finish_touch_edit_batch(state);
+}
+
+// ── Pinch zoom ──────────────────────────────────────────────────────
+
+fn handle_pinch(touches: &[Touch], state: &mut AppState, canvas_origin_y: f32) {
+    if touches.len() < 2 {
+        state.pinch_gesture = None;
+        return;
+    }
+    // Touch positions are in physical pixels; convert to logical to match pan/layout.
+    let dpi = screen_dpi_scale();
+    let (t0, t1) = (touches[0].position / dpi, touches[1].position / dpi);
+    let center_x = ((t0.x + t1.x) / 2.0) as f64;
+    let center_y = ((t0.y + t1.y) / 2.0 - canvas_origin_y) as f64;
+    let dist = ((t1.x - t0.x).powi(2) + (t1.y - t0.y).powi(2)).sqrt() as f64;
+
+    if let Some(ref pinch) = state.pinch_gesture {
+        let ratio = dist / pinch.initial_distance;
+        let new_zoom_percent =
+            ((pinch.initial_zoom_percent as f64 * ratio).round() as i32).clamp(25, 800);
+        let new_zoom = new_zoom_percent as f64 / 100.0;
+        state.zoom_percent = new_zoom_percent;
+        // Adjust pan so the world point under the pinch center stays fixed
+        state.pan_x = (center_x - pinch.world_center_x * new_zoom).round() as f32;
+        state.pan_y = (center_y - pinch.world_center_y * new_zoom).round() as f32;
+        state.canvas_dirty = true;
+    } else if dist > MIN_PINCH_DISTANCE {
+        let current_zoom = state.zoom_percent as f64 / 100.0;
+        let world_cx = (center_x - state.pan_x as f64) / current_zoom;
+        let world_cy = (center_y - state.pan_y as f64) / current_zoom;
+        state.pinch_gesture = Some(PinchGesture {
+            initial_distance: dist,
+            initial_zoom_percent: state.zoom_percent,
+            world_center_x: world_cx,
+            world_center_y: world_cy,
+        });
+    }
+}
+
+// ── Edit batch ──────────────────────────────────────────────────────
+
+fn start_touch_edit_batch(state: &mut AppState) {
+    if !state.touch_edit_batch_active {
+        if let Some(session) = state.session.as_mut() {
+            session.begin_history_batch();
+        }
+        state.touch_edit_batch_active = true;
+    }
+}
+
+fn finish_touch_edit_batch(state: &mut AppState) {
+    if state.touch_edit_batch_active {
+        if let Some(session) = state.session.as_mut() {
+            session.finish_history_batch();
+        }
+        state.touch_edit_batch_active = false;
+        state.canvas_dirty = true;
+    }
+}
