@@ -16,14 +16,7 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     render_tile_strip_shell(ui, state, theme);
 
     // Canvas fills remaining space between tile strip and toolbar
-    let header_h = 56.0;
-    let strip_h = 114.0;
-    let toolbar_h = 68.0;
-    let nav_h = 72.0;
-    let canvas_h = screen_height() - header_h - strip_h - toolbar_h - nav_h;
-    let canvas_w = screen_width();
-
-    render_canvas(ui, state, theme, canvas_w, canvas_h);
+    render_canvas(ui, state, theme);
 
     render_toolbar(ui, state, theme);
 

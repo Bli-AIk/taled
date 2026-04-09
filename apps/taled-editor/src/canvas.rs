@@ -26,17 +26,11 @@ pub(crate) fn load_tileset_textures(state: &mut AppState) {
 }
 
 /// Render the tile map canvas area.
-pub(crate) fn render_canvas(
-    ui: &mut Ui,
-    state: &mut AppState,
-    theme: &PlyTheme,
-    _canvas_width: f32,
-    canvas_height: f32,
-) {
+pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     ui.element()
         .id("canvas-area")
         .width(grow!())
-        .height(fixed!(canvas_height))
+        .height(grow!())
         .background_color(theme.canvas_base)
         .overflow(|o| o.clip())
         .children(|ui| {

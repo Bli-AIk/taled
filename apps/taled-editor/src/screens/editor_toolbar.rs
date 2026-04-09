@@ -175,17 +175,28 @@ fn render_placeholder_tool(
 }
 
 pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    render_history_float(ui, state, theme);
-    render_layer_float(ui, state, theme);
+    // Top-anchored controls
+    render_history_buttons(ui, state, theme);
+    render_layer_panel(ui, state, theme);
+    // Bottom-positioned controls (using Top anchor with calculated Y offsets)
+    let canvas_h = (screen_height() - 56.0 - 114.0 - 68.0 - 72.0).max(200.0);
+    render_dpad_float(ui, state, theme, canvas_h);
+    render_zoom_float(ui, state, theme, canvas_h);
+}
 
-    // D-pad joystick (bottom-left, 92x92) — 3px gap above toolbar
+/// Bottom floating controls (D-pad + zoom) rendered at the editor/root level
+/// using absolute Y positions since Bottom anchoring is unreliable in Ply.
+fn render_dpad_float(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, canvas_h: f32) {
+    // Position from screen top: header(56) + tile_strip(114) + canvas_h - dpad(92) - margin(8)
+    let dpad_y = 56.0 + 114.0 + canvas_h - 92.0 - 8.0;
     ui.element()
         .id("dpad")
         .width(fixed!(92.0))
         .height(fixed!(92.0))
         .floating(|f| {
-            f.anchor((Left, Bottom), (Left, Bottom))
-                .offset((18.0, -3.0))
+            f.anchor((Left, Top), (Left, Top))
+                .attach_root()
+                .offset((8.0, dpad_y))
                 .z_index(10)
         })
         .background_color(theme.surface_elevated)
@@ -193,40 +204,20 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
         .border(|b| b.all(1).color(theme.border))
         .layout(|l| l.align(CenterX, CenterY))
         .children(|ui| {
-            // D-pad cross layout
-            ui.element()
-                .width(fixed!(60.0))
-                .height(fixed!(60.0))
-                .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(4))
-                .children(|ui| {
-                    dpad_button(ui, state, theme, "dpad-up", "▲", 0.0, -16.0);
-                    // Middle row (Left, Center, Right)
-                    ui.element()
-                        .width(fixed!(60.0))
-                        .height(fixed!(18.0))
-                        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY).gap(6))
-                        .children(|ui| {
-                            dpad_button(ui, state, theme, "dpad-left", "◀", -16.0, 0.0);
-                            ui.element()
-                                .width(fixed!(16.0))
-                                .height(fixed!(16.0))
-                                .background_color(theme.surface)
-                                .corner_radius(8.0)
-                                .empty();
-                            dpad_button(ui, state, theme, "dpad-right", "▶", 16.0, 0.0);
-                        });
-                    dpad_button(ui, state, theme, "dpad-down", "▼", 0.0, 16.0);
-                });
+            render_dpad_inner(ui, state, theme);
         });
+}
 
-    // Zoom control (bottom-right, 118x42) — 3px gap above toolbar
+fn render_zoom_float(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, canvas_h: f32) {
+    let zoom_y = 56.0 + 114.0 + canvas_h - 42.0 - 8.0;
     ui.element()
         .id("zoom-float")
         .width(fixed!(118.0))
         .height(fixed!(42.0))
         .floating(|f| {
-            f.anchor((Right, Bottom), (Right, Bottom))
-                .offset((-18.0, -3.0))
+            f.anchor((Right, Top), (Right, Top))
+                .attach_root()
+                .offset((-8.0, zoom_y))
                 .z_index(10)
         })
         .background_color(theme.surface_elevated)
@@ -246,6 +237,129 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
                     });
                 });
             zoom_button(ui, state, theme, "zoom-in", "+", 25);
+        });
+}
+
+fn render_history_buttons(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    let (can_undo, can_redo) = state
+        .session
+        .as_ref()
+        .map_or((false, false), |s| (s.can_undo(), s.can_redo()));
+
+    let float_bg = Color::u_rgba(24, 24, 26, 245);
+    let float_border = Color::u_rgba(255, 255, 255, 20);
+
+    ui.element()
+        .id("history-float")
+        .floating(|f| {
+            f.anchor((Left, Top), (Left, Top))
+                .offset((0.0, 4.0))
+                .z_index(12)
+        })
+        .layout(|l| l.direction(LeftToRight).gap(6))
+        .children(|ui| {
+            history_button(
+                ui,
+                state,
+                theme,
+                "undo",
+                IconId::Undo,
+                can_undo,
+                float_bg,
+                float_border,
+                true,
+            );
+            history_button(
+                ui,
+                state,
+                theme,
+                "redo",
+                IconId::Redo,
+                can_redo,
+                float_bg,
+                float_border,
+                false,
+            );
+        });
+}
+
+fn render_layer_panel(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    let lang = state.resolved_language();
+    let layer_name = state
+        .session
+        .as_ref()
+        .and_then(|s| s.document().map.layer(state.active_layer))
+        .map_or_else(|| "\u{2014}".to_string(), |l| l.name().to_string());
+
+    let float_bg = Color::u_rgba(24, 24, 26, 245);
+    let float_border = Color::u_rgba(255, 255, 255, 20);
+    let title_label = l10n::text(lang, "nav-layers");
+
+    ui.element()
+        .id("layer-float")
+        .width(fixed!(158.0))
+        .floating(|f| {
+            f.anchor((Right, Top), (Right, Top))
+                .offset((0.0, 4.0))
+                .z_index(12)
+        })
+        .background_color(float_bg)
+        .corner_radius(14.0)
+        .border(|b| b.all(1).color(float_border))
+        .layout(|l| {
+            l.direction(LeftToRight)
+                .padding((8, 10, 6, 10))
+                .align(Left, CenterY)
+        })
+        .on_press(move |_, _| {})
+        .children(|ui| {
+            if ui.just_released() {
+                state.layers_panel_expanded = !state.layers_panel_expanded;
+            }
+            ui.element()
+                .width(grow!())
+                .layout(|l| l.direction(TopToBottom).gap(1))
+                .children(|ui| {
+                    ui.text(&title_label, |t| t.font_size(12).color(theme.text));
+                    ui.text(&layer_name, |t| {
+                        t.font_size(10).color(Color::u_rgba(255, 255, 255, 168))
+                    });
+                });
+            ui.text("▽", |t| t.font_size(14).color(theme.muted_text));
+        });
+}
+
+fn render_dpad_inner(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    ui.element()
+        .width(fixed!(60.0))
+        .height(fixed!(60.0))
+        .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(4))
+        .children(|ui| {
+            dpad_button(ui, state, theme, "dpad-up", "▲", 0.0, -16.0);
+            render_dpad_middle_row(ui, state, theme);
+            dpad_button(ui, state, theme, "dpad-down", "▼", 0.0, 16.0);
+        });
+}
+
+fn render_dpad_middle_row(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    ui.element()
+        .width(fixed!(60.0))
+        .height(fixed!(18.0))
+        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY).gap(6))
+        .children(|ui| {
+            dpad_button(ui, state, theme, "dpad-left", "◀", -16.0, 0.0);
+            ui.element()
+                .width(fixed!(16.0))
+                .height(fixed!(16.0))
+                .background_color(theme.surface)
+                .corner_radius(8.0)
+                .layout(|l| l.align(CenterX, CenterY))
+                .children(|ui| {
+                    ui.text("⊕", |t| {
+                        t.font_size(11).color(theme.muted_text).alignment(CenterX)
+                    });
+                });
+            dpad_button(ui, state, theme, "dpad-right", "▶", 16.0, 0.0);
         });
 }
 
@@ -301,50 +415,6 @@ fn zoom_button(
         });
 }
 
-/// Undo/Redo floating buttons — top-left of canvas (Dioxus: left 18px, top 4.5px).
-fn render_history_float(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let (can_undo, can_redo) = state
-        .session
-        .as_ref()
-        .map_or((false, false), |s| (s.can_undo(), s.can_redo()));
-
-    let float_bg = Color::u_rgba(24, 24, 26, 245);
-    let float_border = Color::u_rgba(255, 255, 255, 20);
-
-    ui.element()
-        .id("history-float")
-        .floating(|f| {
-            f.anchor((Left, Top), (Left, Top))
-                .offset((18.0, 4.5))
-                .z_index(12)
-        })
-        .layout(|l| l.direction(LeftToRight).gap(6))
-        .children(|ui| {
-            history_button(
-                ui,
-                state,
-                theme,
-                "undo",
-                IconId::Undo,
-                can_undo,
-                float_bg,
-                float_border,
-                true,
-            );
-            history_button(
-                ui,
-                state,
-                theme,
-                "redo",
-                IconId::Redo,
-                can_redo,
-                float_bg,
-                float_border,
-                false,
-            );
-        });
-}
-
 fn history_button(
     ui: &mut Ui,
     state: &mut AppState,
@@ -391,42 +461,5 @@ fn history_button(
                 .background_color(icon_color)
                 .image(icon_tex)
                 .empty();
-        });
-}
-
-/// Layer info floating panel — top-right of canvas (Dioxus: right 18px, top 4.5px).
-fn render_layer_float(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let lang = state.resolved_language();
-    let layer_name = state
-        .session
-        .as_ref()
-        .and_then(|s| s.document().map.layer(state.active_layer))
-        .map_or_else(|| "\u{2014}".to_string(), |l| l.name().to_string());
-
-    let float_bg = Color::u_rgba(24, 24, 26, 245);
-    let float_border = Color::u_rgba(255, 255, 255, 20);
-    let title_label = l10n::text(lang, "nav-layers");
-
-    ui.element()
-        .id("layer-float")
-        .width(fixed!(158.0))
-        .floating(|f| {
-            f.anchor((Right, Top), (Right, Top))
-                .offset((-18.0, 4.5))
-                .z_index(12)
-        })
-        .background_color(float_bg)
-        .corner_radius(14.0)
-        .border(|b| b.all(1).color(float_border))
-        .layout(|l| l.direction(TopToBottom).padding((8, 10, 6, 10)).gap(1))
-        .on_press(move |_, _| {})
-        .children(|ui| {
-            if ui.just_released() {
-                state.layers_panel_expanded = !state.layers_panel_expanded;
-            }
-            ui.text(&title_label, |t| t.font_size(12).color(theme.text));
-            ui.text(&layer_name, |t| {
-                t.font_size(10).color(Color::u_rgba(255, 255, 255, 168))
-            });
         });
 }
