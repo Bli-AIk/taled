@@ -207,7 +207,7 @@ fn render_mode_button(
     label: &str,
     active: bool,
     icon_id: IconId,
-) {
+) -> bool {
     let text_color = if active {
         Color::u_rgb(0xff, 0xff, 0xff)
     } else {
@@ -219,6 +219,7 @@ fn render_mode_button(
         Color::rgba(0.0, 0.0, 0.0, 0.0)
     };
     let icon_tex = state.icon_cache.get(icon_id);
+    let mut released = false;
 
     ui.element()
         .id(id)
@@ -229,6 +230,7 @@ fn render_mode_button(
         .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(2))
         .on_press(move |_, _| {})
         .children(|ui| {
+            released = ui.just_released();
             ui.element()
                 .width(fixed!(22.0))
                 .height(fixed!(22.0))
@@ -237,6 +239,7 @@ fn render_mode_button(
                 .empty();
             ui.text(label, |t| t.font_size(9).color(text_color));
         });
+    released
 }
 
 fn render_selection_modes(
@@ -275,8 +278,7 @@ fn render_selection_modes(
         let active = state.tile_selection_mode == *mode;
         let label = l10n::text(lang, key);
         let mode_val = *mode;
-        render_mode_button(ui, state, id, &label, active, *icon_id);
-        if ui.just_released() {
+        if render_mode_button(ui, state, id, &label, active, *icon_id) {
             state.tile_selection_mode = mode_val;
         }
     }
@@ -306,8 +308,7 @@ fn render_shape_fill_modes(
         let active = state.shape_fill_mode == *mode;
         let label = l10n::text(lang, key);
         let mode_val = *mode;
-        render_mode_button(ui, state, id, &label, active, *icon_id);
-        if ui.just_released() {
+        if render_mode_button(ui, state, id, &label, active, *icon_id) {
             state.shape_fill_mode = mode_val;
         }
     }

@@ -15,6 +15,11 @@ const MIN_PINCH_DISTANCE: f64 = 12.0;
 /// Double-tap window for dismissing a selection.
 const DOUBLE_TAP_WINDOW: std::time::Duration = std::time::Duration::from_millis(320);
 
+/// Whether the current tool uses tile selection (Select, MagicWand, SelectSameTile).
+fn is_selection_tool(tool: Tool) -> bool {
+    matches!(tool, Tool::Select | Tool::MagicWand | Tool::SelectSameTile)
+}
+
 // ── Screen → Grid conversion ────────────────────────────────────────
 
 /// Convert macroquad screen coordinates to a valid in-bounds grid cell.
@@ -135,11 +140,30 @@ pub(crate) fn handle_canvas_interaction(ui: &mut Ui, state: &mut AppState, canva
 
 fn start_single_gesture(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) {
     let anchor = cell_from_screen(state, mx, my, canvas_origin_y);
+
+    // In Replace mode, detect if the touch starts outside the current selection.
+    // If so, the drag should NOT create a new selection — only dismiss the old one.
+    let outside = is_selection_tool(state.tool)
+        && state.tile_selection_mode == crate::app_state::TileSelectionMode::Replace
+        && state.tile_selection_transfer.is_none()
+        && state.tile_selection_cells.is_some()
+        && anchor.is_none_or(|(x, y)| {
+            state
+                .tile_selection_cells
+                .as_ref()
+                .is_some_and(|cells| !cells.contains(&(x as i32, y as i32)))
+        });
+
     state.single_touch_gesture = Some(SingleTouchGesture {
         pointer_id: 0,
         started_at: Instant::now(),
         drag_active: false,
-        anchor_cell: anchor.map(|(x, y)| (x as i32, y as i32)),
+        outside_existing_selection: outside,
+        anchor_cell: if outside {
+            None
+        } else {
+            anchor.map(|(x, y)| (x as i32, y as i32))
+        },
         last_applied_cell: None,
         last_surface_x: mx as f64,
         last_surface_y: my as f64,
@@ -293,7 +317,12 @@ fn handle_release(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) 
             }
         }
         Tool::MagicWand | Tool::SelectSameTile => {
-            if let Some((x, y)) = cell {
+            let outside = gesture
+                .as_ref()
+                .is_some_and(|g| g.outside_existing_selection);
+            if outside {
+                dismiss_selection(state);
+            } else if let Some((x, y)) = cell {
                 if try_dismiss_selection(state, x, y) {
                     // Selection was dismissed via double-tap or tap-outside
                 } else {
@@ -307,17 +336,25 @@ fn handle_release(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) 
         }
         Tool::Select => {
             state.tile_selection_preview_cells = None;
-            let was_drag = gesture.as_ref().is_some_and(|g| g.drag_active);
-            if was_drag
-                && let Some(g) = &gesture
-                && let Some(anchor) = g.anchor_cell
-            {
-                let end = signed_cell_from_screen(state, mx, my, canvas_origin_y).unwrap_or(anchor);
-                edit_ops::select_tile_region(state, anchor.0, anchor.1, end.0, end.1);
-            } else if let Some((x, y)) = cell
-                && !try_dismiss_selection(state, x, y)
-            {
-                edit_ops::apply_cell_tool(state, x, y);
+            let outside = gesture
+                .as_ref()
+                .is_some_and(|g| g.outside_existing_selection);
+            if outside {
+                dismiss_selection(state);
+            } else {
+                let was_drag = gesture.as_ref().is_some_and(|g| g.drag_active);
+                if was_drag
+                    && let Some(g) = &gesture
+                    && let Some(anchor) = g.anchor_cell
+                {
+                    let end =
+                        signed_cell_from_screen(state, mx, my, canvas_origin_y).unwrap_or(anchor);
+                    edit_ops::select_tile_region(state, anchor.0, anchor.1, end.0, end.1);
+                } else if let Some((x, y)) = cell
+                    && !try_dismiss_selection(state, x, y)
+                {
+                    edit_ops::apply_cell_tool(state, x, y);
+                }
             }
         }
         Tool::Hand => {}
