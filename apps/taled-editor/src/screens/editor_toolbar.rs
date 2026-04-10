@@ -265,7 +265,7 @@ fn sel_action_button(
         .height(fixed!(32.0))
         .background_color(theme.accent_soft)
         .corner_radius(8.0)
-        .layout(|l| l.align(CenterX, CenterY))
+        .layout(|l| l.align(Left, CenterY))
         .on_press(move |_, _| {})
         .children(|ui| {
             if ui.just_released() {
@@ -283,14 +283,8 @@ fn sel_action_button(
                     }
                 }
             }
-            ui.element()
-                .width(grow!())
-                .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
-                .children(|ui| {
-                    ui.text(label, |t| {
-                        t.font_size(11).color(theme.text).alignment(CenterX)
-                    });
-                });
+            ui.text(label, |t| {
+                t.font_size(11).color(theme.text).alignment(CenterX)
+            });
         });
 }
