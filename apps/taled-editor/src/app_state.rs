@@ -140,6 +140,14 @@ pub(crate) enum TileSelectionHandle {
     BottomRight,
 }
 
+/// Tracks which kind of action was last pushed, so undo/redo can dispatch
+/// to the correct stack (document edits vs. selection changes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum UndoActionKind {
+    DocumentEdit,
+    SelectionChange,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[allow(dead_code)]
 pub(crate) struct TileClipboard {
@@ -210,6 +218,12 @@ pub(crate) struct AppState {
     pub(crate) canvas_dirty: bool,
     /// Cached zoom percent for detecting zoom changes that need re-render.
     pub(crate) canvas_cached_zoom: i32,
+    /// Interleaved undo action order (document edits + selection changes).
+    pub(crate) undo_action_order: Vec<UndoActionKind>,
+    pub(crate) redo_action_order: Vec<UndoActionKind>,
+    /// Selection-specific undo/redo stacks (stores previous selection cells).
+    pub(crate) selection_undo_stack: Vec<Option<BTreeSet<(i32, i32)>>>,
+    pub(crate) selection_redo_stack: Vec<Option<BTreeSet<(i32, i32)>>>,
     pub(crate) show_grid: bool,
     pub(crate) active_tileset: usize,
     pub(crate) icon_cache: IconTintCache,
@@ -263,6 +277,10 @@ impl AppState {
             status: "Welcome to Taled".to_string(),
             canvas_dirty: true,
             canvas_cached_zoom: 0,
+            undo_action_order: Vec::new(),
+            redo_action_order: Vec::new(),
+            selection_undo_stack: Vec::new(),
+            selection_redo_stack: Vec::new(),
             show_grid: true,
             active_tileset: 0,
             icon_cache: {

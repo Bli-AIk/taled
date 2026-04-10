@@ -91,6 +91,11 @@ pub(crate) fn delete_selection(state: &mut AppState) {
     match result {
         Ok(()) => {
             state.canvas_dirty = true;
+            state
+                .undo_action_order
+                .push(crate::app_state::UndoActionKind::DocumentEdit);
+            state.redo_action_order.clear();
+            state.selection_redo_stack.clear();
             dismiss_tile_selection(state);
             state.status = "Cleared selected region.".to_string();
         }
@@ -157,6 +162,11 @@ pub(crate) fn place_tile_selection_transfer(state: &mut AppState) {
     match result {
         Ok(()) => {
             state.canvas_dirty = true;
+            state
+                .undo_action_order
+                .push(crate::app_state::UndoActionKind::DocumentEdit);
+            state.redo_action_order.clear();
+            state.selection_redo_stack.clear();
             let cells = selection_cells_from_mask(
                 min_x,
                 min_y,

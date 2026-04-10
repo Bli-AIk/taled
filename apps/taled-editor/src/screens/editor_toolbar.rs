@@ -318,10 +318,12 @@ fn render_zoom_float(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, canvas
 }
 
 fn render_history_buttons(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let (can_undo, can_redo) = state
+    let session_can = state
         .session
         .as_ref()
         .map_or((false, false), |s| (s.can_undo(), s.can_redo()));
+    let can_undo = !state.undo_action_order.is_empty() || session_can.0;
+    let can_redo = !state.redo_action_order.is_empty() || session_can.1;
 
     let float_bg = Color::u_rgba(24, 24, 26, 245);
     let float_border = Color::u_rgba(255, 255, 255, 20);

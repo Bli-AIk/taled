@@ -400,6 +400,16 @@ fn try_dismiss_selection(state: &mut AppState, x: u32, y: u32) -> bool {
 }
 
 fn dismiss_selection(state: &mut AppState) {
+    // Record previous selection for undo.
+    state
+        .selection_undo_stack
+        .push(state.tile_selection_cells.clone());
+    state.selection_redo_stack.clear();
+    state
+        .undo_action_order
+        .push(crate::app_state::UndoActionKind::SelectionChange);
+    state.redo_action_order.clear();
+
     state.tile_selection = None;
     state.tile_selection_cells = None;
     state.tile_selection_preview = None;
@@ -460,8 +470,14 @@ fn start_touch_edit_batch(state: &mut AppState) {
 
 fn finish_touch_edit_batch(state: &mut AppState) {
     if state.touch_edit_batch_active {
-        if let Some(session) = state.session.as_mut() {
-            session.finish_history_batch();
+        if let Some(session) = state.session.as_mut()
+            && session.finish_history_batch()
+        {
+            state
+                .undo_action_order
+                .push(crate::app_state::UndoActionKind::DocumentEdit);
+            state.redo_action_order.clear();
+            state.selection_redo_stack.clear();
         }
         state.touch_edit_batch_active = false;
         state.canvas_dirty = true;

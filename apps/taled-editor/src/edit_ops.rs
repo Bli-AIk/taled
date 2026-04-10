@@ -91,6 +91,16 @@ pub(crate) fn select_tile_region(
 }
 
 fn set_tile_selection(state: &mut AppState, cells: BTreeSet<(i32, i32)>) {
+    // Record previous selection for undo.
+    state
+        .selection_undo_stack
+        .push(state.tile_selection_cells.clone());
+    state.selection_redo_stack.clear();
+    state
+        .undo_action_order
+        .push(crate::app_state::UndoActionKind::SelectionChange);
+    state.redo_action_order.clear();
+
     let mode = state.tile_selection_mode;
     let merged = match mode {
         TileSelectionMode::Replace => cells.clone(),

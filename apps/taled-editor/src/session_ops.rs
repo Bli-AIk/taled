@@ -1,7 +1,9 @@
+use std::collections::BTreeSet;
+
 use ply_engine::prelude::*;
 use taled_core::{EditorSession, Layer};
 
-use crate::app_state::AppState;
+use crate::app_state::{AppState, TileSelectionRegion, UndoActionKind};
 use crate::embedded_samples::{
     DEFAULT_EMBEDDED_SAMPLE_PATH, embedded_sample, embedded_sample_assets,
 };
@@ -50,6 +52,10 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.pinch_gesture = None;
     state.touch_edit_batch_active = false;
     state.canvas_dirty = true;
+    state.undo_action_order.clear();
+    state.redo_action_order.clear();
+    state.selection_undo_stack.clear();
+    state.selection_redo_stack.clear();
     state.session = Some(session);
     crate::canvas::load_tileset_textures(state);
 }
@@ -73,32 +79,114 @@ pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
 
 #[allow(dead_code)]
 pub(crate) fn apply_undo(state: &mut AppState) {
-    let Some(session) = state.session.as_mut() else {
-        state.status = "Nothing to undo.".to_string();
-        return;
-    };
-    if session.undo() {
-        normalize_after_history_change(state);
-        state.canvas_dirty = true;
-        state.status = "Undo applied.".to_string();
-    } else {
-        state.status = "Nothing to undo.".to_string();
+    match state.undo_action_order.last().copied() {
+        Some(UndoActionKind::SelectionChange) => {
+            state.undo_action_order.pop();
+            let prev = state.selection_undo_stack.pop().unwrap_or(None);
+            state
+                .selection_redo_stack
+                .push(state.tile_selection_cells.clone());
+            state
+                .redo_action_order
+                .push(UndoActionKind::SelectionChange);
+            restore_selection_cells(state, prev);
+            state.status = "Undo selection.".to_string();
+        }
+        Some(UndoActionKind::DocumentEdit) => {
+            let Some(session) = state.session.as_mut() else {
+                return;
+            };
+            if session.undo() {
+                state.undo_action_order.pop();
+                state.redo_action_order.push(UndoActionKind::DocumentEdit);
+                normalize_after_history_change(state);
+                state.canvas_dirty = true;
+                state.status = "Undo applied.".to_string();
+            }
+        }
+        None => {
+            // Fallback: try document undo for edits made before tracking started.
+            let Some(session) = state.session.as_mut() else {
+                state.status = "Nothing to undo.".to_string();
+                return;
+            };
+            if session.undo() {
+                normalize_after_history_change(state);
+                state.canvas_dirty = true;
+                state.status = "Undo applied.".to_string();
+            } else {
+                state.status = "Nothing to undo.".to_string();
+            }
+        }
     }
 }
 
 #[allow(dead_code)]
 pub(crate) fn apply_redo(state: &mut AppState) {
-    let Some(session) = state.session.as_mut() else {
-        state.status = "Nothing to redo.".to_string();
-        return;
-    };
-    if session.redo() {
-        normalize_after_history_change(state);
-        state.canvas_dirty = true;
-        state.status = "Redo applied.".to_string();
-    } else {
-        state.status = "Nothing to redo.".to_string();
+    match state.redo_action_order.last().copied() {
+        Some(UndoActionKind::SelectionChange) => {
+            state.redo_action_order.pop();
+            let next = state.selection_redo_stack.pop().unwrap_or(None);
+            state
+                .selection_undo_stack
+                .push(state.tile_selection_cells.clone());
+            state
+                .undo_action_order
+                .push(UndoActionKind::SelectionChange);
+            restore_selection_cells(state, next);
+            state.status = "Redo selection.".to_string();
+        }
+        Some(UndoActionKind::DocumentEdit) => {
+            let Some(session) = state.session.as_mut() else {
+                return;
+            };
+            if session.redo() {
+                state.redo_action_order.pop();
+                state.undo_action_order.push(UndoActionKind::DocumentEdit);
+                normalize_after_history_change(state);
+                state.canvas_dirty = true;
+                state.status = "Redo applied.".to_string();
+            }
+        }
+        None => {
+            let Some(session) = state.session.as_mut() else {
+                state.status = "Nothing to redo.".to_string();
+                return;
+            };
+            if session.redo() {
+                normalize_after_history_change(state);
+                state.canvas_dirty = true;
+                state.status = "Redo applied.".to_string();
+            } else {
+                state.status = "Nothing to redo.".to_string();
+            }
+        }
     }
+}
+
+fn restore_selection_cells(state: &mut AppState, cells: Option<BTreeSet<(i32, i32)>>) {
+    state.tile_selection = cells.as_ref().and_then(selection_region_from_cells);
+    state.tile_selection_cells = cells;
+    state.tile_selection_preview = None;
+    state.tile_selection_preview_cells = None;
+    state.tile_selection_last_tap_at = None;
+    state.tile_selection_transfer = None;
+    state.canvas_dirty = true;
+}
+
+fn selection_region_from_cells(cells: &BTreeSet<(i32, i32)>) -> Option<TileSelectionRegion> {
+    let &(mut min_x, mut min_y) = cells.iter().next()?;
+    let (mut max_x, mut max_y) = (min_x, min_y);
+    for &(x, y) in cells {
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+    Some(TileSelectionRegion {
+        start_cell: (min_x, min_y),
+        end_cell: (max_x, max_y),
+    })
 }
 
 #[allow(dead_code)]
