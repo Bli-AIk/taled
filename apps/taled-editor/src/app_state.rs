@@ -241,6 +241,8 @@ pub(crate) struct AppState {
     /// Frame countdown for deferred centering (0 = done, >0 = frames remaining).
     pub(crate) pending_canvas_center: u8,
     pub(crate) center_debug: String,
+    /// Top safe-area inset in logical pixels (for camera cutouts / notches).
+    pub(crate) safe_inset_top: f32,
 }
 
 impl AppState {
@@ -305,6 +307,7 @@ impl AppState {
             canvas_rebuild_count: 0,
             pending_canvas_center: 0,
             center_debug: String::new(),
+            safe_inset_top: 0.0,
         }
     }
 

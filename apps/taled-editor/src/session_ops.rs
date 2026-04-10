@@ -67,7 +67,8 @@ fn install_session(state: &mut AppState, session: EditorSession) {
 pub(crate) fn adjust_zoom(state: &mut AppState, delta: i32) {
     // Zoom around the viewport center to keep the map visually stable.
     let host_w = screen_width();
-    let host_h = screen_height() - crate::canvas::CANVAS_ORIGIN_Y - 140.0;
+    let host_h =
+        screen_height() - crate::canvas::CANVAS_ORIGIN_Y - state.safe_inset_top - 140.0;
     let current_zoom = state.zoom_percent as f32 / 100.0;
     let new_zoom_percent = (state.zoom_percent + delta).clamp(25, 800);
     let new_zoom = new_zoom_percent as f32 / 100.0;
@@ -244,10 +245,14 @@ fn normalize_after_history_change(state: &mut AppState) {
     state.tile_selection_transfer = None;
 }
 
-pub(crate) fn default_center_pan(session: &EditorSession, zoom_percent: i32) -> (f32, f32, String) {
+pub(crate) fn default_center_pan(
+    session: &EditorSession,
+    zoom_percent: i32,
+    safe_inset_top: f32,
+) -> (f32, f32, String) {
     let host_w = screen_width();
     let sh = screen_height();
-    let host_h = sh - crate::canvas::CANVAS_ORIGIN_Y - 140.0;
+    let host_h = sh - crate::canvas::CANVAS_ORIGIN_Y - safe_inset_top - 140.0;
     let map = &session.document().map;
     let zoom = zoom_percent as f32 / 100.0;
     let map_w = map.total_pixel_width() as f32 * zoom;

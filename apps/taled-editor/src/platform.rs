@@ -149,6 +149,83 @@ pub(crate) fn files_dir() -> Option<String> {
     Some(".".to_owned())
 }
 
+/// Return the safe area top inset in physical pixels (for camera cutouts / notches).
+///
+/// Uses the JNI chain: `activity.getWindow().getDecorView().getRootWindowInsets()
+/// .getDisplayCutout().getSafeInsetTop()`.
+/// Returns 0 when the API is unavailable, the window has no insets, or no cutout exists.
+#[cfg(target_os = "android")]
+pub(crate) fn safe_inset_top() -> i32 {
+    // SAFETY: All JNI pointers come from miniquad's verified Android runtime.
+    unsafe {
+        use macroquad::miniquad::native::android::{ACTIVITY, attach_jni_env};
+
+        let env = attach_jni_env();
+        if env.is_null() || ACTIVITY.is_null() {
+            return 0;
+        }
+
+        let get_object_class = (**env).GetObjectClass.unwrap();
+        let get_method = (**env).GetMethodID.unwrap();
+        let call_obj = (**env).CallObjectMethod.unwrap();
+        let call_int = (**env).CallIntMethod.unwrap();
+
+        // Helper: look up an instance method, return null method ID on failure.
+        macro_rules! method {
+            ($cls:expr, $name:expr, $sig:expr) => {
+                get_method(env, $cls, $name, $sig)
+            };
+        }
+
+        // activity.getWindow() → Window
+        let act_cls = get_object_class(env, ACTIVITY);
+        let m = method!(act_cls, c"getWindow".as_ptr(), c"()Landroid/view/Window;".as_ptr());
+        if m.is_null() { return 0; }
+        let window = call_obj(env, ACTIVITY, m);
+        if window.is_null() { return 0; }
+
+        // window.getDecorView() → View
+        let win_cls = get_object_class(env, window);
+        let m = method!(win_cls, c"getDecorView".as_ptr(), c"()Landroid/view/View;".as_ptr());
+        if m.is_null() { return 0; }
+        let decor = call_obj(env, window, m);
+        if decor.is_null() { return 0; }
+
+        // view.getRootWindowInsets() → WindowInsets  (API 23+)
+        let v_cls = get_object_class(env, decor);
+        let m = method!(
+            v_cls,
+            c"getRootWindowInsets".as_ptr(),
+            c"()Landroid/view/WindowInsets;".as_ptr()
+        );
+        if m.is_null() { return 0; }
+        let insets = call_obj(env, decor, m);
+        if insets.is_null() { return 0; }
+
+        // insets.getDisplayCutout() → DisplayCutout  (API 28+)
+        let i_cls = get_object_class(env, insets);
+        let m = method!(
+            i_cls,
+            c"getDisplayCutout".as_ptr(),
+            c"()Landroid/view/DisplayCutout;".as_ptr()
+        );
+        if m.is_null() { return 0; }
+        let cutout = call_obj(env, insets, m);
+        if cutout.is_null() { return 0; }
+
+        // cutout.getSafeInsetTop() → int
+        let c_cls = get_object_class(env, cutout);
+        let m = method!(c_cls, c"getSafeInsetTop".as_ptr(), c"()I".as_ptr());
+        if m.is_null() { return 0; }
+        call_int(env, cutout, m)
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn safe_inset_top() -> i32 {
+    0
+}
+
 /// Handle the Android back button (or Escape on desktop).
 pub(crate) fn is_back_pressed() -> bool {
     macroquad::prelude::is_key_pressed(macroquad::prelude::KeyCode::Back)

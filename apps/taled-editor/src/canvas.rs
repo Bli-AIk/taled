@@ -53,11 +53,12 @@ pub(crate) fn load_tileset_textures(state: &mut AppState) {
     }
 }
 
-/// The Y coordinate where the canvas area begins (header + tile strip).
+/// The Y coordinate where the canvas area begins (header + tile strip), excluding safe area.
 pub(crate) const CANVAS_ORIGIN_Y: f32 = 170.0;
 
 /// Render the tile map canvas area.
 pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    let canvas_y = CANVAS_ORIGIN_Y + state.safe_inset_top;
     ui.element()
         .id("canvas-area")
         .width(grow!())
@@ -66,7 +67,7 @@ pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme)
         .overflow(|o| o.clip())
         .on_press(move |_, _| {})
         .children(|ui| {
-            crate::touch_ops::handle_canvas_interaction(ui, state, CANVAS_ORIGIN_Y);
+            crate::touch_ops::handle_canvas_interaction(ui, state, canvas_y);
 
             let Some(session) = state.session.as_ref() else {
                 ui.text("No map loaded", |t| t.font_size(14).color(theme.muted_text));

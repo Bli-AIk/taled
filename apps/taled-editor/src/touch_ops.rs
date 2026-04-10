@@ -78,8 +78,11 @@ pub(crate) fn handle_canvas_interaction(ui: &mut Ui, state: &mut AppState, canva
         let sw = screen_width();
         if sw > 1.0 {
             if let Some(session) = state.session.as_ref() {
-                let (px, py, dbg) =
-                    crate::session_ops::default_center_pan(session, state.zoom_percent);
+                let (px, py, dbg) = crate::session_ops::default_center_pan(
+                    session,
+                    state.zoom_percent,
+                    state.safe_inset_top,
+                );
                 state.pan_x = px;
                 state.pan_y = py;
                 state.center_debug = format!("F{} {dbg}", state.pending_canvas_center);

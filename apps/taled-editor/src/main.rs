@@ -75,12 +75,25 @@ async fn main() {
     let mut frame_count: u32 = 0;
     let mut prev_show_ms: f32 = 0.0;
     let mut prev_next_ms: f32 = 0.0;
+    let mut safe_inset_queried = false;
     loop {
         let ft0 = get_time();
 
         let theme = PlyTheme::from_choice(state.theme_choice, &state.custom_theme);
         let bg: MacroquadColor = theme.background_elevated.into();
         clear_background(bg);
+
+        // Query safe area inset once the window is attached (needs first frame).
+        if !safe_inset_queried {
+            let px = platform::safe_inset_top();
+            let dpi = macroquad::miniquad::window::dpi_scale();
+            state.safe_inset_top = if dpi > 0.0 { px as f32 / dpi } else { 0.0 };
+            logging::append(&format!(
+                "safe_inset_top: {}px → {:.1}lp (dpi={:.1})",
+                px, state.safe_inset_top, dpi
+            ));
+            safe_inset_queried = true;
+        }
 
         if platform::is_back_pressed() {
             state.navigate_back();
