@@ -124,6 +124,7 @@ pub(crate) fn render_canvas(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme)
                         f.attach_parent()
                             .offset((state.pan_x, state.pan_y))
                             .passthrough()
+                            .clip_by_parent()
                     })
                     .empty();
             }
