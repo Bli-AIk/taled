@@ -181,10 +181,10 @@ pub(crate) fn render_floating_controls(ui: &mut Ui, state: &mut AppState, theme:
     let canvas_h = (screen_height() - 56.0 - 114.0 - 68.0 - 72.0 - safe_top).max(200.0);
     let has_sel_actions =
         state.tile_selection_cells.is_some() || state.tile_selection_transfer.is_some();
-    crate::screens::editor_controls::render_dpad_float(ui, state, theme, canvas_h, safe_top);
+    crate::screens::editor_controls::render_joystick_float(ui, state, theme, canvas_h, safe_top);
     // When selection actions are visible, push zoom up to make room.
     let zoom_extra_offset = if has_sel_actions { 52.0 } else { 0.0 };
-    crate::screens::editor_controls::render_zoom_float(
+    crate::screens::editor_controls::render_zoom_slider(
         ui,
         state,
         theme,

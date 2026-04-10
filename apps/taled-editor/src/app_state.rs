@@ -243,6 +243,16 @@ pub(crate) struct AppState {
     pub(crate) center_debug: String,
     /// Top safe-area inset in logical pixels (for camera cutouts / notches).
     pub(crate) safe_inset_top: f32,
+    /// True while the user is dragging the pan joystick.
+    pub(crate) joystick_active: bool,
+    /// Current knob offset from joystick center (logical px).
+    pub(crate) joystick_offset: (f32, f32),
+    /// True while the user is dragging the zoom slider.
+    pub(crate) zoom_slider_active: bool,
+    /// Current handle offset from slider center (logical px).
+    pub(crate) zoom_slider_offset: f32,
+    /// Fractional zoom accumulator for smooth slider zoom.
+    pub(crate) zoom_accumulator: f32,
 }
 
 impl AppState {
@@ -308,6 +318,11 @@ impl AppState {
             pending_canvas_center: 0,
             center_debug: String::new(),
             safe_inset_top: 0.0,
+            joystick_active: false,
+            joystick_offset: (0.0, 0.0),
+            zoom_slider_active: false,
+            zoom_slider_offset: 0.0,
+            zoom_accumulator: 0.0,
         }
     }
 

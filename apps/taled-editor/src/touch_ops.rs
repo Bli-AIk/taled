@@ -72,6 +72,10 @@ pub(crate) fn handle_canvas_interaction(ui: &mut Ui, state: &mut AppState, canva
     if state.session.is_none() {
         return;
     }
+    // Skip canvas touches while joystick or zoom slider is being dragged.
+    if state.joystick_active || state.zoom_slider_active {
+        return;
+    }
 
     // Deferred centering: apply for a few frames to ensure screen dimensions stabilize.
     if state.pending_canvas_center > 0 {

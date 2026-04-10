@@ -109,64 +109,77 @@ pub(crate) fn render_layer_panel(
         });
 }
 
-pub(crate) fn render_dpad_float(
+pub(crate) fn render_joystick_float(
     ui: &mut Ui,
     state: &mut AppState,
     theme: &PlyTheme,
     canvas_h: f32,
     safe_top: f32,
 ) {
-    let dpad_y = safe_top + 56.0 + 114.0 + canvas_h - 92.0 - 8.0;
+    let base = 92.0_f32;
+    let max_r = 28.0_f32;
+    let knob = 36.0_f32;
+    let joy_y = safe_top + 56.0 + 114.0 + canvas_h - base - 8.0;
+    let cx = 8.0 + base / 2.0;
+    let cy = joy_y + base / 2.0;
+
     ui.element()
-        .id("dpad")
-        .width(fixed!(92.0))
-        .height(fixed!(92.0))
+        .id("joystick")
+        .width(fixed!(base))
+        .height(fixed!(base))
         .floating(|f| {
             f.anchor((Left, Top), (Left, Top))
                 .attach_root()
-                .offset((8.0, dpad_y))
+                .offset((8.0, joy_y))
                 .z_index(10)
         })
         .background_color(theme.surface_elevated)
-        .corner_radius(46.0)
+        .corner_radius(base / 2.0)
         .border(|b| b.all(1).color(theme.border))
         .layout(|l| l.align(CenterX, CenterY))
+        .on_press(move |_, _| {})
         .children(|ui| {
+            let (mx, my) = mouse_position();
+            if ui.just_pressed() {
+                state.joystick_active = true;
+            }
+            if state.joystick_active && ui.pressed() {
+                let dx = mx - cx;
+                let dy = my - cy;
+                let dist = (dx * dx + dy * dy).sqrt().max(0.001);
+                let (ox, oy) = if dist > max_r {
+                    (dx * max_r / dist, dy * max_r / dist)
+                } else {
+                    (dx, dy)
+                };
+                state.joystick_offset = (ox, oy);
+                let pan_speed = 3.0;
+                state.pan_x -= ox * pan_speed / max_r;
+                state.pan_y -= oy * pan_speed / max_r;
+                state.canvas_dirty = true;
+            }
+            if !ui.pressed() {
+                state.joystick_active = false;
+                state.joystick_offset = (0.0, 0.0);
+            }
+            let (kx, ky) = state.joystick_offset;
             ui.element()
-                .width(fixed!(60.0))
-                .height(fixed!(60.0))
-                .layout(|l| l.direction(TopToBottom).align(CenterX, CenterY).gap(4))
-                .children(|ui| {
-                    dpad_button(ui, state, theme, "dpad-up", "▲", 0.0, -16.0);
-                    dpad_middle_row(ui, state, theme);
-                    dpad_button(ui, state, theme, "dpad-down", "▼", 0.0, 16.0);
-                });
-        });
-}
-
-fn dpad_middle_row(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    ui.element()
-        .width(fixed!(60.0))
-        .height(fixed!(18.0))
-        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY).gap(6))
-        .children(|ui| {
-            dpad_button(ui, state, theme, "dpad-left", "◀", -16.0, 0.0);
-            ui.element()
-                .width(fixed!(16.0))
-                .height(fixed!(16.0))
+                .id("joy-knob")
+                .width(fixed!(knob))
+                .height(fixed!(knob))
+                .floating(|f| {
+                    f.anchor((CenterX, CenterY), (CenterX, CenterY))
+                        .attach_parent()
+                        .offset((kx, ky))
+                })
                 .background_color(theme.surface)
-                .corner_radius(8.0)
-                .layout(|l| l.align(CenterX, CenterY))
-                .children(|ui| {
-                    ui.text("⊕", |t| {
-                        t.font_size(11).color(theme.muted_text).alignment(CenterX)
-                    });
-                });
-            dpad_button(ui, state, theme, "dpad-right", "▶", 16.0, 0.0);
+                .corner_radius(knob / 2.0)
+                .border(|b| b.all(1).color(theme.border))
+                .empty();
         });
 }
 
-pub(crate) fn render_zoom_float(
+pub(crate) fn render_zoom_slider(
     ui: &mut Ui,
     state: &mut AppState,
     theme: &PlyTheme,
@@ -174,11 +187,17 @@ pub(crate) fn render_zoom_float(
     safe_top: f32,
     extra_up: f32,
 ) {
-    let zoom_y = safe_top + 56.0 + 114.0 + canvas_h - 42.0 - 8.0 - extra_up;
+    let track_w = 140.0_f32;
+    let track_h = 42.0_f32;
+    let handle = 28.0_f32;
+    let max_offset = (track_w - handle) / 2.0 - 6.0;
+    let zoom_y = safe_top + 56.0 + 114.0 + canvas_h - track_h - 8.0 - extra_up;
+    let slider_cx = screen_width() - 8.0 - track_w / 2.0;
+
     ui.element()
-        .id("zoom-float")
-        .width(fixed!(118.0))
-        .height(fixed!(42.0))
+        .id("zoom-slider")
+        .width(fixed!(track_w))
+        .height(fixed!(track_h))
         .floating(|f| {
             f.anchor((Right, Top), (Right, Top))
                 .attach_root()
@@ -186,79 +205,57 @@ pub(crate) fn render_zoom_float(
                 .z_index(10)
         })
         .background_color(theme.surface_elevated)
-        .corner_radius(21.0)
+        .corner_radius(track_h / 2.0)
         .border(|b| b.all(1).color(theme.border))
-        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY))
+        .layout(|l| l.align(CenterX, CenterY))
+        .on_press(move |_, _| {})
         .children(|ui| {
-            zoom_button(ui, state, theme, "zoom-out", "−", -25);
+            let (mx, _) = mouse_position();
+            if ui.just_pressed() {
+                state.zoom_slider_active = true;
+                state.zoom_accumulator = 0.0;
+            }
+            if state.zoom_slider_active && ui.pressed() {
+                let dx = mx - slider_cx;
+                let ox = dx.clamp(-max_offset, max_offset);
+                state.zoom_slider_offset = ox;
+                let zoom_speed = 1.5;
+                state.zoom_accumulator += ox * zoom_speed / max_offset;
+                if state.zoom_accumulator.abs() >= 1.0 {
+                    let delta = state.zoom_accumulator as i32;
+                    state.zoom_accumulator -= delta as f32;
+                    adjust_zoom(state, delta);
+                }
+            }
+            if !ui.pressed() {
+                state.zoom_slider_active = false;
+                state.zoom_slider_offset = 0.0;
+                state.zoom_accumulator = 0.0;
+            }
+            // Zoom label
+            let zoom_text = format!("{}%", state.zoom_percent);
+            ui.text(&zoom_text, |t| {
+                t.font_size(11).color(theme.muted_text).alignment(CenterX)
+            });
+            // Draggable handle
+            let hx = state.zoom_slider_offset;
             ui.element()
-                .width(fixed!(46.0))
-                .height(grow!())
-                .layout(|l| l.align(Left, CenterY))
-                .children(|ui| {
-                    let zoom_text = format!("{}%", state.zoom_percent);
-                    ui.text(&zoom_text, |t| {
-                        t.font_size(12).color(theme.muted_text).alignment(CenterX)
-                    });
-                });
-            zoom_button(ui, state, theme, "zoom-in", "+", 25);
+                .id("zoom-handle")
+                .width(fixed!(handle))
+                .height(fixed!(handle))
+                .floating(|f| {
+                    f.anchor((CenterX, CenterY), (CenterX, CenterY))
+                        .attach_parent()
+                        .offset((hx, 0.0))
+                })
+                .background_color(theme.surface)
+                .corner_radius(handle / 2.0)
+                .border(|b| b.all(1).color(theme.border))
+                .empty();
         });
 }
 
 // ── Private helpers ─────────────────────────────────────────────────
-
-fn dpad_button(
-    ui: &mut Ui,
-    state: &mut AppState,
-    theme: &PlyTheme,
-    id: &'static str,
-    glyph: &str,
-    dx: f32,
-    dy: f32,
-) {
-    let w = if dx != 0.0 { 14.0 } else { 24.0 };
-    let h = if dx != 0.0 { 18.0 } else { 14.0 };
-    ui.element()
-        .id(id)
-        .width(fixed!(w))
-        .height(fixed!(h))
-        .layout(|l| l.align(Left, CenterY))
-        .on_press(move |_, _| {})
-        .children(|ui| {
-            if ui.just_released() {
-                state.pan_x += dx;
-                state.pan_y += dy;
-                state.canvas_dirty = true;
-            }
-            ui.text(glyph, |t| {
-                t.font_size(12).color(theme.muted_text).alignment(CenterX)
-            });
-        });
-}
-
-fn zoom_button(
-    ui: &mut Ui,
-    state: &mut AppState,
-    theme: &PlyTheme,
-    id: &'static str,
-    glyph: &str,
-    delta: i32,
-) {
-    ui.element()
-        .id(id)
-        .width(fixed!(36.0))
-        .height(grow!())
-        .layout(|l| l.align(Left, CenterY))
-        .on_press(move |_, _| {})
-        .children(|ui| {
-            if ui.just_released() {
-                adjust_zoom(state, delta);
-            }
-            ui.text(glyph, |t| {
-                t.font_size(18).color(theme.text).alignment(CenterX)
-            });
-        });
-}
 
 fn history_button(
     ui: &mut Ui,
