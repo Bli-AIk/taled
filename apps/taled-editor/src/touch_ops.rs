@@ -386,7 +386,9 @@ fn try_dismiss_selection(state: &mut AppState, x: u32, y: u32) -> bool {
             return true;
         }
         state.tile_selection_last_tap_at = Some(Instant::now());
-        true // absorb the tap, don't start new selection
+        // In Replace mode, absorb the tap (avoid re-selecting same cell).
+        // In Add/Subtract/Intersect, let the tool apply so the mode takes effect.
+        state.tile_selection_mode == crate::app_state::TileSelectionMode::Replace
     } else {
         // Tap outside — dismiss in Replace mode, else ignore
         if state.tile_selection_mode == crate::app_state::TileSelectionMode::Replace {

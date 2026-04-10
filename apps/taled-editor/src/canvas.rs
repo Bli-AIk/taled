@@ -134,7 +134,8 @@ fn build_and_cache_canvas(
 ) {
     let scaled_w = map_px_w * zoom;
     let scaled_h = map_px_h * zoom;
-    let map_texture = render_tile_map(
+
+    let tex = render_tile_map(
         map,
         textures,
         active_layer,
@@ -144,7 +145,7 @@ fn build_and_cache_canvas(
         map_px_h,
         theme,
     );
-    map_texture.set_filter(FilterMode::Nearest);
+    tex.set_filter(FilterMode::Nearest);
 
     let rt = render_target_msaa(scaled_w as u32, scaled_h as u32);
     rt.texture.set_filter(FilterMode::Nearest);
@@ -155,7 +156,7 @@ fn build_and_cache_canvas(
     let cb: MacroquadColor = theme.canvas_base.into();
     clear_background(cb);
     draw_texture_ex(
-        &map_texture,
+        &tex,
         0.0,
         0.0,
         WHITE,
