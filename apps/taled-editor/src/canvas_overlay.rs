@@ -37,6 +37,7 @@ pub(super) fn draw_transfer_preview(
     tile_w: f32,
     tile_h: f32,
     zoom: f32,
+    canvas_h: f32,
 ) {
     let color = MacroquadColor::new(1.0, 1.0, 1.0, 0.5);
     let zw = tile_w * zoom;
@@ -64,7 +65,7 @@ pub(super) fn draw_transfer_preview(
             let sx = src_col as f32 * ts.tile_width as f32;
             let sy = src_row as f32 * ts.tile_height as f32;
             let dx = (tp.origin_x + col as i32) as f32 * zw;
-            let dy = (tp.origin_y + row as i32) as f32 * zh;
+            let dy = canvas_h - (tp.origin_y + row as i32 + 1) as f32 * zh;
             draw_texture_ex(
                 texture,
                 dx,

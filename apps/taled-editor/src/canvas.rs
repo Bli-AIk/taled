@@ -270,7 +270,7 @@ fn build_and_cache_canvas(
 
     // Draw transfer floating tiles at half opacity.
     if let Some(tp) = transfer_preview {
-        draw_transfer_preview(tp, map, textures, tile_w, tile_h, zoom);
+        draw_transfer_preview(tp, map, textures, tile_w, tile_h, zoom, scaled_h);
     }
 
     let t2 = get_time();
