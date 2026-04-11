@@ -116,28 +116,73 @@ pub(crate) fn render_joystick_float(
     canvas_h: f32,
     safe_top: f32,
 ) {
-    let base = 92.0_f32;
-    let max_r = 28.0_f32;
-    let knob = 36.0_f32;
-    let joy_y = safe_top + 56.0 + 114.0 + canvas_h - base - 8.0;
-    let cx = 8.0 + base / 2.0;
-    let cy = joy_y + base / 2.0;
+    let outer = 108.0_f32;
+    let mid = 72.0_f32;
+    let knob_sz = 34.0_f32;
+    let max_r = 18.0_f32;
+    let joy_y = safe_top + 56.0 + 114.0 + canvas_h - outer - 8.0;
+    let cx = 8.0 + outer / 2.0;
+    let cy = joy_y + outer / 2.0;
+    let ring_bg = Color::u_rgba(30, 30, 32, 255);
+    let ring_border = Color::u_rgba(255, 255, 255, 12);
+    let knob_color = Color::u_rgba(72, 72, 77, 255);
 
     ui.element()
-        .id("joystick")
-        .width(fixed!(base))
-        .height(fixed!(base))
+        .id("joystick-outer")
+        .width(fixed!(outer))
+        .height(fixed!(outer))
         .floating(|f| {
             f.anchor((Left, Top), (Left, Top))
                 .attach_root()
                 .offset((8.0, joy_y))
                 .z_index(10)
         })
-        .background_color(theme.surface_elevated)
-        .corner_radius(base / 2.0)
-        .border(|b| b.all(1).color(theme.border))
+        .background_color(ring_bg)
+        .corner_radius(outer / 2.0)
+        .border(|b| b.all(1).color(ring_border))
         .layout(|l| l.align(CenterX, CenterY))
         .on_press(move |_, _| {})
+        .children(|ui| {
+            // Middle ring — visual only
+            ui.element()
+                .id("joystick-mid")
+                .width(fixed!(mid))
+                .height(fixed!(mid))
+                .background_color(theme.surface_elevated)
+                .corner_radius(mid / 2.0)
+                .border(|b| b.all(1).color(ring_border))
+                .empty();
+            // Knob — floating, owns all touch interaction
+            joystick_knob(ui, state, knob_color, knob_sz, cx, cy, max_r);
+        });
+}
+
+fn joystick_knob(
+    ui: &mut Ui,
+    state: &mut AppState,
+    color: Color,
+    sz: f32,
+    cx: f32,
+    cy: f32,
+    max_r: f32,
+) {
+    let border = Color::u_rgba(255, 255, 255, 25);
+    let (kx, ky) = state.joystick_offset;
+    ui.element()
+        .id("joy-knob")
+        .width(fixed!(sz))
+        .height(fixed!(sz))
+        .floating(|f| {
+            f.anchor((CenterX, CenterY), (CenterX, CenterY))
+                .attach_parent()
+                .offset((kx, ky))
+                .z_index(11)
+        })
+        .background_color(color)
+        .corner_radius(sz / 2.0)
+        .border(|b| b.all(1).color(border))
+        .on_press(move |_, _| {})
+        .layout(|l| l.align(CenterX, CenterY))
         .children(|ui| {
             let (mx, my) = mouse_position();
             if ui.just_pressed() {
@@ -162,20 +207,10 @@ pub(crate) fn render_joystick_float(
                 state.joystick_active = false;
                 state.joystick_offset = (0.0, 0.0);
             }
-            let (kx, ky) = state.joystick_offset;
-            ui.element()
-                .id("joy-knob")
-                .width(fixed!(knob))
-                .height(fixed!(knob))
-                .floating(|f| {
-                    f.anchor((CenterX, CenterY), (CenterX, CenterY))
-                        .attach_parent()
-                        .offset((kx, ky))
-                })
-                .background_color(theme.surface)
-                .corner_radius(knob / 2.0)
-                .border(|b| b.all(1).color(theme.border))
-                .empty();
+            ui.text("⊕", |t| {
+                t.font_size(18)
+                    .color(Color::u_rgba(200, 200, 205, 255))
+            });
         });
 }
 
@@ -187,27 +222,33 @@ pub(crate) fn render_zoom_slider(
     safe_top: f32,
     extra_up: f32,
 ) {
-    let track_w = 140.0_f32;
-    let track_h = 42.0_f32;
-    let handle = 28.0_f32;
-    let max_offset = (track_w - handle) / 2.0 - 6.0;
-    let zoom_y = safe_top + 56.0 + 114.0 + canvas_h - track_h - 8.0 - extra_up;
-    let slider_cx = screen_width() - 8.0 - track_w / 2.0;
+    let outer_w = 158.0_f32;
+    let outer_h = 46.0_f32;
+    let inner_w = 96.0_f32;
+    let inner_h = 32.0_f32;
+    let handle_w = 62.0_f32;
+    let handle_h = 26.0_f32;
+    let max_offset = (inner_w - handle_w) / 2.0 - 2.0;
+    let ring_bg = Color::u_rgba(30, 30, 32, 255);
+    let ring_border = Color::u_rgba(255, 255, 255, 12);
+    let handle_color = Color::u_rgba(72, 72, 77, 255);
+    let zoom_y = safe_top + 56.0 + 114.0 + canvas_h - outer_h - 8.0 - extra_up;
+    let slider_cx = screen_width() - 8.0 - outer_w / 2.0;
 
     ui.element()
         .id("zoom-slider")
-        .width(fixed!(track_w))
-        .height(fixed!(track_h))
+        .width(fixed!(outer_w))
+        .height(fixed!(outer_h))
         .floating(|f| {
             f.anchor((Right, Top), (Right, Top))
                 .attach_root()
                 .offset((-8.0, zoom_y))
                 .z_index(10)
         })
-        .background_color(theme.surface_elevated)
-        .corner_radius(track_h / 2.0)
-        .border(|b| b.all(1).color(theme.border))
-        .layout(|l| l.align(CenterX, CenterY))
+        .background_color(ring_bg)
+        .corner_radius(outer_h / 2.0)
+        .border(|b| b.all(1).color(ring_border))
+        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY).gap(8))
         .on_press(move |_, _| {})
         .children(|ui| {
             let (mx, _) = mouse_position();
@@ -232,29 +273,48 @@ pub(crate) fn render_zoom_slider(
                 state.zoom_slider_offset = 0.0;
                 state.zoom_accumulator = 0.0;
             }
-            // Zoom label
-            let zoom_text = format!("{}%", state.zoom_percent);
-            ui.text(&zoom_text, |t| {
-                t.font_size(11).color(theme.muted_text).alignment(CenterX)
-            });
-            // Draggable handle
-            let hx = state.zoom_slider_offset;
+            ui.text("−", |t| t.font_size(16).color(theme.muted_text));
+            // Inner track — visual sibling of handle
             ui.element()
-                .id("zoom-handle")
-                .width(fixed!(handle))
-                .height(fixed!(handle))
-                .floating(|f| {
-                    f.anchor((CenterX, CenterY), (CenterX, CenterY))
-                        .attach_parent()
-                        .offset((hx, 0.0))
-                })
-                .background_color(theme.surface)
-                .corner_radius(handle / 2.0)
-                .border(|b| b.all(1).color(theme.border))
+                .id("zoom-track")
+                .width(fixed!(inner_w))
+                .height(fixed!(inner_h))
+                .background_color(theme.surface_elevated)
+                .corner_radius(inner_h / 2.0)
+                .border(|b| b.all(1).color(ring_border))
                 .empty();
+            ui.text("+", |t| t.font_size(16).color(theme.muted_text));
+            // Handle — floating relative to outer capsule directly
+            let hx = state.zoom_slider_offset;
+            let zoom_pct = state.zoom_percent;
+            zoom_handle(ui, handle_color, handle_w, handle_h, hx, zoom_pct);
         });
 }
 
+fn zoom_handle(ui: &mut Ui, color: Color, w: f32, h: f32, hx: f32, pct: i32) {
+    let zoom_text = format!("{pct}%");
+    let border = Color::u_rgba(255, 255, 255, 25);
+    ui.element()
+        .id("zoom-handle")
+        .width(fixed!(w))
+        .height(fixed!(h))
+        .floating(|f| {
+            f.anchor((CenterX, CenterY), (CenterX, CenterY))
+                .attach_parent()
+                .offset((hx, 0.0))
+                .z_index(11)
+        })
+        .background_color(color)
+        .corner_radius(h / 2.0)
+        .border(|b| b.all(1).color(border))
+        .layout(|l| l.align(CenterX, CenterY))
+        .children(|ui| {
+            ui.text(&zoom_text, |t| {
+                t.font_size(12)
+                    .color(Color::u_rgba(220, 220, 225, 255))
+            });
+        });
+}
 // ── Private helpers ─────────────────────────────────────────────────
 
 fn history_button(
