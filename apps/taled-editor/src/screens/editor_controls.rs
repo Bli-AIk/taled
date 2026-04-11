@@ -143,6 +143,13 @@ pub(crate) fn render_joystick_float(
         .layout(|l| l.align(CenterX, CenterY))
         .on_press(move |_, _| {})
         .children(|ui| {
+            if ui.just_pressed() {
+                state.joystick_active = true;
+            }
+            if ui.just_released() {
+                state.joystick_active = false;
+                state.joystick_offset = (0.0, 0.0);
+            }
             // Middle ring — visual only
             ui.element()
                 .id("joystick-mid")
@@ -152,20 +159,29 @@ pub(crate) fn render_joystick_float(
                 .corner_radius(mid / 2.0)
                 .border(|b| b.all(1).color(ring_border))
                 .empty();
-            // Knob — floating, owns all touch interaction
-            joystick_knob(ui, state, knob_color, knob_sz, cx, cy, max_r);
+            // Knob — activation + visual
+            joystick_knob(ui, state, knob_color, knob_sz);
+            // Touch tracking — active flag set by outer ring or knob
+            if state.joystick_active {
+                let (mx, my) = mouse_position();
+                let dx = mx - cx;
+                let dy = my - cy;
+                let dist = (dx * dx + dy * dy).sqrt().max(0.001);
+                let (ox, oy) = if dist > max_r {
+                    (dx * max_r / dist, dy * max_r / dist)
+                } else {
+                    (dx, dy)
+                };
+                state.joystick_offset = (ox, oy);
+                let pan_speed = 3.0;
+                state.pan_x -= ox * pan_speed / max_r;
+                state.pan_y -= oy * pan_speed / max_r;
+                state.canvas_dirty = true;
+            }
         });
 }
 
-fn joystick_knob(
-    ui: &mut Ui,
-    state: &mut AppState,
-    color: Color,
-    sz: f32,
-    cx: f32,
-    cy: f32,
-    max_r: f32,
-) {
+fn joystick_knob(ui: &mut Ui, state: &mut AppState, color: Color, sz: f32) {
     let border = Color::u_rgba(255, 255, 255, 25);
     let (kx, ky) = state.joystick_offset;
     ui.element()
@@ -182,28 +198,12 @@ fn joystick_knob(
         .corner_radius(sz / 2.0)
         .border(|b| b.all(1).color(border))
         .on_press(move |_, _| {})
-        .layout(|l| l.align(CenterX, CenterY))
+        .layout(|l| l.align(CenterX, CenterY).padding((6, 0, 0, 0)))
         .children(|ui| {
-            let (mx, my) = mouse_position();
             if ui.just_pressed() {
                 state.joystick_active = true;
             }
-            if state.joystick_active && ui.pressed() {
-                let dx = mx - cx;
-                let dy = my - cy;
-                let dist = (dx * dx + dy * dy).sqrt().max(0.001);
-                let (ox, oy) = if dist > max_r {
-                    (dx * max_r / dist, dy * max_r / dist)
-                } else {
-                    (dx, dy)
-                };
-                state.joystick_offset = (ox, oy);
-                let pan_speed = 3.0;
-                state.pan_x -= ox * pan_speed / max_r;
-                state.pan_y -= oy * pan_speed / max_r;
-                state.canvas_dirty = true;
-            }
-            if !ui.pressed() {
+            if ui.just_released() {
                 state.joystick_active = false;
                 state.joystick_offset = (0.0, 0.0);
             }
@@ -251,12 +251,32 @@ pub(crate) fn render_zoom_slider(
         .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY).gap(8))
         .on_press(move |_, _| {})
         .children(|ui| {
-            let (mx, _) = mouse_position();
             if ui.just_pressed() {
                 state.zoom_slider_active = true;
                 state.zoom_accumulator = 0.0;
             }
-            if state.zoom_slider_active && ui.pressed() {
+            if ui.just_released() {
+                state.zoom_slider_active = false;
+                state.zoom_slider_offset = 0.0;
+                state.zoom_accumulator = 0.0;
+            }
+            ui.text("−", |t| t.font_size(16).color(theme.muted_text));
+            // Inner track — visual
+            ui.element()
+                .id("zoom-track")
+                .width(fixed!(inner_w))
+                .height(fixed!(inner_h))
+                .background_color(theme.surface_elevated)
+                .corner_radius(inner_h / 2.0)
+                .border(|b| b.all(1).color(ring_border))
+                .empty();
+            ui.text("+", |t| t.font_size(16).color(theme.muted_text));
+            // Handle — activation + visual
+            let zoom_pct = state.zoom_percent;
+            zoom_handle(ui, state, handle_color, handle_w, handle_h, zoom_pct);
+            // Slide tracking — active flag set by outer capsule or handle
+            if state.zoom_slider_active {
+                let (mx, _) = mouse_position();
                 let dx = mx - slider_cx;
                 let ox = dx.clamp(-max_offset, max_offset);
                 state.zoom_slider_offset = ox;
@@ -268,32 +288,20 @@ pub(crate) fn render_zoom_slider(
                     adjust_zoom(state, delta);
                 }
             }
-            if !ui.pressed() {
-                state.zoom_slider_active = false;
-                state.zoom_slider_offset = 0.0;
-                state.zoom_accumulator = 0.0;
-            }
-            ui.text("−", |t| t.font_size(16).color(theme.muted_text));
-            // Inner track — visual sibling of handle
-            ui.element()
-                .id("zoom-track")
-                .width(fixed!(inner_w))
-                .height(fixed!(inner_h))
-                .background_color(theme.surface_elevated)
-                .corner_radius(inner_h / 2.0)
-                .border(|b| b.all(1).color(ring_border))
-                .empty();
-            ui.text("+", |t| t.font_size(16).color(theme.muted_text));
-            // Handle — floating relative to outer capsule directly
-            let hx = state.zoom_slider_offset;
-            let zoom_pct = state.zoom_percent;
-            zoom_handle(ui, handle_color, handle_w, handle_h, hx, zoom_pct);
         });
 }
 
-fn zoom_handle(ui: &mut Ui, color: Color, w: f32, h: f32, hx: f32, pct: i32) {
+fn zoom_handle(
+    ui: &mut Ui,
+    state: &mut AppState,
+    color: Color,
+    w: f32,
+    h: f32,
+    pct: i32,
+) {
     let zoom_text = format!("{pct}%");
     let border = Color::u_rgba(255, 255, 255, 25);
+    let hx = state.zoom_slider_offset;
     ui.element()
         .id("zoom-handle")
         .width(fixed!(w))
@@ -307,8 +315,18 @@ fn zoom_handle(ui: &mut Ui, color: Color, w: f32, h: f32, hx: f32, pct: i32) {
         .background_color(color)
         .corner_radius(h / 2.0)
         .border(|b| b.all(1).color(border))
+        .on_press(move |_, _| {})
         .layout(|l| l.align(CenterX, CenterY))
         .children(|ui| {
+            if ui.just_pressed() {
+                state.zoom_slider_active = true;
+                state.zoom_accumulator = 0.0;
+            }
+            if ui.just_released() {
+                state.zoom_slider_active = false;
+                state.zoom_slider_offset = 0.0;
+                state.zoom_accumulator = 0.0;
+            }
             ui.text(&zoom_text, |t| {
                 t.font_size(12)
                     .color(Color::u_rgba(220, 220, 225, 255))
