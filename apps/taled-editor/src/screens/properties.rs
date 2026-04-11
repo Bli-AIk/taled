@@ -7,13 +7,16 @@ use crate::theme::PlyTheme;
 use super::widgets::{bottom_nav, editor_nav_items, page_header, section_label};
 
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let title = l10n::text(state.resolved_language(), "properties-title");
+    let lang = state.resolved_language();
+    let title = l10n::text(lang, "properties-title");
+    let back = l10n::text(lang, "common-back");
+    let done = l10n::text(lang, "common-done");
     page_header(
         ui,
         theme,
         &title,
-        Some(("Back", MobileScreen::Editor)),
-        Some(("Done", MobileScreen::Editor)),
+        Some((&back, MobileScreen::Editor)),
+        Some((&done, MobileScreen::Editor)),
         state,
     );
 

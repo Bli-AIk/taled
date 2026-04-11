@@ -1,4 +1,5 @@
 common-back = 返回
+common-done = 完成
 
 nav-projects = 项目
 nav-assets = 资源

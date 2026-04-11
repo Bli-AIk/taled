@@ -7,12 +7,14 @@ use crate::theme::{PlyTheme, ThemeChoice};
 use super::widgets::{bottom_nav, dashboard_nav_items, page_header};
 
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    let title = l10n::text(state.resolved_language(), "themes-title");
+    let lang = state.resolved_language();
+    let title = l10n::text(lang, "themes-title");
+    let back = l10n::text(lang, "common-back");
     page_header(
         ui,
         theme,
         &title,
-        Some(("Back", MobileScreen::Settings)),
+        Some((&back, MobileScreen::Settings)),
         None,
         state,
     );
@@ -253,12 +255,25 @@ fn theme_grid_row(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, choices: 
         });
 }
 
+fn theme_card_id(choice: ThemeChoice) -> &'static str {
+    match choice {
+        ThemeChoice::System => "tc-system",
+        ThemeChoice::Dark => "tc-dark",
+        ThemeChoice::Light => "tc-light",
+        ThemeChoice::CatppuccinLatte => "tc-latte",
+        ThemeChoice::CatppuccinFrappe => "tc-frappe",
+        ThemeChoice::CatppuccinMacchiato => "tc-macchiato",
+        ThemeChoice::CatppuccinMocha => "tc-mocha",
+        ThemeChoice::Custom => "tc-custom",
+    }
+}
+
 fn theme_card(
     ui: &mut Ui,
     state: &mut AppState,
     theme: &PlyTheme,
     choice: ThemeChoice,
-    index: usize,
+    _index: usize,
 ) {
     let palette = PlyTheme::from_choice(choice, &state.custom_theme);
     let is_active = state.theme_choice == choice;
@@ -269,7 +284,7 @@ fn theme_card(
     };
     let label = theme_choice_display(state, choice);
     ui.element()
-        .id(("theme-card", index as u32))
+        .id(theme_card_id(choice))
         .width(grow!())
         .height(fit!())
         .background_color(theme.surface)

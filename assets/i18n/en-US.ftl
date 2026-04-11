@@ -1,4 +1,5 @@
 common-back = Back
+common-done = Done
 
 nav-projects = Projects
 nav-assets = Assets

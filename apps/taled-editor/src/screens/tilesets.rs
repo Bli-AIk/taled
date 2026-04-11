@@ -1,18 +1,22 @@
 use ply_engine::prelude::*;
 
 use crate::app_state::{AppState, MobileScreen};
+use crate::l10n;
 use crate::theme::PlyTheme;
 
 use super::tile_palette::{crop_tile_texture, PaletteTile};
 use super::widgets::{bottom_nav, editor_nav_items, page_header};
 
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    let lang = state.resolved_language();
+    let back = l10n::text(lang, "common-back");
+    let done = l10n::text(lang, "common-done");
     page_header(
         ui,
         theme,
-        "Tile Property Editor",
-        Some(("Back", MobileScreen::Editor)),
-        Some(("Done", MobileScreen::Editor)),
+        &l10n::text(lang, "nav-tilesets"),
+        Some((&back, MobileScreen::Editor)),
+        Some((&done, MobileScreen::Editor)),
         state,
     );
 

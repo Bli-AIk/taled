@@ -126,5 +126,10 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
             } else {
                 render_screen(ui, state, theme, state.mobile_screen);
             }
+
+            // Language selection popup overlay (rendered above all screens)
+            if state.mobile_screen == MobileScreen::Settings {
+                screens::settings::language_popup_overlay(ui, state, theme);
+            }
         });
 }

@@ -284,6 +284,8 @@ pub(crate) struct AppState {
     pub(crate) zoom_slider_offset: f32,
     /// Fractional zoom accumulator for smooth slider zoom.
     pub(crate) zoom_accumulator: f32,
+    /// Whether the language-selection popup is currently visible.
+    pub(crate) show_language_popup: bool,
 }
 
 impl AppState {
@@ -360,6 +362,7 @@ impl AppState {
             zoom_slider_active: false,
             zoom_slider_offset: 0.0,
             zoom_accumulator: 0.0,
+            show_language_popup: false,
         }
     }
 
@@ -371,6 +374,7 @@ impl AppState {
         if screen == self.mobile_screen {
             return;
         }
+        self.show_language_popup = false;
         self.page_transition = Some(PageTransition {
             from_screen: self.mobile_screen,
             start_time: get_time(),

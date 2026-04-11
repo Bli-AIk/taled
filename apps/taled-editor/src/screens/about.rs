@@ -24,12 +24,14 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         tex.set_filter(FilterMode::Nearest);
         state.logo_texture = Some(tex);
     }
-    let title = l10n::text(state.resolved_language(), "settings-about-caption");
+    let lang = state.resolved_language();
+    let title = l10n::text(lang, "settings-about-caption");
+    let back = l10n::text(lang, "common-back");
     page_header(
         ui,
         theme,
         &title,
-        Some(("Back", MobileScreen::Settings)),
+        Some((&back, MobileScreen::Settings)),
         None,
         state,
     );
@@ -162,9 +164,10 @@ fn hero_section(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                         .image(logo_tex)
                         .empty();
                 });
-            ui.text("Taled", |t| {
-                t.font_size(16).color(theme.text).alignment(CenterX)
-            });
+            ui.text(
+                &format!("Taled v{}", env!("CARGO_PKG_VERSION")),
+                |t| t.font_size(16).color(theme.text).alignment(CenterX),
+            );
             ui.text(
                 &l10n::text(state.resolved_language(), "settings-about-description"),
                 |t| t.font_size(13).color(theme.muted_text).alignment(CenterX),

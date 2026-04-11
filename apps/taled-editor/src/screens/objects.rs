@@ -1,18 +1,22 @@
 use ply_engine::prelude::*;
 
 use crate::app_state::{AppState, MobileScreen};
+use crate::l10n;
 use crate::theme::PlyTheme;
 
 use super::widgets::{bottom_nav, editor_nav_items, page_header};
 
 #[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    let lang = state.resolved_language();
+    let back = l10n::text(lang, "common-back");
+    let done = l10n::text(lang, "common-done");
     page_header(
         ui,
         theme,
-        "Object Library",
-        Some(("Back", MobileScreen::Editor)),
-        Some(("Done", MobileScreen::Objects)),
+        &l10n::text(lang, "nav-objects"),
+        Some((&back, MobileScreen::Editor)),
+        Some((&done, MobileScreen::Objects)),
         state,
     );
 
