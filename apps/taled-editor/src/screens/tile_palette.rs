@@ -101,7 +101,7 @@ fn render_tile_chip(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, tile: &
         });
 }
 
-fn crop_tile_texture(state: &mut AppState, tile: &PaletteTile) -> Option<Texture2D> {
+pub(crate) fn crop_tile_texture(state: &mut AppState, tile: &PaletteTile) -> Option<Texture2D> {
     if let Some(cached) = state.tile_chip_cache.get(&tile.gid) {
         return Some(cached.texture.clone());
     }
@@ -139,6 +139,7 @@ fn crop_tile_texture(state: &mut AppState, tile: &PaletteTile) -> Option<Texture
         DrawTextureParams {
             source: Some(Rect::new(sx, sy, tw, th)),
             dest_size: Some(Vec2::new(rw, rh)),
+            flip_y: true,
             ..Default::default()
         },
     );
