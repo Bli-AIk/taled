@@ -35,6 +35,8 @@ pub(crate) enum IconId {
     ModeSelAdd,
     ModeSelSubtract,
     ModeSelIntersect,
+    ChevronDown,
+    Import,
 }
 
 fn icon_bytes(id: IconId) -> &'static [u8] {
@@ -69,6 +71,8 @@ fn icon_bytes(id: IconId) -> &'static [u8] {
         IconId::ModeSelAdd => include_bytes!("../../../assets/icons/mode-sel-add.png"),
         IconId::ModeSelSubtract => include_bytes!("../../../assets/icons/mode-sel-subtract.png"),
         IconId::ModeSelIntersect => include_bytes!("../../../assets/icons/mode-sel-intersect.png"),
+        IconId::ChevronDown => include_bytes!("../../../assets/icons/chevron-down.png"),
+        IconId::Import => include_bytes!("../../../assets/icons/nav-assets.png"),
     }
 }
 

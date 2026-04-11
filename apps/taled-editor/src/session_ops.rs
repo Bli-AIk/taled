@@ -28,6 +28,21 @@ pub(crate) fn load_sample_by_path(state: &mut AppState, path: &str) {
     }
 }
 
+pub(crate) fn load_filesystem_map(state: &mut AppState, path: &str) {
+    crate::logging::append(&format!("loading filesystem map: {path}"));
+    match EditorSession::load(path) {
+        Ok(session) => {
+            state.status = format!("Loaded {path}.");
+            crate::logging::append(&format!("loaded ok: {}", state.status));
+            install_session(state, session);
+        }
+        Err(error) => {
+            state.status = format!("Load failed: {error}");
+            crate::logging::append(&format!("load FAILED: {}", state.status));
+        }
+    }
+}
+
 fn install_session(state: &mut AppState, session: EditorSession) {
     let selected_gid = default_selected_gid(&session);
     state.active_layer = 0;

@@ -11,6 +11,17 @@ nav-properties = 属性
 
 dashboard-loading = 正在加载…
 dashboard-loading-status = 正在加载 { $sample }…
+dashboard-workspace-builtin = 内置工作区
+dashboard-action-new = 新建
+dashboard-action-import = 导入
+dashboard-workspace-created = 工作区已创建
+dashboard-workspace-empty = 此工作区暂无地图
+dashboard-import-placeholder = 导入功能尚未开放
+import-menu-workspace = 导入工作区
+import-menu-tmx = 导入 TMX 文件
+import-staging-empty = 导入文件夹中没有找到文件
+import-workspace-done = 个工作区已导入
+import-tmx-done = 个 TMX 文件已导入
 
 settings-title = 全局设置
 settings-language-caption = 语言

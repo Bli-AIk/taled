@@ -11,6 +11,17 @@ nav-properties = Properties
 
 dashboard-loading = Loading...
 dashboard-loading-status = Loading { $sample }...
+dashboard-workspace-builtin = Built-in Workspace
+dashboard-action-new = New
+dashboard-action-import = Import
+dashboard-workspace-created = Workspace created
+dashboard-workspace-empty = No maps in this workspace
+dashboard-import-placeholder = Import not yet available
+import-menu-workspace = Import Workspace
+import-menu-tmx = Import TMX File
+import-staging-empty = No files found in import folder
+import-workspace-done = workspace(s) imported
+import-tmx-done = TMX file(s) imported
 
 settings-title = App Settings
 settings-language-caption = Language

@@ -286,6 +286,14 @@ pub(crate) struct AppState {
     pub(crate) zoom_accumulator: f32,
     /// Whether the language-selection popup is currently visible.
     pub(crate) show_language_popup: bool,
+    /// Name of the currently active workspace (directory name).
+    pub(crate) active_workspace: String,
+    /// Cached list of workspace directory names.
+    pub(crate) workspace_list: Vec<String>,
+    /// Whether the workspace switcher popup is currently visible.
+    pub(crate) show_workspace_picker: bool,
+    /// Whether the import action menu popup is currently visible.
+    pub(crate) show_import_menu: bool,
 }
 
 impl AppState {
@@ -363,6 +371,10 @@ impl AppState {
             zoom_slider_offset: 0.0,
             zoom_accumulator: 0.0,
             show_language_popup: false,
+            active_workspace: crate::workspace::BUILTIN_WORKSPACE.to_string(),
+            workspace_list: Vec::new(),
+            show_workspace_picker: false,
+            show_import_menu: false,
         }
     }
 
@@ -375,6 +387,8 @@ impl AppState {
             return;
         }
         self.show_language_popup = false;
+        self.show_workspace_picker = false;
+        self.show_import_menu = false;
         self.page_transition = Some(PageTransition {
             from_screen: self.mobile_screen,
             start_time: get_time(),

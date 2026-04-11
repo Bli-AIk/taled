@@ -11,6 +11,7 @@ mod screens;
 mod selection_ops;
 mod selection_transform;
 mod session_ops;
+mod workspace;
 #[cfg(feature = "system-fonts")]
 mod system_font;
 mod theme;
@@ -71,6 +72,14 @@ async fn main() {
 
     let mut ply = Ply::<()>::new(resolve_font()).await;
     let mut state = AppState::new();
+
+    // Extract embedded samples into the builtin workspace (idempotent).
+    workspace::ensure_builtin_workspace();
+    state.workspace_list = workspace::list_workspaces()
+        .into_iter()
+        .map(|w| w.name)
+        .collect();
+
     load_embedded_sample(&mut state);
     logging::append(&format!("loaded default sample: {}", state.status));
 

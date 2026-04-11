@@ -11,6 +11,7 @@ pub(crate) const HEADER_ACTION_COLOR: Color = Color::u_rgb(0xb6, 0xb6, 0xbb);
 // ── Review-style page header (3-column grid: 92px | 1fr | 92px) ─────
 
 #[expect(clippy::excessive_nesting)] // reason: Ply UI requires nested closures for element builders
+#[allow(dead_code)]
 pub(crate) fn review_header(
     ui: &mut Ui,
     theme: &PlyTheme,
