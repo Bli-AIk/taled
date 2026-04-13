@@ -7,6 +7,6 @@ pub use error::{EditorError, Result, SupportIssue, UnsupportedFeatures, unsuppor
 pub use model::{
     EditorDocument, Layer, Map, MapObject, ObjectLayer, ObjectShape, Orientation, Property,
     PropertyValue, RenderOrder, TileLayer, TileReference, Tileset, TilesetImage, TilesetReference,
-    strip_flip_flags,
+    strip_flip_flags, tile_flip_flags,
 };
 pub use session::EditorSession;

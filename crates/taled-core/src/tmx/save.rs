@@ -67,6 +67,10 @@ fn write_tile_layer(writer: &mut Writer<Vec<u8>>, layer: &TileLayer) -> Result<(
     if !layer.visible {
         tag.push_attribute(("visible", "0"));
     }
+    if (layer.opacity - 1.0).abs() > f32::EPSILON {
+        let opacity_str = layer.opacity.to_string();
+        tag.push_attribute(("opacity", opacity_str.as_str()));
+    }
     if layer.locked {
         tag.push_attribute(("locked", "1"));
     }
@@ -91,6 +95,10 @@ fn write_object_layer(writer: &mut Writer<Vec<u8>>, layer: &ObjectLayer) -> Resu
     tag.push_attribute(("name", layer.name.as_str()));
     if !layer.visible {
         tag.push_attribute(("visible", "0"));
+    }
+    if (layer.opacity - 1.0).abs() > f32::EPSILON {
+        let opacity_str = layer.opacity.to_string();
+        tag.push_attribute(("opacity", opacity_str.as_str()));
     }
     if layer.locked {
         tag.push_attribute(("locked", "1"));

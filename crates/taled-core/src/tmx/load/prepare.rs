@@ -306,7 +306,6 @@ fn validate_object_layer_node(node: Node<'_, '_>) -> Result<()> {
 }
 
 fn validate_common_layer_attrs(node: Node<'_, '_>) -> Result<()> {
-    reject_non_default_f32(node, "opacity", 1.0, "layer.opacity")?;
     reject_non_default_f32(node, "offsetx", 0.0, "layer.offset")?;
     reject_non_default_f32(node, "offsety", 0.0, "layer.offset")?;
     reject_non_default_f32(node, "parallaxx", 1.0, "layer.parallax_factor")?;

@@ -219,6 +219,7 @@ fn convert_tile_layer(
         name: fallback_layer_name(&layer.name, "Tile Layer"),
         visible: layer.visible,
         locked: layer_metadata.locked,
+        opacity: layer.opacity,
         width,
         height,
         tiles,
@@ -270,6 +271,7 @@ fn convert_object_layer(
         name: fallback_layer_name(&layer.name, "Object Layer"),
         visible: layer.visible,
         locked: layer_metadata.locked,
+        opacity: layer.opacity,
         objects,
         properties: convert_properties(&layer.properties, "layer.properties")?,
     }))

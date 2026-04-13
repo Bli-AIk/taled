@@ -4,10 +4,22 @@ use std::path::{Path, PathBuf};
 
 // TMX flip flag constants (stored in the high bits of tile GIDs).
 const FLIP_FLAGS_MASK: u32 = 0xE000_0000;
+const FLIP_H_FLAG: u32 = 0x8000_0000;
+const FLIP_V_FLAG: u32 = 0x4000_0000;
+const FLIP_D_FLAG: u32 = 0x2000_0000;
 
 /// Strip flip/rotation flags from a raw tile GID to get the base tile ID.
 pub fn strip_flip_flags(gid: u32) -> u32 {
     gid & !FLIP_FLAGS_MASK
+}
+
+/// Extract flip flags from a raw tile GID as (flip_h, flip_v, flip_d).
+pub fn tile_flip_flags(gid: u32) -> (bool, bool, bool) {
+    (
+        gid & FLIP_H_FLAG != 0,
+        gid & FLIP_V_FLAG != 0,
+        gid & FLIP_D_FLAG != 0,
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -150,6 +162,7 @@ pub struct TileLayer {
     pub name: String,
     pub visible: bool,
     pub locked: bool,
+    pub opacity: f32,
     pub width: u32,
     pub height: u32,
     pub tiles: Vec<u32>,
@@ -210,6 +223,7 @@ pub struct ObjectLayer {
     pub name: String,
     pub visible: bool,
     pub locked: bool,
+    pub opacity: f32,
     pub objects: Vec<MapObject>,
     pub properties: Vec<Property>,
 }
@@ -287,6 +301,20 @@ impl Layer {
         match self {
             Self::Tile(layer) => layer.locked = locked,
             Self::Object(layer) => layer.locked = locked,
+        }
+    }
+
+    pub fn opacity(&self) -> f32 {
+        match self {
+            Self::Tile(layer) => layer.opacity,
+            Self::Object(layer) => layer.opacity,
+        }
+    }
+
+    pub fn set_opacity(&mut self, opacity: f32) {
+        match self {
+            Self::Tile(layer) => layer.opacity = opacity,
+            Self::Object(layer) => layer.opacity = opacity,
         }
     }
 

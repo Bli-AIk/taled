@@ -82,6 +82,10 @@ pub(super) fn draw_transfer_preview(
             let sy = src_row as f32 * ts.tile_height as f32;
             let dx = (tp.origin_x + col as i32) as f32 * zw;
             let dy = canvas_h - (tp.origin_y + row as i32 + 1) as f32 * zh;
+
+            let (flip_h, flip_v, flip_d) = taled_core::tile_flip_flags(gid);
+            let (rotation, flip_x, flip_y) = crate::canvas::tile_transform(flip_h, flip_v, flip_d);
+
             draw_texture_ex(
                 texture,
                 dx,
@@ -95,7 +99,10 @@ pub(super) fn draw_transfer_preview(
                         ts.tile_height as f32,
                     )),
                     dest_size: Some(Vec2::new(zw, zh)),
-                    ..Default::default()
+                    rotation,
+                    flip_x,
+                    flip_y,
+                    pivot: Some(Vec2::new(dx + zw / 2.0, dy + zh / 2.0)),
                 },
             );
         }

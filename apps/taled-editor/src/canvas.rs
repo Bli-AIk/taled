@@ -381,7 +381,8 @@ fn render_tile_map(
             continue;
         };
 
-        let color = WHITE;
+        let alpha = layer.opacity();
+        let color = MacroquadColor::new(1.0, 1.0, 1.0, alpha);
 
         for row in 0..map.height {
             for col in 0..map.width {
@@ -411,6 +412,9 @@ fn render_tile_map(
                 let sx = src_col as f32 * ts.tile_width as f32;
                 let sy = src_row as f32 * ts.tile_height as f32;
 
+                let (flip_h, flip_v, flip_d) = taled_core::tile_flip_flags(gid);
+                let (rotation, flip_x, flip_y) = tile_transform(flip_h, flip_v, flip_d);
+
                 draw_texture_ex(
                     texture,
                     dx,
@@ -424,7 +428,10 @@ fn render_tile_map(
                             ts.tile_height as f32,
                         )),
                         dest_size: Some(Vec2::new(tile_w, tile_h)),
-                        ..Default::default()
+                        rotation,
+                        flip_x,
+                        flip_y,
+                        pivot: Some(Vec2::new(dx + tile_w / 2.0, dy + tile_h / 2.0)),
                     },
                 );
             }
@@ -433,4 +440,22 @@ fn render_tile_map(
 
     set_default_camera();
     rt
+}
+
+/// Convert TMX flip flags (H, V, D) into macroquad DrawTextureParams values.
+///
+/// Macroquad applies flips in source-space first, then rotation in world-space.
+/// The diagonal flag (D) represents an anti-diagonal transpose which requires rotation.
+pub(crate) fn tile_transform(flip_h: bool, flip_v: bool, flip_d: bool) -> (f32, bool, bool) {
+    use std::f32::consts::FRAC_PI_2;
+    if !flip_d {
+        (0.0, flip_h, flip_v)
+    } else {
+        match (flip_h, flip_v) {
+            (false, false) => (FRAC_PI_2, true, false),
+            (true, false) => (FRAC_PI_2, false, false),
+            (false, true) => (-FRAC_PI_2, false, false),
+            (true, true) => (FRAC_PI_2, false, true),
+        }
+    }
 }
