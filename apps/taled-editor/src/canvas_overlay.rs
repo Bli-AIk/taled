@@ -88,7 +88,12 @@ pub(super) fn draw_transfer_preview(
                 dy,
                 color,
                 DrawTextureParams {
-                    source: Some(Rect::new(sx, sy, ts.tile_width as f32, ts.tile_height as f32)),
+                    source: Some(Rect::new(
+                        sx,
+                        sy,
+                        ts.tile_width as f32,
+                        ts.tile_height as f32,
+                    )),
                     dest_size: Some(Vec2::new(zw, zh)),
                     ..Default::default()
                 },

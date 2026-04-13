@@ -91,12 +91,7 @@ fn convert_map(metadata: MapMetadata, raw_map: tiled::Map) -> Result<Map> {
                     convert_tile_layer(&metadata.tilesets, layer, tile_layer, *layer_metadata)
                 }
                 (LayerKind::Object, LayerType::Objects(object_layer)) => {
-                    convert_object_layer(
-                        layer,
-                        object_layer,
-                        *layer_metadata,
-                        &metadata.tilesets,
-                    )
+                    convert_object_layer(layer, object_layer, *layer_metadata, &metadata.tilesets)
                 }
                 _ => Err(EditorError::Invalid(
                     "layer type changed between validation and official parsing".to_string(),
@@ -286,9 +281,7 @@ fn convert_object(
 ) -> Result<MapObject> {
     let gid = object.tile_data().and_then(|td| {
         if let tiled::TilesetLocation::Map(idx) = td.tileset_location() {
-            tileset_metas
-                .get(*idx)
-                .map(|meta| meta.first_gid + td.id())
+            tileset_metas.get(*idx).map(|meta| meta.first_gid + td.id())
         } else {
             None
         }

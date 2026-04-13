@@ -157,7 +157,9 @@ fn loads_map_with_collection_of_images_tileset() {
     assert_eq!(ground.tile_at(1, 0), Some(2));
 
     // Objects layer uses collection-of-images tileset
-    let objects = document.map.layers[1].as_tile().expect("objects tile layer");
+    let objects = document.map.layers[1]
+        .as_tile()
+        .expect("objects tile layer");
     assert_eq!(objects.tile_at(1, 0), Some(5)); // first object tile
     assert_eq!(objects.tile_at(3, 1), Some(6));
     assert_eq!(objects.tile_at(0, 3), Some(7));

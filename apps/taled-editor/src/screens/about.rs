@@ -164,10 +164,9 @@ fn hero_section(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                         .image(logo_tex)
                         .empty();
                 });
-            ui.text(
-                &format!("Taled v{}", env!("CARGO_PKG_VERSION")),
-                |t| t.font_size(16).color(theme.text).alignment(CenterX),
-            );
+            ui.text(&format!("Taled v{}", env!("CARGO_PKG_VERSION")), |t| {
+                t.font_size(16).color(theme.text).alignment(CenterX)
+            });
             ui.text(
                 &l10n::text(state.resolved_language(), "settings-about-description"),
                 |t| t.font_size(13).color(theme.muted_text).alignment(CenterX),
@@ -320,10 +319,7 @@ fn info_card_with_links(
                                 .height(fit!())
                                 .layout(|l| l.direction(LeftToRight).align(Left, CenterY).gap(4))
                                 .on_press(move |_, pointer| {
-                                    LINK_PRESS_POS.set((
-                                        pointer.position.x,
-                                        pointer.position.y,
-                                    ));
+                                    LINK_PRESS_POS.set((pointer.position.x, pointer.position.y));
                                 })
                                 .on_release(move |_, pointer| {
                                     let (px, py) = LINK_PRESS_POS.get();

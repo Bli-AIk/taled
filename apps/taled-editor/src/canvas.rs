@@ -4,7 +4,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use ply_engine::prelude::*;
 
 use crate::app_state::AppState;
-use crate::canvas_overlay::{TransferPreview, draw_grid, draw_selection_overlay, draw_transfer_preview};
+use crate::canvas_overlay::{
+    TransferPreview, draw_grid, draw_selection_overlay, draw_transfer_preview,
+};
 use crate::theme::PlyTheme;
 
 thread_local! {

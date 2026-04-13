@@ -204,6 +204,14 @@ pub(crate) struct TileSelectionTransfer {
     pub(crate) mode: TileSelectionTransferMode,
 }
 
+/// Snap-to-grid easing animation for the tile-strip viewfinder.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct ViewfinderSnapAnim {
+    pub(crate) start_time: f64,
+    pub(crate) from: (f32, f32),
+    pub(crate) to: (f32, f32),
+}
+
 #[allow(dead_code)]
 pub(crate) struct AppState {
     pub(crate) session: Option<EditorSession>,
@@ -288,6 +296,22 @@ pub(crate) struct AppState {
     pub(crate) zoom_slider_offset: f32,
     /// Fractional zoom accumulator for smooth slider zoom.
     pub(crate) zoom_accumulator: f32,
+    /// Viewfinder offset in tile units (fractional during drag).
+    pub(crate) viewfinder_offset: (f32, f32),
+    /// True while a touch is active on the viewfinder palette.
+    pub(crate) viewfinder_touch_active: bool,
+    /// True when the active touch has exceeded the drag threshold.
+    pub(crate) viewfinder_dragging: bool,
+    /// Mouse position when the viewfinder touch started.
+    pub(crate) viewfinder_drag_start_mouse: (f32, f32),
+    /// Viewfinder offset when the touch started.
+    pub(crate) viewfinder_drag_start_offset: (f32, f32),
+    /// In-progress snap-to-grid easing animation.
+    pub(crate) viewfinder_snap_anim: Option<ViewfinderSnapAnim>,
+    /// Viewfinder zoom level: 0 = 9×3, 1 = 6×2, 2 = 3×1.
+    pub(crate) viewfinder_zoom_level: u8,
+    /// Initial pinch distance for viewfinder zoom gesture.
+    pub(crate) viewfinder_pinch_dist: Option<f64>,
     /// Whether the language-selection popup is currently visible.
     pub(crate) show_language_popup: bool,
     /// Name of the currently active workspace (directory name).
@@ -383,6 +407,14 @@ impl AppState {
             zoom_slider_active: false,
             zoom_slider_offset: 0.0,
             zoom_accumulator: 0.0,
+            viewfinder_offset: (0.0, 0.0),
+            viewfinder_touch_active: false,
+            viewfinder_dragging: false,
+            viewfinder_drag_start_mouse: (0.0, 0.0),
+            viewfinder_drag_start_offset: (0.0, 0.0),
+            viewfinder_snap_anim: None,
+            viewfinder_zoom_level: 1,
+            viewfinder_pinch_dist: None,
             show_language_popup: false,
             active_workspace: crate::workspace::BUILTIN_WORKSPACE.to_string(),
             workspace_list: Vec::new(),

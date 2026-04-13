@@ -101,9 +101,7 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                     .width(fixed!(sw))
                     .height(fixed!(content_h))
                     .background_color(theme.background)
-                    .floating(|f| {
-                        f.attach_root().offset((ts.from_x, safe + ts.from_y))
-                    })
+                    .floating(|f| f.attach_root().offset((ts.from_x, safe + ts.from_y)))
                     .layout(|l| l.direction(TopToBottom))
                     .children(|ui| {
                         render_screen(ui, state, theme, from);
@@ -116,9 +114,7 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                     .width(fixed!(sw))
                     .height(fixed!(content_h))
                     .background_color(theme.background)
-                    .floating(|f| {
-                        f.attach_root().offset((ts.to_x, safe + ts.to_y))
-                    })
+                    .floating(|f| f.attach_root().offset((ts.to_x, safe + ts.to_y)))
                     .layout(|l| l.direction(TopToBottom))
                     .children(|ui| {
                         render_screen(ui, state, theme, state.mobile_screen);

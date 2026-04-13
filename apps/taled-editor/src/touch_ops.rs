@@ -72,8 +72,8 @@ pub(crate) fn handle_canvas_interaction(ui: &mut Ui, state: &mut AppState, canva
     if state.session.is_none() {
         return;
     }
-    // Skip canvas touches while joystick or zoom slider is being dragged.
-    if state.joystick_active || state.zoom_slider_active {
+    // Skip canvas touches while joystick, zoom slider, or viewfinder is being used.
+    if state.joystick_active || state.zoom_slider_active || state.viewfinder_touch_active {
         return;
     }
 
@@ -104,8 +104,15 @@ pub(crate) fn handle_canvas_interaction(ui: &mut Ui, state: &mut AppState, canva
     let sh = screen_height();
     let cd = state.center_debug.clone();
 
-    // Pinch zoom with two fingers
+    // Pinch zoom with two fingers — only if both fingers are below the tile strip.
     if tc >= 2 {
+        let strip_bottom = state.safe_inset_top + 56.0 + 114.0;
+        let (t0, t1) = (touches[0].position / dpi, touches[1].position / dpi);
+        if t0.y < strip_bottom && t1.y < strip_bottom {
+            // Both touches in strip area — skip canvas pinch
+            state.debug_info = format!("strip-pinch tc:{tc} [{cd}]");
+            return;
+        }
         finish_touch_edit_batch(state);
         state.single_touch_gesture = None;
         state.shape_fill_preview = None;

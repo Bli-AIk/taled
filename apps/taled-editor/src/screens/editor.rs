@@ -8,7 +8,7 @@ use crate::l10n;
 use crate::theme::PlyTheme;
 
 use super::editor_toolbar::render_toolbar;
-use super::tile_palette::{collect_palette_preview, render_tile_chip_grid};
+use super::tile_palette::render_viewfinder;
 use super::widgets::{bottom_nav, editor_nav_items};
 
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
@@ -103,9 +103,6 @@ fn render_tile_strip_shell(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) 
     let strip_bg = theme.surface_elevated;
     let divider_color = Color::rgba(1.0, 1.0, 1.0, 0.10);
 
-    // Collect palette tiles (up to 24)
-    let palette = collect_palette_preview(state, 24);
-
     ui.element()
         .id("tile-strip-shell")
         .width(grow!())
@@ -114,20 +111,15 @@ fn render_tile_strip_shell(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) 
         .border(|b| b.bottom(1).color(theme.border))
         .layout(|l| l.direction(LeftToRight))
         .children(|ui| {
-            // Left: palette area with tile chip grid (2 rows, column-first flow)
+            // Left: 6×2 tile viewfinder
             ui.element()
                 .id("tile-palette")
                 .width(grow!())
                 .height(grow!())
                 .overflow(|o| o.clip())
-                .layout(|l| {
-                    l.direction(TopToBottom)
-                        .align(Left, Top)
-                        .padding((10, 14, 10, 14))
-                        .gap(6)
-                })
+                .on_press(move |_, _| {})
                 .children(|ui| {
-                    render_tile_chip_grid(ui, state, theme, &palette);
+                    render_viewfinder(ui, state, theme);
                 });
 
             // Vertical divider

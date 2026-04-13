@@ -11,12 +11,12 @@ mod screens;
 mod selection_ops;
 mod selection_transform;
 mod session_ops;
-mod workspace;
 #[cfg(feature = "system-fonts")]
 mod system_font;
 mod theme;
 mod touch_ops;
 mod ui;
+mod workspace;
 
 use ply_engine::prelude::*;
 

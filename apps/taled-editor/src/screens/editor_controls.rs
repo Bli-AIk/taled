@@ -215,8 +215,7 @@ fn joystick_knob(ui: &mut Ui, state: &mut AppState, color: Color, sz: f32) {
                 state.joystick_offset = (0.0, 0.0);
             }
             ui.text("⊕", |t| {
-                t.font_size(18)
-                    .color(Color::u_rgba(200, 200, 205, 255))
+                t.font_size(18).color(Color::u_rgba(200, 200, 205, 255))
             });
         });
 }
@@ -299,14 +298,7 @@ pub(crate) fn render_zoom_slider(
         });
 }
 
-fn zoom_handle(
-    ui: &mut Ui,
-    state: &mut AppState,
-    color: Color,
-    w: f32,
-    h: f32,
-    pct: i32,
-) {
+fn zoom_handle(ui: &mut Ui, state: &mut AppState, color: Color, w: f32, h: f32, pct: i32) {
     let zoom_text = format!("{pct}%");
     let border = Color::u_rgba(255, 255, 255, 25);
     let hx = state.zoom_slider_offset;
@@ -336,8 +328,7 @@ fn zoom_handle(
                 state.zoom_accumulator = 0.0;
             }
             ui.text(&zoom_text, |t| {
-                t.font_size(12)
-                    .color(Color::u_rgba(220, 220, 225, 255))
+                t.font_size(12).color(Color::u_rgba(220, 220, 225, 255))
             });
         });
 }

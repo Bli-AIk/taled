@@ -130,7 +130,11 @@ fn collect_tmx_files(dir: &Path, out: &mut Vec<MapFileInfo>) {
         if path.is_dir() {
             collect_tmx_files(&path, out);
         } else if matches!(path.extension(), Some(ext) if ext == "tmx") {
-            let file_name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            let file_name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
             let size_bytes = entry.metadata().map(|m| m.len()).unwrap_or(0);
             out.push(MapFileInfo {
                 path,
@@ -155,10 +159,7 @@ pub(crate) fn import_directory_as_workspace(source_dir: &Path) -> Option<String>
         crate::logging::append("import_directory_as_workspace: not a directory, aborting");
         return None;
     }
-    let ws_name = source_dir
-        .file_name()?
-        .to_string_lossy()
-        .into_owned();
+    let ws_name = source_dir.file_name()?.to_string_lossy().into_owned();
 
     let root = workspaces_root()?;
     let mut dest = root.join(&ws_name);
@@ -195,10 +196,7 @@ pub(crate) fn import_directory_as_workspace(source_dir: &Path) -> Option<String>
 /// Import a single TMX file and its referenced assets into a workspace.
 /// Scans the TMX for `<tileset source="...">` and each TSX for
 /// `<image source="...">`, then copies all referenced files.
-pub(crate) fn import_tmx_to_workspace(
-    tmx_path: &Path,
-    workspace_name: &str,
-) -> Option<PathBuf> {
+pub(crate) fn import_tmx_to_workspace(tmx_path: &Path, workspace_name: &str) -> Option<PathBuf> {
     let root = workspaces_root()?;
     let ws_dir = root.join(workspace_name);
     fs::create_dir_all(&ws_dir).ok()?;
@@ -303,10 +301,7 @@ fn extract_attr_values(xml: &str, tag: &str, attr: &str) -> Vec<String> {
 /// Process a completed SAF directory picker result.
 /// The result string is `"mode:path"` where mode is "workspace" or "tmx".
 /// The Java side has already copied the tree to `<files_dir>/import/<name>`.
-pub(crate) fn handle_import_result(
-    state: &mut crate::app_state::AppState,
-    result: &str,
-) {
+pub(crate) fn handle_import_result(state: &mut crate::app_state::AppState, result: &str) {
     use crate::app_state::ImportMode;
 
     // Parse "mode:path" format from Java side.
@@ -338,10 +333,7 @@ pub(crate) fn handle_import_result(
     match mode {
         ImportMode::Workspace => {
             if let Some(name) = import_directory_as_workspace(path) {
-                state.workspace_list = list_workspaces()
-                    .into_iter()
-                    .map(|w| w.name)
-                    .collect();
+                state.workspace_list = list_workspaces().into_iter().map(|w| w.name).collect();
                 state.active_workspace = name.clone();
                 state.status = format!(
                     "{} '{name}'",
@@ -352,7 +344,9 @@ pub(crate) fn handle_import_result(
                 ));
             } else {
                 state.status = "Import failed".to_string();
-                crate::logging::append("handle_import_result: import_directory_as_workspace failed");
+                crate::logging::append(
+                    "handle_import_result: import_directory_as_workspace failed",
+                );
             }
         }
         ImportMode::Tmx => {
@@ -364,18 +358,12 @@ pub(crate) fn handle_import_result(
                 tmx_files.len()
             ));
             for map in &tmx_files {
-                if import_tmx_to_workspace(&map.path, &state.active_workspace).is_some()
-                {
+                if import_tmx_to_workspace(&map.path, &state.active_workspace).is_some() {
                     count += 1;
                 }
             }
-            state.status = format!(
-                "{count} {}",
-                crate::l10n::text(lang, "import-tmx-done"),
-            );
-            crate::logging::append(&format!(
-                "handle_import_result: imported {count} TMX files"
-            ));
+            state.status = format!("{count} {}", crate::l10n::text(lang, "import-tmx-done"),);
+            crate::logging::append(&format!("handle_import_result: imported {count} TMX files"));
         }
     }
 

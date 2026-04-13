@@ -167,8 +167,7 @@ fn action_buttons(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                                 .into_iter()
                                 .map(|w| w.name)
                                 .collect();
-                            state.status =
-                                l10n::text(lang, "dashboard-workspace-created");
+                            state.status = l10n::text(lang, "dashboard-workspace-created");
                         }
                     }
                     let plus_tex = state.icon_cache.get(IconId::Plus);
@@ -209,7 +208,6 @@ fn action_buttons(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
 
 // ── Project list (from workspace or embedded fallback) ──────────────
 
-#[expect(clippy::excessive_nesting)] // reason: Ply UI project rows with nested children
 fn project_list_builtin(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let samples = embedded_samples();
     for (i, sample) in samples.iter().enumerate() {
@@ -255,12 +253,8 @@ fn project_list_builtin(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                     .layout(|l| l.direction(TopToBottom).gap(4))
                     .children(|ui| {
                         ui.text(sample.title, |t| t.font_size(16).color(theme.text));
-                        ui.text(sample.subtitle, |t| {
-                            t.font_size(13).color(theme.muted_text)
-                        });
-                        ui.text(sample.meta, |t| {
-                            t.font_size(13).color(theme.muted_text)
-                        });
+                        ui.text(sample.subtitle, |t| t.font_size(13).color(theme.muted_text));
+                        ui.text(sample.meta, |t| t.font_size(13).color(theme.muted_text));
                     });
             });
     }

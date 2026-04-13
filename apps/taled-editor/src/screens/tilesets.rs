@@ -4,7 +4,7 @@ use crate::app_state::{AppState, MobileScreen};
 use crate::l10n;
 use crate::theme::PlyTheme;
 
-use super::tile_palette::{crop_tile_texture, PaletteTile};
+use super::tile_palette::{PaletteTile, crop_tile_texture};
 use super::widgets::{bottom_nav, editor_nav_items, page_header};
 
 pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
@@ -111,7 +111,17 @@ fn sprite_sheet_view(
         .overflow(|o| o.scroll_x().scroll_y().clip())
         .children(|ui| {
             for row in 0..rows {
-                sheet_row(ui, state, row, cols, count, first_gid, cell_w, cell_h, is_pinching);
+                sheet_row(
+                    ui,
+                    state,
+                    row,
+                    cols,
+                    count,
+                    first_gid,
+                    cell_w,
+                    cell_h,
+                    is_pinching,
+                );
             }
         });
 }
@@ -138,7 +148,15 @@ fn sheet_row(
                 if idx >= count {
                     break;
                 }
-                sheet_cell(ui, state, first_gid + idx, first_gid, cell_w, cell_h, is_pinching);
+                sheet_cell(
+                    ui,
+                    state,
+                    first_gid + idx,
+                    first_gid,
+                    cell_w,
+                    cell_h,
+                    is_pinching,
+                );
             }
         });
 }
@@ -173,7 +191,11 @@ fn sheet_cell(
                 state.selected_gid = gid;
             }
             if let Some(tex) = tile_tex {
-                ui.element().width(grow!()).height(grow!()).image(tex).empty();
+                ui.element()
+                    .width(grow!())
+                    .height(grow!())
+                    .image(tex)
+                    .empty();
             }
             if is_selected {
                 // Inset selection border overlay
@@ -215,7 +237,9 @@ fn property_section(
                 state.property_panel_expanded = !state.property_panel_expanded;
             }
             ui.text(arrow, |t| t.font_size(11).color(theme.muted_text));
-            ui.text("Property Panel", |t| t.font_size(13).color(theme.muted_text));
+            ui.text("Property Panel", |t| {
+                t.font_size(13).color(theme.muted_text)
+            });
         });
 
     if !expanded {
@@ -291,9 +315,7 @@ fn custom_column(ui: &mut Ui, theme: &PlyTheme) {
                 .layout(|l| l.align(CenterX, CenterY))
                 .on_press(move |_, _| {})
                 .children(|ui| {
-                    ui.text("+ Add Property", |t| {
-                        t.font_size(13).color(theme.accent)
-                    });
+                    ui.text("+ Add Property", |t| t.font_size(13).color(theme.accent));
                 });
         });
 }

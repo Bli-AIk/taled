@@ -229,7 +229,12 @@ fn render_selection_actions(
         .background_color(float_bg)
         .corner_radius(14.0)
         .border(|b| b.all(1).color(float_border))
-        .layout(|l| l.direction(LeftToRight).align(CenterX, CenterY).padding((6, 6, 6, 6)).gap(2))
+        .layout(|l| {
+            l.direction(LeftToRight)
+                .align(CenterX, CenterY)
+                .padding((6, 6, 6, 6))
+                .gap(2)
+        })
         .children(|ui| {
             if !has_transfer {
                 sel_action_button(ui, state, theme, "sel-cut", "Cut", SelAction::Cut);
@@ -283,9 +288,7 @@ fn sel_action_button(
                     SelAction::Rotate => {
                         crate::selection_transform::rotate_tile_selection_cw(state)
                     }
-                    SelAction::Done => {
-                        crate::selection_ops::place_tile_selection_transfer(state)
-                    }
+                    SelAction::Done => crate::selection_ops::place_tile_selection_transfer(state),
                 }
             }
             ui.text(label, |t| {

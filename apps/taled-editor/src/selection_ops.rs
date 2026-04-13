@@ -16,9 +16,7 @@ pub(crate) fn copy_tile_selection(state: &mut AppState) {
     // In transfer mode: place a copy at the current position without exiting
     if state.tile_selection_transfer.is_some() {
         let placed = apply_transfer_copy(state);
-        if placed
-            && let Some(t) = state.tile_selection_transfer.as_ref()
-        {
+        if placed && let Some(t) = state.tile_selection_transfer.as_ref() {
             state.status = format!("Copied {}×{} at current position.", t.width, t.height);
         }
         return;
@@ -287,8 +285,11 @@ pub(crate) fn cancel_tile_selection_transfer(state: &mut AppState) {
 
 fn selected_tile_selection(
     state: &AppState,
-) -> Option<(usize, crate::app_state::TileSelectionRegion, std::collections::BTreeSet<(i32, i32)>)>
-{
+) -> Option<(
+    usize,
+    crate::app_state::TileSelectionRegion,
+    std::collections::BTreeSet<(i32, i32)>,
+)> {
     let selection = state.tile_selection?;
     let cells = state.tile_selection_cells.clone()?;
     let layer = state

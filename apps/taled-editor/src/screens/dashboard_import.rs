@@ -64,7 +64,11 @@ fn import_option(
     mode: ImportMode,
 ) {
     let (id, label_key, icon_id) = match mode {
-        ImportMode::Workspace => ("import-opt-workspace", "import-menu-workspace", IconId::Import),
+        ImportMode::Workspace => (
+            "import-opt-workspace",
+            "import-menu-workspace",
+            IconId::Import,
+        ),
         ImportMode::Tmx => ("import-opt-tmx", "import-menu-tmx", IconId::NavProjects),
     };
     let label = l10n::text(lang, label_key);

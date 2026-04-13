@@ -179,17 +179,33 @@ pub(crate) fn safe_inset_top() -> i32 {
 
         // activity.getWindow() → Window
         let act_cls = get_object_class(env, ACTIVITY);
-        let m = method!(act_cls, c"getWindow".as_ptr(), c"()Landroid/view/Window;".as_ptr());
-        if m.is_null() { return 0; }
+        let m = method!(
+            act_cls,
+            c"getWindow".as_ptr(),
+            c"()Landroid/view/Window;".as_ptr()
+        );
+        if m.is_null() {
+            return 0;
+        }
         let window = call_obj(env, ACTIVITY, m);
-        if window.is_null() { return 0; }
+        if window.is_null() {
+            return 0;
+        }
 
         // window.getDecorView() → View
         let win_cls = get_object_class(env, window);
-        let m = method!(win_cls, c"getDecorView".as_ptr(), c"()Landroid/view/View;".as_ptr());
-        if m.is_null() { return 0; }
+        let m = method!(
+            win_cls,
+            c"getDecorView".as_ptr(),
+            c"()Landroid/view/View;".as_ptr()
+        );
+        if m.is_null() {
+            return 0;
+        }
         let decor = call_obj(env, window, m);
-        if decor.is_null() { return 0; }
+        if decor.is_null() {
+            return 0;
+        }
 
         // view.getRootWindowInsets() → WindowInsets  (API 23+)
         let v_cls = get_object_class(env, decor);
@@ -198,9 +214,13 @@ pub(crate) fn safe_inset_top() -> i32 {
             c"getRootWindowInsets".as_ptr(),
             c"()Landroid/view/WindowInsets;".as_ptr()
         );
-        if m.is_null() { return 0; }
+        if m.is_null() {
+            return 0;
+        }
         let insets = call_obj(env, decor, m);
-        if insets.is_null() { return 0; }
+        if insets.is_null() {
+            return 0;
+        }
 
         // insets.getDisplayCutout() → DisplayCutout  (API 28+)
         let i_cls = get_object_class(env, insets);
@@ -209,14 +229,20 @@ pub(crate) fn safe_inset_top() -> i32 {
             c"getDisplayCutout".as_ptr(),
             c"()Landroid/view/DisplayCutout;".as_ptr()
         );
-        if m.is_null() { return 0; }
+        if m.is_null() {
+            return 0;
+        }
         let cutout = call_obj(env, insets, m);
-        if cutout.is_null() { return 0; }
+        if cutout.is_null() {
+            return 0;
+        }
 
         // cutout.getSafeInsetTop() → int
         let c_cls = get_object_class(env, cutout);
         let m = method!(c_cls, c"getSafeInsetTop".as_ptr(), c"()I".as_ptr());
-        if m.is_null() { return 0; }
+        if m.is_null() {
+            return 0;
+        }
         call_int(env, cutout, m)
     }
 }

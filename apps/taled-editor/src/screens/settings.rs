@@ -165,11 +165,7 @@ fn about_entry_card(
         .background_color(theme.surface)
         .corner_radius(20.0)
         .border(|b| b.all(1).color(theme.border))
-        .layout(|l| {
-            l.direction(TopToBottom)
-                .padding((14, 14, 14, 14))
-                .gap(14)
-        })
+        .layout(|l| l.direction(TopToBottom).padding((14, 14, 14, 14)).gap(14))
         .children(|ui| {
             // Wrap title in full-width centered container
             ui.element()
@@ -192,9 +188,7 @@ fn about_entry_card(
                     .height(fit!())
                     .layout(|l| l.align(CenterX, CenterY))
                     .children(|ui| {
-                        ui.text(description, |t| {
-                            t.font_size(13).color(theme.muted_text)
-                        });
+                        ui.text(description, |t| t.font_size(13).color(theme.muted_text));
                     });
             }
             // Center the link button via a full-width wrapper
@@ -307,9 +301,7 @@ fn language_selector(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let display = match pref {
         AppLanguagePreference::Auto => l10n::text(lang, "settings-language-auto"),
         AppLanguagePreference::English => l10n::text(lang, "settings-language-english"),
-        AppLanguagePreference::SimplifiedChinese => {
-            l10n::text(lang, "settings-language-zh-hans")
-        }
+        AppLanguagePreference::SimplifiedChinese => l10n::text(lang, "settings-language-zh-hans"),
     };
     let dropdown_bg = Color::from(0x242426_u32);
     ui.element()
@@ -327,10 +319,9 @@ fn language_selector(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                 .height(fixed!(44.0))
                 .layout(|l| l.direction(LeftToRight).align(Left, CenterY))
                 .children(|ui| {
-                    ui.text(
-                        &l10n::text(lang, "settings-language-caption"),
-                        |t| t.font_size(15).color(theme.text),
-                    );
+                    ui.text(&l10n::text(lang, "settings-language-caption"), |t| {
+                        t.font_size(15).color(theme.text)
+                    });
                     ui.element().width(grow!()).height(fixed!(1.0)).empty();
                     ui.element()
                         .id("lang-pick")
@@ -411,10 +402,9 @@ pub(crate) fn language_popup_overlay(ui: &mut Ui, state: &mut AppState, theme: &
         .floating(|f| f.attach_root().offset((popup_x, popup_y)))
         .layout(|l| l.direction(TopToBottom).padding((12, 0, 12, 0)))
         .children(|ui| {
-            ui.text(
-                &l10n::text(lang, "settings-language-caption"),
-                |t| t.font_size(16).color(theme.text).alignment(CenterX),
-            );
+            ui.text(&l10n::text(lang, "settings-language-caption"), |t| {
+                t.font_size(16).color(theme.text).alignment(CenterX)
+            });
             ui.element()
                 .width(grow!())
                 .height(fixed!(1.0))

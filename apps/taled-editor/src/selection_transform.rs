@@ -316,8 +316,10 @@ fn flip_mask_h(w: u32, h: u32, mask: &[bool]) -> Vec<bool> {
     let mut out = vec![false; (w * h) as usize];
     for y in 0..h {
         for x in 0..w {
-            out[(y * w + x) as usize] =
-                mask.get((y * w + (w - 1 - x)) as usize).copied().unwrap_or(false);
+            out[(y * w + x) as usize] = mask
+                .get((y * w + (w - 1 - x)) as usize)
+                .copied()
+                .unwrap_or(false);
         }
     }
     out
@@ -327,8 +329,10 @@ fn flip_mask_v(w: u32, h: u32, mask: &[bool]) -> Vec<bool> {
     let mut out = vec![false; (w * h) as usize];
     for y in 0..h {
         for x in 0..w {
-            out[(y * w + x) as usize] =
-                mask.get(((h - 1 - y) * w + x) as usize).copied().unwrap_or(false);
+            out[(y * w + x) as usize] = mask
+                .get(((h - 1 - y) * w + x) as usize)
+                .copied()
+                .unwrap_or(false);
         }
     }
     out
@@ -472,8 +476,13 @@ fn resize_transfer_selection(state: &mut AppState) {
         return;
     };
     let (min_x, min_y, _, _) = selection_bounds(&selection);
-    let cells =
-        selection_cells_from_mask(min_x, min_y, transfer.width, transfer.height, &transfer.mask);
+    let cells = selection_cells_from_mask(
+        min_x,
+        min_y,
+        transfer.width,
+        transfer.height,
+        &transfer.mask,
+    );
     state.tile_selection = selection_region_from_cells(&cells);
     state.tile_selection_cells = Some(cells);
 }
