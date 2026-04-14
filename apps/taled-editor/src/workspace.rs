@@ -314,9 +314,6 @@ pub(crate) fn handle_import_result(state: &mut crate::app_state::AppState, resul
         (ImportMode::Workspace, result)
     };
 
-    // Clear any stale pending state.
-    state.import_pending = None;
-
     let lang = state.resolved_language();
     let path = Path::new(import_path);
 

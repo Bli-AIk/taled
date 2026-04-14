@@ -338,8 +338,8 @@ pub(crate) struct AppState {
     pub(crate) show_import_menu: bool,
     /// Whether the unsaved-changes dialog is visible (shown on back navigation).
     pub(crate) show_save_dialog: bool,
-    /// Pending import mode: "workspace" or "tmx" while waiting for SAF picker result.
-    pub(crate) import_pending: Option<ImportMode>,
+    /// Whether we need to generate a thumbnail for the current map on next frame.
+    pub(crate) thumb_pending: bool,
     pub(crate) delete_layer_pending: Option<usize>,
     pub(crate) layer_actions_row: Option<usize>,
     pub(crate) rename_layer_index: Option<usize>,
@@ -450,7 +450,7 @@ impl AppState {
             show_workspace_picker: false,
             show_import_menu: false,
             show_save_dialog: false,
-            import_pending: None,
+            thumb_pending: false,
             delete_layer_pending: None,
             layer_actions_row: None,
             rename_layer_index: None,

@@ -28,17 +28,19 @@ pub(crate) fn load_sample_by_path(state: &mut AppState, path: &str) {
     }
 }
 
-pub(crate) fn load_filesystem_map(state: &mut AppState, path: &str) {
+pub(crate) fn load_filesystem_map(state: &mut AppState, path: &str) -> bool {
     crate::logging::append(&format!("loading filesystem map: {path}"));
     match EditorSession::load(path) {
         Ok(session) => {
             state.status = format!("Loaded {path}.");
             crate::logging::append(&format!("loaded ok: {}", state.status));
             install_session(state, session);
+            true
         }
         Err(error) => {
             state.status = format!("Load failed: {error}");
             crate::logging::append(&format!("load FAILED: {}", state.status));
+            false
         }
     }
 }
@@ -76,6 +78,7 @@ fn install_session(state: &mut AppState, session: EditorSession) {
     state.selection_undo_stack.clear();
     state.selection_redo_stack.clear();
     state.session = Some(session);
+    state.thumb_pending = true;
     crate::canvas::load_tileset_textures(state);
 }
 

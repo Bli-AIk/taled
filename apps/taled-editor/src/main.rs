@@ -15,6 +15,7 @@ mod session_ops;
 #[cfg(feature = "system-fonts")]
 mod system_font;
 mod theme;
+mod thumbnails;
 mod touch_ops;
 mod ui;
 mod workspace;
@@ -152,5 +153,11 @@ async fn main() {
         let ts2 = get_time();
         prev_show_ms = ((ts1 - ts0) * 1000.0) as f32;
         prev_next_ms = ((ts2 - ts1) * 1000.0) as f32;
+
+        // Generate map thumbnail once after loading (deferred by 1 frame for textures).
+        if state.thumb_pending && frame_count > 1 {
+            thumbnails::generate_and_save(&mut state);
+            state.thumb_pending = false;
+        }
     }
 }

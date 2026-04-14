@@ -127,6 +127,7 @@ fn workspace_picker(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                         if ui.just_released() {
                             state.active_workspace = ws_name.clone();
                             state.show_workspace_picker = false;
+                            crate::thumbnails::invalidate_cache();
                         }
                         ui.text(&display_name, |t| t.font_size(16).color(text_color));
                     });
@@ -299,8 +300,13 @@ fn project_list_filesystem(
             format!("{size_kb:.1} KB")
         };
 
-        // Try to match to an embedded sample for the thumbnail
-        let thumb = embedded_sample(&file_name).map(|s| s.thumb);
+        // Try cached thumbnail, then embedded sample, then placeholder
+        let cached_thumb = crate::thumbnails::get_thumb(&state.active_workspace, &file_name);
+        let thumb: Option<&GraphicAsset> = if cached_thumb.is_none() {
+            embedded_sample(&file_name).map(|s| s.thumb)
+        } else {
+            None
+        };
 
         ui.element()
             .id(("fs-row", i as u32))
@@ -321,13 +327,22 @@ fn project_list_filesystem(
             })
             .on_press(move |_, _| {})
             .children(|ui| {
-                if ui.just_released() {
-                    crate::session_ops::load_filesystem_map(state, &full_path);
+                if ui.just_released()
+                    && crate::session_ops::load_filesystem_map(state, &full_path)
+                {
                     state.navigate(MobileScreen::Editor);
                 }
 
-                // Thumbnail or placeholder
-                if let Some(thumb_asset) = thumb {
+                // Thumbnail: cached render > embedded match > placeholder icon
+                if let Some(ref tex) = cached_thumb {
+                    ui.element()
+                        .id(("fs-thumb", i as u32))
+                        .width(fixed!(48.0))
+                        .height(fixed!(48.0))
+                        .corner_radius(10.0)
+                        .image(tex.clone())
+                        .empty();
+                } else if let Some(thumb_asset) = thumb {
                     ui.element()
                         .id(("fs-thumb", i as u32))
                         .width(fixed!(48.0))
