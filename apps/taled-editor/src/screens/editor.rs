@@ -55,7 +55,6 @@ fn render_editor_header(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
             header_back_btn(ui, state);
             header_title(ui, theme, &title);
             header_save_btn(ui, state, theme);
-            header_settings_btn(ui, state, theme);
         });
 }
 
@@ -104,36 +103,19 @@ fn header_save_btn(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     };
     ui.element()
         .id("editor-save-btn")
-        .width(fixed!(56.0))
-        .height(grow!())
-        .layout(|l| l.align(CenterX, CenterY))
-        .on_press(move |_, _| {})
-        .children(|ui| {
-            if ui.just_released()
-                && let Some(session) = state.session.as_mut()
-            {
-                let _ = session.save();
-            }
-            ui.text(&save_label, |t| {
-                t.font_size(14).color(save_color).alignment(CenterX)
-            });
-        });
-}
-
-fn header_settings_btn(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    ui.element()
-        .id("editor-settings")
         .width(fixed!(92.0))
         .height(grow!())
         .layout(|l| l.align(Right, CenterY))
         .on_press(move |_, _| {})
         .children(|ui| {
-            if ui.just_released() {
-                state.navigate(MobileScreen::Settings);
+            if ui.just_released()
+                && let Some(session) = state.session.as_mut()
+                && let Err(e) = session.save()
+            {
+                crate::logging::append(&format!("save FAILED: {e}"));
             }
-            let settings = l10n::text(state.resolved_language(), "nav-settings");
-            ui.text(&settings, |t| {
-                t.font_size(14).color(theme.muted_text).alignment(Right)
+            ui.text(&save_label, |t| {
+                t.font_size(14).color(save_color).alignment(Right)
             });
         });
 }

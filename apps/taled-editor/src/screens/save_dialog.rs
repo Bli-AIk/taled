@@ -70,8 +70,10 @@ fn save_btn(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, label: &str) {
         .on_press(|_, _| {})
         .children(|ui| {
             if ui.just_released() {
-                if let Some(session) = state.session.as_mut() {
-                    let _ = session.save();
+                if let Some(session) = state.session.as_mut()
+                    && let Err(e) = session.save()
+                {
+                    crate::logging::append(&format!("save FAILED: {e}"));
                 }
                 state.show_save_dialog = false;
                 state.navigate_back_to(MobileScreen::Dashboard);
