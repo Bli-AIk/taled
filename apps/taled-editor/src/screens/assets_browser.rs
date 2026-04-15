@@ -152,6 +152,8 @@ fn game_chip(
 fn room_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let lang = state.resolved_language();
 
+    let game_key = state.utdr_selected_game.clone();
+
     let (game_label, rooms) = match state
         .utdr_index
         .as_ref()
@@ -199,7 +201,7 @@ fn room_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         .children(|ui| {
             section_label(ui, theme, &count_label);
             for (i, room) in filtered.iter().enumerate() {
-                room_row(ui, state, theme, room, i as u32, i == 0);
+                room_row(ui, state, theme, room, &game_key, i as u32, i == 0);
             }
         });
 }
@@ -221,6 +223,7 @@ fn room_row(
     state: &mut AppState,
     theme: &PlyTheme,
     room: &crate::utdr_index::UtdrRoom,
+    game_key: &str,
     index: u32,
     is_first: bool,
 ) {
@@ -230,6 +233,11 @@ fn room_row(
     } else {
         format!("{:.1} KB", size_kb)
     };
+    let (repo, branch) = state
+        .utdr_index
+        .as_ref()
+        .map(|idx| (idx.repo.clone(), idx.branch.clone()))
+        .unwrap_or_else(|| ("Bli-AIk/open-utdr-maps".into(), "main".into()));
 
     // padding: (top, right, bottom, left)
     ui.element()
@@ -246,37 +254,15 @@ fn room_row(
         .on_press(move |_, _| {})
         .children(|ui| {
             if ui.just_released() && state.download_rx.is_none() {
-                let (repo, branch) = state
-                    .utdr_index
-                    .as_ref()
-                    .map(|idx| (idx.repo.clone(), idx.branch.clone()))
-                    .unwrap_or_else(|| {
-                        ("Bli-AIk/open-utdr-maps".into(), "main".into())
-                    });
                 let path = room.path.clone();
                 crate::utdr_download::start_room_download(
                     state, &path, &repo, &branch,
                 );
             }
 
-            // Placeholder thumbnail
-            ui.element()
-                .id(("room-thumb", index))
-                .width(fixed!(44.0))
-                .height(fixed!(44.0))
-                .corner_radius(10.0)
-                .background_color(theme.surface)
-                .border(|b| b.all(1).color(theme.border))
-                .layout(|l| l.align(CenterX, CenterY))
-                .children(|ui| {
-                    let icon = state.icon_cache.get(IconId::NavAssets);
-                    ui.element()
-                        .width(fixed!(20.0))
-                        .height(fixed!(20.0))
-                        .background_color(theme.muted_text)
-                        .image(icon)
-                        .empty();
-                });
+            // Thumbnail (fetched from GitHub, or placeholder)
+            let thumb = crate::utdr_thumbs::get(game_key, &room.name, &repo, &branch);
+            room_thumb(ui, state, theme, thumb, index);
 
             // Text block: room name + size
             ui.element()
@@ -288,4 +274,43 @@ fn room_row(
                     ui.text(&size_text, |t| t.font_size(12).color(theme.muted_text));
                 });
         });
+}
+
+fn room_thumb(
+    ui: &mut Ui,
+    state: &mut AppState,
+    theme: &PlyTheme,
+    thumb: Option<Texture2D>,
+    index: u32,
+) {
+    if let Some(tex) = thumb {
+        ui.element()
+            .id(("room-thumb", index))
+            .width(fixed!(44.0))
+            .height(fixed!(44.0))
+            .corner_radius(10.0)
+            .background_color(theme.surface)
+            .border(|b| b.all(1).color(theme.border))
+            .layout(|l| l.align(CenterX, CenterY))
+            .image(tex)
+            .empty();
+    } else {
+        ui.element()
+            .id(("room-thumb", index))
+            .width(fixed!(44.0))
+            .height(fixed!(44.0))
+            .corner_radius(10.0)
+            .background_color(theme.surface)
+            .border(|b| b.all(1).color(theme.border))
+            .layout(|l| l.align(CenterX, CenterY))
+            .children(|ui| {
+                let icon = state.icon_cache.get(IconId::NavAssets);
+                ui.element()
+                    .width(fixed!(20.0))
+                    .height(fixed!(20.0))
+                    .background_color(theme.muted_text)
+                    .image(icon)
+                    .empty();
+            });
+    }
 }

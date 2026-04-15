@@ -21,6 +21,7 @@ mod touch_ops;
 mod ui;
 mod utdr_download;
 mod utdr_index;
+mod utdr_thumbs;
 mod workspace;
 
 use ply_engine::prelude::*;
@@ -123,6 +124,7 @@ async fn main() {
         }
 
         utdr_download::poll_download(&mut state);
+        utdr_thumbs::poll();
 
         let mut ui = ply.begin();
 
