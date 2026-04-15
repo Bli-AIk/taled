@@ -14,42 +14,22 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let lang = state.resolved_language();
     let title = l10n::text(lang, "assets-title");
 
-    // Page header (centered title)
+    // Page header
     ui.element()
         .id("assets-header")
         .width(grow!())
         .height(fixed!(56.0))
         .background_color(theme.background_elevated)
         .border(|b| b.bottom(1).color(theme.border))
-        .layout(|l| {
-            l.direction(LeftToRight)
-                .align(CenterX, CenterY)
-                .padding((20, 16, 16, 16))
-        })
+        .layout(|l| l.align(CenterX, CenterY).padding((16, 0, 16, 0)))
         .children(|ui| {
-            ui.element().width(fixed!(92.0)).height(fixed!(1.0)).empty();
-            ui.element()
-                .width(grow!())
-                .height(grow!())
-                .layout(|l| l.align(CenterX, CenterY))
-                .children(|ui| {
-                    ui.text(&title, |t| {
-                        t.font_size(17).color(theme.text).alignment(CenterX)
-                    });
-                });
-            ui.element().width(fixed!(92.0)).height(fixed!(1.0)).empty();
+            ui.text(&title, |t| t.font_size(17).color(theme.text).alignment(CenterX));
         });
 
-    // Search bar
     search_bar(ui, state, theme);
-
-    // Game selector chips (centered)
     game_selector(ui, state, theme);
-
-    // Room list (scrollable, card style)
     room_list(ui, state, theme);
 
-    // Bottom navigation
     let items = dashboard_nav_items();
     bottom_nav(ui, state, theme, &items, MobileScreen::Assets);
 }
@@ -57,41 +37,26 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
 // ── Search bar ─────────────────────────────────────────────────────
 
 fn search_bar(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
-    // Read current search text from the text input widget
     let input_val = ui.get_text_value("assets-search");
     if input_val != state.utdr_search {
         state.utdr_search = input_val.to_string();
     }
 
+    // padding: (top, right, bottom, left)
     ui.element()
         .id("search-row")
         .width(grow!())
         .height(fixed!(44.0))
         .background_color(theme.background)
-        .layout(|l| {
-            l.direction(LeftToRight)
-                .align(CenterX, CenterY)
-                .padding((12, 6, 12, 6))
-                .gap(8)
-        })
+        .layout(|l| l.align(CenterX, CenterY).padding((6, 16, 6, 16)))
         .children(|ui| {
-            // Search icon
-            let icon = state.icon_cache.get(IconId::NavProjects);
-            ui.element()
-                .width(fixed!(18.0))
-                .height(fixed!(18.0))
-                .background_color(theme.muted_text)
-                .image(icon)
-                .empty();
-
-            // Text input field
             ui.element()
                 .id("assets-search")
                 .width(grow!())
                 .height(fixed!(32.0))
                 .background_color(theme.surface_elevated)
                 .corner_radius(8.0)
-                .layout(|l| l.padding((8, 6, 8, 6)).align(Left, CenterY))
+                .layout(|l| l.padding((0, 10, 0, 10)).align(Left, CenterY))
                 .text_input(|t| {
                     t.font_size(14)
                         .text_color(theme.text)
@@ -106,6 +71,7 @@ fn search_bar(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
 // ── Game selector (horizontal chip bar, centered) ──────────────────
 
 fn game_selector(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
+    // padding: (top, right, bottom, left)
     ui.element()
         .id("game-selector")
         .width(grow!())
@@ -114,7 +80,7 @@ fn game_selector(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         .layout(|l| {
             l.direction(LeftToRight)
                 .align(CenterX, CenterY)
-                .padding((16, 4, 16, 4))
+                .padding((4, 16, 4, 16))
                 .gap(8)
         })
         .children(|ui| {
@@ -135,11 +101,7 @@ fn game_chip(
     index: u32,
 ) {
     let bg = if active { theme.accent } else { theme.surface_elevated };
-    let fg = if active {
-        Color::u_rgb(0xff, 0xff, 0xff)
-    } else {
-        theme.muted_text
-    };
+    let fg = if active { Color::u_rgb(0xff, 0xff, 0xff) } else { theme.muted_text };
     ui.element()
         .id(("chip", index))
         .width(grow!())
@@ -156,7 +118,7 @@ fn game_chip(
         });
 }
 
-// ── Room list (card-style rows with placeholder thumbnails) ────────
+// ── Room list ──────────────────────────────────────────────────────
 
 fn room_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let lang = state.resolved_language();
@@ -186,6 +148,7 @@ fn room_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         &[("count", filtered.len().to_string()), ("game", game_label)],
     );
 
+    // padding: (top, right, bottom, left)
     ui.element()
         .id("room-scroll")
         .width(grow!())
@@ -193,14 +156,16 @@ fn room_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         .background_color(theme.background)
         .overflow(|o| {
             o.scroll_y().scrollbar(|s| {
-                s.thumb_color(theme.muted_text).track_color(theme.background)
+                s.width(6.0)
+                    .corner_radius(3.0)
+                    .thumb_color(theme.border_strong)
+                    .track_color(theme.surface)
             })
         })
         .layout(|l| {
             l.direction(TopToBottom)
                 .align(Left, Top)
-                .padding((16, 4, 16, 8))
-                .gap(0)
+                .padding((4, 16, 8, 16))
         })
         .children(|ui| {
             section_label(ui, theme, &count_label);
@@ -237,6 +202,7 @@ fn room_row(
         format!("{:.1} KB", size_kb)
     };
 
+    // padding: (top, right, bottom, left)
     ui.element()
         .id(("room", index))
         .width(grow!())
@@ -244,7 +210,7 @@ fn room_row(
         .layout(|l| {
             l.direction(LeftToRight)
                 .align(Left, CenterY)
-                .padding((16, 10, 16, 10))
+                .padding((10, 0, 10, 0))
                 .gap(12)
         })
         .border(|b| if is_first { b } else { b.top(1).color(theme.border) })
@@ -259,7 +225,7 @@ fn room_row(
                 );
             }
 
-            // Placeholder thumbnail (map icon in a rounded square)
+            // Placeholder thumbnail
             ui.element()
                 .id(("room-thumb", index))
                 .width(fixed!(44.0))
@@ -269,7 +235,7 @@ fn room_row(
                 .border(|b| b.all(1).color(theme.border))
                 .layout(|l| l.align(CenterX, CenterY))
                 .children(|ui| {
-                    let icon = state.icon_cache.get(IconId::NavProjects);
+                    let icon = state.icon_cache.get(IconId::NavAssets);
                     ui.element()
                         .width(fixed!(20.0))
                         .height(fixed!(20.0))
