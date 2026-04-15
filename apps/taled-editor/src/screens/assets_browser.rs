@@ -14,14 +14,14 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let lang = state.resolved_language();
     let title = l10n::text(lang, "assets-title");
 
-    // Page header
+    // Page header (TopToBottom so text gets full width for CenterX alignment)
     ui.element()
         .id("assets-header")
         .width(grow!())
         .height(fixed!(56.0))
         .background_color(theme.background_elevated)
         .border(|b| b.bottom(1).color(theme.border))
-        .layout(|l| l.align(CenterX, CenterY).padding((16, 0, 16, 0)))
+        .layout(|l| l.direction(TopToBottom).align(Left, CenterY).padding((0, 16, 0, 16)))
         .children(|ui| {
             ui.text(&title, |t| t.font_size(17).color(theme.text).alignment(CenterX));
         });
