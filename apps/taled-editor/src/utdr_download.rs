@@ -19,12 +19,7 @@ pub(crate) enum DownloadStatus {
 
 // ── Start download ─────────────────────────────────────────────────
 
-pub(crate) fn start_room_download(
-    state: &mut AppState,
-    room_path: &str,
-    repo: &str,
-    branch: &str,
-) {
+pub(crate) fn start_room_download(state: &mut AppState, room_path: &str, repo: &str, branch: &str) {
     if state.download_rx.is_some() {
         state.status = "Download already in progress".to_string();
         return;
@@ -81,9 +76,8 @@ pub(crate) fn poll_download(state: &mut AppState) {
 fn handle_downloaded(state: &mut AppState, temp_dir: &Path) {
     state.download_rx = None;
     let tmx = find_tmx_in_dir(temp_dir);
-    let imported = tmx.and_then(|t| {
-        crate::workspace::import_tmx_to_workspace(&t, &state.active_workspace)
-    });
+    let imported =
+        tmx.and_then(|t| crate::workspace::import_tmx_to_workspace(&t, &state.active_workspace));
     let _ = std::fs::remove_dir_all(temp_dir);
     match imported {
         Some(dest) => {
@@ -94,8 +88,7 @@ fn handle_downloaded(state: &mut AppState, temp_dir: &Path) {
             }
         }
         None => {
-            state.download_status =
-                Some(DownloadStatus::Error("Import failed".into()));
+            state.download_status = Some(DownloadStatus::Error("Import failed".into()));
         }
     }
 }
@@ -130,15 +123,11 @@ fn download_thread(
     let _ = std::fs::remove_dir_all(&temp_dir);
     std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
 
-    let tmx_filename = Path::new(tmx_rel_path)
-        .file_name()
-        .unwrap_or_default();
+    let tmx_filename = Path::new(tmx_rel_path).file_name().unwrap_or_default();
     let tmx_local = temp_dir.join(tmx_filename);
     std::fs::write(&tmx_local, &tmx_content).map_err(|e| e.to_string())?;
 
-    let tmx_parent = Path::new(tmx_rel_path)
-        .parent()
-        .unwrap_or(Path::new(""));
+    let tmx_parent = Path::new(tmx_rel_path).parent().unwrap_or(Path::new(""));
     let tsx_sources = extract_attr_values(&tmx_content, "tileset", "source");
 
     for tsx_rel in &tsx_sources {
@@ -151,9 +140,7 @@ fn download_thread(
         };
         save_relative(&temp_dir, tsx_rel, tsx_content.as_bytes());
 
-        let tsx_parent = Path::new(tsx_rel)
-            .parent()
-            .unwrap_or(Path::new(""));
+        let tsx_parent = Path::new(tsx_rel).parent().unwrap_or(Path::new(""));
         let img_sources = extract_attr_values(&tsx_content, "image", "source");
 
         for img_rel in &img_sources {

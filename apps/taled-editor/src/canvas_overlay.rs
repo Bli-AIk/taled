@@ -80,8 +80,7 @@ pub(super) fn draw_transfer_preview(
             let (rotation, flip_x, flip_y) = crate::canvas::tile_transform(flip_h, flip_v, flip_d);
             let pivot = Some(Vec2::new(dx + zw / 2.0, dy + zh / 2.0));
 
-            if let Some(tile_tex) =
-                tile_textures.get(&(tile_ref.tileset_index, tile_ref.local_id))
+            if let Some(tile_tex) = tile_textures.get(&(tile_ref.tileset_index, tile_ref.local_id))
             {
                 // COI tiles: draw at actual size, bottom-aligned to the grid cell.
                 let tex_w = tile_tex.width() * zoom;
@@ -89,24 +88,45 @@ pub(super) fn draw_transfer_preview(
                 let row_abs = (tp.origin_y + row as i32) as f32;
                 let coi_dy = canvas_h - row_abs * zh - tex_h;
                 let pivot = Some(Vec2::new(dx + tex_w / 2.0, coi_dy + tex_h / 2.0));
-                draw_texture_ex(tile_tex, dx, coi_dy, color, DrawTextureParams {
-                    dest_size: Some(Vec2::new(tex_w, tex_h)),
-                    rotation, flip_x, flip_y, pivot,
-                    ..Default::default()
-                });
+                draw_texture_ex(
+                    tile_tex,
+                    dx,
+                    coi_dy,
+                    color,
+                    DrawTextureParams {
+                        dest_size: Some(Vec2::new(tex_w, tex_h)),
+                        rotation,
+                        flip_x,
+                        flip_y,
+                        pivot,
+                        ..Default::default()
+                    },
+                );
             } else if let Some(texture) = textures.get(&tile_ref.tileset_index) {
                 let cols_in_ts = (ts.image.width / ts.tile_width).max(1);
                 let src_col = tile_ref.local_id % cols_in_ts;
                 let src_row = tile_ref.local_id / cols_in_ts;
                 let sx = src_col as f32 * ts.tile_width as f32;
                 let sy = src_row as f32 * ts.tile_height as f32;
-                draw_texture_ex(texture, dx, dy, color, DrawTextureParams {
-                    source: Some(Rect::new(
-                        sx, sy, ts.tile_width as f32, ts.tile_height as f32,
-                    )),
-                    dest_size: Some(Vec2::new(zw, zh)),
-                    rotation, flip_x, flip_y, pivot,
-                });
+                draw_texture_ex(
+                    texture,
+                    dx,
+                    dy,
+                    color,
+                    DrawTextureParams {
+                        source: Some(Rect::new(
+                            sx,
+                            sy,
+                            ts.tile_width as f32,
+                            ts.tile_height as f32,
+                        )),
+                        dest_size: Some(Vec2::new(zw, zh)),
+                        rotation,
+                        flip_x,
+                        flip_y,
+                        pivot,
+                    },
+                );
             }
         }
     }

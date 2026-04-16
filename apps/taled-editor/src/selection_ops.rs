@@ -3,8 +3,8 @@ use std::time::Instant;
 use taled_core::Layer;
 
 use crate::app_state::{
-    AppState, TileClipboard, TileSelectionTransfer, TileSelectionTransferMode,
-    TileSelectionMode, UndoActionKind, selection_bounds,
+    AppState, TileClipboard, TileSelectionMode, TileSelectionTransfer, TileSelectionTransferMode,
+    UndoActionKind, selection_bounds,
 };
 use crate::selection_transform::{
     apply_transfer_copy, capture_region_clipped, clear_region_tiles_masked,

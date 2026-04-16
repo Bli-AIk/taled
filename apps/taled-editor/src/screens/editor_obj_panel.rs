@@ -77,8 +77,22 @@ fn obj_name_row(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, name: &str)
             ui.element().width(grow!()).children(|ui| {
                 ui.text(name, |t| t.font_size(14).color(theme.text));
             });
-            snap_icon_btn(ui, state, theme, "snap-grid", crate::icons::IconId::SnapGrid, true);
-            snap_icon_btn(ui, state, theme, "snap-int", crate::icons::IconId::SnapInt, false);
+            snap_icon_btn(
+                ui,
+                state,
+                theme,
+                "snap-grid",
+                crate::icons::IconId::SnapGrid,
+                true,
+            );
+            snap_icon_btn(
+                ui,
+                state,
+                theme,
+                "snap-int",
+                crate::icons::IconId::SnapInt,
+                false,
+            );
             obj_delete_button(ui, state, theme);
         });
 }
@@ -92,9 +106,21 @@ fn snap_icon_btn(
     icon_id: crate::icons::IconId,
     is_grid: bool,
 ) {
-    let active = if is_grid { state.snap_to_grid } else { state.snap_to_int };
-    let bg = if active { theme.accent } else { Color::rgba(0.0, 0.0, 0.0, 0.25) };
-    let fg = if active { Color::u_rgb(0xff, 0xff, 0xff) } else { theme.muted_text };
+    let active = if is_grid {
+        state.snap_to_grid
+    } else {
+        state.snap_to_int
+    };
+    let bg = if active {
+        theme.accent
+    } else {
+        Color::rgba(0.0, 0.0, 0.0, 0.25)
+    };
+    let fg = if active {
+        Color::u_rgb(0xff, 0xff, 0xff)
+    } else {
+        theme.muted_text
+    };
     let icon_tex = state.icon_cache.get(icon_id);
     ui.element()
         .id(id)

@@ -8,8 +8,7 @@ use ply_engine::prelude::{FilterMode, Texture2D};
 const MAX_CONCURRENT: usize = 6;
 
 /// Completed downloads waiting to be turned into textures on the main thread.
-static MAILBOX: LazyLock<Mutex<Vec<(String, Vec<u8>)>>> =
-    LazyLock::new(|| Mutex::new(Vec::new()));
+static MAILBOX: LazyLock<Mutex<Vec<(String, Vec<u8>)>>> = LazyLock::new(|| Mutex::new(Vec::new()));
 
 /// Number of active download threads.
 static ACTIVE: LazyLock<Mutex<usize>> = LazyLock::new(|| Mutex::new(0));
@@ -33,12 +32,7 @@ fn thumb_url(repo: &str, branch: &str, game_key: &str, room_name: &str) -> Strin
 }
 
 /// Request a thumbnail, spawning a download if needed. Returns texture if ready.
-pub(crate) fn get(
-    game_key: &str,
-    room_name: &str,
-    repo: &str,
-    branch: &str,
-) -> Option<Texture2D> {
+pub(crate) fn get(game_key: &str, room_name: &str, repo: &str, branch: &str) -> Option<Texture2D> {
     let key = format!("{game_key}/{room_name}");
     CACHE.with(|c| {
         let cache = c.borrow();

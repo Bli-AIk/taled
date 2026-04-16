@@ -35,7 +35,15 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                     (c, ids, fg, tw, th, name, true)
                 } else {
                     let c = ts.tileset.columns.max(1);
-                    (c, (0..ts.tileset.tile_count).collect(), fg, tw, th, name, false)
+                    (
+                        c,
+                        (0..ts.tileset.tile_count).collect(),
+                        fg,
+                        tw,
+                        th,
+                        name,
+                        false,
+                    )
                 }
             });
 
@@ -269,7 +277,15 @@ fn sprite_sheet_view(
         .children(|ui| {
             for row in 0..rows {
                 sheet_row(
-                    ui, state, row, cols, tile_ids, first_gid, cell_w, cell_h, is_pinching,
+                    ui,
+                    state,
+                    row,
+                    cols,
+                    tile_ids,
+                    first_gid,
+                    cell_w,
+                    cell_h,
+                    is_pinching,
                 );
             }
         });
@@ -298,7 +314,13 @@ fn sheet_row(
                     break;
                 };
                 sheet_cell(
-                    ui, state, first_gid + local_id, first_gid, cell_w, cell_h, is_pinching,
+                    ui,
+                    state,
+                    first_gid + local_id,
+                    first_gid,
+                    cell_w,
+                    cell_h,
+                    is_pinching,
                 );
             }
         });

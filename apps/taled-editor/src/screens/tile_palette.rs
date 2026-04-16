@@ -86,8 +86,20 @@ pub(crate) fn render_viewfinder(ui: &mut Ui, state: &mut AppState, theme: &PlyTh
         .children(|ui| {
             for r in 0..rrows {
                 render_viewfinder_row(
-                    ui, state, theme, base_col, base_row + r, rcols, ts_cols, ts_rows,
-                    &tile_ids, first_gid, ts_idx, grid_w, cell_w, cell_h,
+                    ui,
+                    state,
+                    theme,
+                    base_col,
+                    base_row + r,
+                    rcols,
+                    ts_cols,
+                    ts_rows,
+                    &tile_ids,
+                    first_gid,
+                    ts_idx,
+                    grid_w,
+                    cell_w,
+                    cell_h,
                 );
             }
         });
@@ -116,8 +128,18 @@ fn render_viewfinder_row(
         .children(|ui| {
             for c in 0..rcols {
                 render_viewfinder_cell(
-                    ui, state, theme, base_col + c, row, ts_cols, ts_rows, tile_ids, first_gid,
-                    ts_idx, cell_w, cell_h,
+                    ui,
+                    state,
+                    theme,
+                    base_col + c,
+                    row,
+                    ts_cols,
+                    ts_rows,
+                    tile_ids,
+                    first_gid,
+                    ts_idx,
+                    cell_w,
+                    cell_h,
                 );
             }
         });
@@ -140,16 +162,27 @@ fn render_viewfinder_cell(
     cell_h: f32,
 ) {
     let valid = col >= 0 && col < ts_cols && row >= 0 && row < ts_rows;
-    let grid_idx = if valid { (row * ts_cols + col) as usize } else { usize::MAX };
+    let grid_idx = if valid {
+        (row * ts_cols + col) as usize
+    } else {
+        usize::MAX
+    };
     let Some(&local_id) = tile_ids.get(grid_idx) else {
-        ui.element().width(fixed!(cell_w)).height(fixed!(cell_h)).empty();
+        ui.element()
+            .width(fixed!(cell_w))
+            .height(fixed!(cell_h))
+            .empty();
         return;
     };
 
     let gid = first_gid + local_id;
     let is_selected = state.selected_gid == gid;
 
-    let tile = PaletteTile { gid, tileset_index: ts_idx, local_id };
+    let tile = PaletteTile {
+        gid,
+        tileset_index: ts_idx,
+        local_id,
+    };
 
     // For the selected tile, use a chip with blue border baked into the texture
     // (render-to-texture path, proven to work on Android).
@@ -350,7 +383,10 @@ fn active_tileset_info(state: &AppState) -> Option<(i32, i32, Vec<u32>, u32, usi
         ids.sort();
         ((ids.len() as f32).sqrt().ceil().max(1.0) as i32, ids)
     } else {
-        (ts.tileset.columns.max(1) as i32, (0..ts.tileset.tile_count).collect())
+        (
+            ts.tileset.columns.max(1) as i32,
+            (0..ts.tileset.tile_count).collect(),
+        )
     };
     let rows = (ids.len() as i32 + cols - 1) / cols;
     Some((cols, rows, ids, ts.first_gid, state.active_tileset))
@@ -367,7 +403,10 @@ pub(crate) fn crop_tile_texture(state: &mut AppState, tile: &PaletteTile) -> Opt
     let ts = &tile_ref.tileset.tileset;
 
     // Collection-of-images: each tile has its own texture
-    if let Some(ind_tex) = state.tile_textures.get(&(tile.tileset_index, tile.local_id)) {
+    if let Some(ind_tex) = state
+        .tile_textures
+        .get(&(tile.tileset_index, tile.local_id))
+    {
         let tw = ind_tex.width();
         let th = ind_tex.height();
         let chip_size = 40.0;
@@ -456,20 +495,22 @@ fn selected_tile_texture(state: &mut AppState, tile: &PaletteTile) -> Option<Tex
     let ts = &tile_ref.tileset.tileset;
 
     // Resolve texture source + crop rect
-    let (tw, th, draw_params) =
-        if let Some(ind) = state.tile_textures.get(&(tile.tileset_index, tile.local_id)) {
-            let w = ind.width();
-            let h = ind.height();
-            (w, h, (ind.clone(), None))
-        } else {
-            let texture = state.tileset_textures.get(&tile.tileset_index)?;
-            let cols = ts.columns.max(1);
-            let tw = ts.tile_width as f32;
-            let th = ts.tile_height as f32;
-            let sx = (tile.local_id % cols) as f32 * tw;
-            let sy = (tile.local_id / cols) as f32 * th;
-            (tw, th, (texture.clone(), Some(Rect::new(sx, sy, tw, th))))
-        };
+    let (tw, th, draw_params) = if let Some(ind) = state
+        .tile_textures
+        .get(&(tile.tileset_index, tile.local_id))
+    {
+        let w = ind.width();
+        let h = ind.height();
+        (w, h, (ind.clone(), None))
+    } else {
+        let texture = state.tileset_textures.get(&tile.tileset_index)?;
+        let cols = ts.columns.max(1);
+        let tw = ts.tile_width as f32;
+        let th = ts.tile_height as f32;
+        let sx = (tile.local_id % cols) as f32 * tw;
+        let sy = (tile.local_id / cols) as f32 * th;
+        (tw, th, (texture.clone(), Some(Rect::new(sx, sy, tw, th))))
+    };
 
     let chip_size = 40.0;
     let border = 3.0;

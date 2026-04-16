@@ -251,7 +251,11 @@ fn developer_mode_card(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
 }
 
 fn toggle_indicator(ui: &mut Ui, theme: &PlyTheme, enabled: bool) {
-    let bg = if enabled { theme.accent } else { theme.border_strong };
+    let bg = if enabled {
+        theme.accent
+    } else {
+        theme.border_strong
+    };
     ui.element()
         .width(fixed!(52.0))
         .height(fixed!(32.0))

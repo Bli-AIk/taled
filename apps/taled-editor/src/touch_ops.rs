@@ -463,9 +463,7 @@ fn handle_release(state: &mut AppState, mx: f32, my: f32, canvas_origin_y: f32) 
         }
         Tool::InsertTile => {
             let was_drag = gesture.as_ref().is_some_and(|g| g.drag_active);
-            if !was_drag
-                && let Some((wx, wy)) = world_from_screen(state, mx, my, canvas_origin_y)
-            {
+            if !was_drag && let Some((wx, wy)) = world_from_screen(state, mx, my, canvas_origin_y) {
                 obj_ops::insert_tile_object(state, wx, wy);
             }
         }

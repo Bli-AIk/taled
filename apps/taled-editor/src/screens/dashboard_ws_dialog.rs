@@ -6,12 +6,7 @@ use crate::l10n;
 use crate::theme::PlyTheme;
 use crate::workspace::{self, BUILTIN_WORKSPACE};
 
-pub(crate) fn ws_trash_btn(
-    ui: &mut Ui,
-    state: &mut AppState,
-    theme: &PlyTheme,
-    ws_index: usize,
-) {
+pub(crate) fn ws_trash_btn(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, ws_index: usize) {
     let icon_tex = state.icon_cache.get(IconId::Trash);
     ui.element()
         .id(("ws-trash", ws_index as u32))
@@ -46,8 +41,11 @@ pub(crate) fn ws_delete_dialog(ui: &mut Ui, state: &mut AppState, theme: &PlyThe
     }
     let lang = state.resolved_language();
     let title = l10n::text(lang, "workspace-delete-title");
-    let message =
-        l10n::text_with_args(lang, "workspace-delete-message", &[("name", ws_name.clone())]);
+    let message = l10n::text_with_args(
+        lang,
+        "workspace-delete-message",
+        &[("name", ws_name.clone())],
+    );
     let confirm_label = l10n::text(lang, "workspace-delete-confirm");
     let cancel_label = l10n::text(lang, "workspace-delete-cancel");
     let sw = screen_width();
@@ -108,8 +106,10 @@ fn ws_delete_confirm_btn(
             if ui.just_released() {
                 if workspace::delete_workspace(&name) {
                     let lang = state.resolved_language();
-                    state.workspace_list =
-                        workspace::list_workspaces().into_iter().map(|w| w.name).collect();
+                    state.workspace_list = workspace::list_workspaces()
+                        .into_iter()
+                        .map(|w| w.name)
+                        .collect();
                     if state.active_workspace == name {
                         state.active_workspace = BUILTIN_WORKSPACE.to_string();
                     }
@@ -118,7 +118,9 @@ fn ws_delete_confirm_btn(
                 }
                 state.delete_workspace_pending = None;
             }
-            ui.text(label, |t| t.font_size(15).color(Color::u_rgb(0xff, 0xff, 0xff)));
+            ui.text(label, |t| {
+                t.font_size(15).color(Color::u_rgb(0xff, 0xff, 0xff))
+            });
         });
 }
 

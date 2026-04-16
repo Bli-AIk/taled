@@ -457,9 +457,12 @@ impl AppState {
             show_language_popup: false,
             active_workspace: crate::workspace::BUILTIN_WORKSPACE.to_string(),
             workspace_list: Vec::new(),
-            show_workspace_picker: false, show_import_menu: false,
-            show_tileset_picker: false, show_save_dialog: false,
-            thumb_pending: false, delete_layer_pending: None,
+            show_workspace_picker: false,
+            show_import_menu: false,
+            show_tileset_picker: false,
+            show_save_dialog: false,
+            thumb_pending: false,
+            delete_layer_pending: None,
             layer_actions_row: None,
             rename_layer_index: None,
             rename_synced: false,
@@ -488,7 +491,9 @@ impl AppState {
     }
 
     pub(crate) fn navigate(&mut self, screen: MobileScreen) {
-        if screen == self.mobile_screen { return; }
+        if screen == self.mobile_screen {
+            return;
+        }
         self.show_language_popup = false;
         self.show_workspace_picker = false;
         self.show_import_menu = false;
@@ -507,15 +512,20 @@ impl AppState {
     }
 
     fn navigate_transition(&mut self, screen: MobileScreen, dir: TransitionDir) {
-        if screen == self.mobile_screen { return; }
+        if screen == self.mobile_screen {
+            return;
+        }
         self.page_transition = Some(PageTransition {
-            from_screen: self.mobile_screen, start_time: get_time(), dir,
+            from_screen: self.mobile_screen,
+            start_time: get_time(),
+            dir,
         });
         self.mobile_screen = screen;
     }
 
     pub(crate) fn navigate_tab(&mut self, screen: MobileScreen) {
-        self.page_transition = None; self.mobile_screen = screen;
+        self.page_transition = None;
+        self.mobile_screen = screen;
     }
 
     pub(crate) fn navigate_back(&mut self) {
@@ -531,10 +541,10 @@ impl AppState {
             | MobileScreen::Layers
             | MobileScreen::Objects
             | MobileScreen::Properties => MobileScreen::Editor,
-            MobileScreen::Settings | MobileScreen::Dashboard
-            | MobileScreen::Assets | MobileScreen::Editor => {
-                MobileScreen::Dashboard
-            }
+            MobileScreen::Settings
+            | MobileScreen::Dashboard
+            | MobileScreen::Assets
+            | MobileScreen::Editor => MobileScreen::Dashboard,
         };
         if target == self.mobile_screen {
             return;
@@ -570,10 +580,16 @@ pub(crate) fn is_tile_selection_tool(tool: Tool) -> bool {
 /// Returns `true` when the tool belongs to the object toolbar.
 #[allow(dead_code)]
 pub(crate) fn is_object_tool(tool: Tool) -> bool {
-    matches!(tool, Tool::Hand | Tool::SelectObject | Tool::InsertTile | Tool::AddRectangle | Tool::AddPoint)
+    matches!(
+        tool,
+        Tool::Hand | Tool::SelectObject | Tool::InsertTile | Tool::AddRectangle | Tool::AddPoint
+    )
 }
 pub(crate) fn is_tile_tool(tool: Tool) -> bool {
-    !matches!(tool, Tool::SelectObject | Tool::InsertTile | Tool::AddRectangle | Tool::AddPoint)
+    !matches!(
+        tool,
+        Tool::SelectObject | Tool::InsertTile | Tool::AddRectangle | Tool::AddPoint
+    )
 }
 
 #[allow(dead_code)]

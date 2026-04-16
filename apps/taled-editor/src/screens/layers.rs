@@ -81,7 +81,12 @@ fn add_btn(
         .background_color(theme.surface)
         .corner_radius(10.0)
         .border(|b| b.all(1).color(theme.border))
-        .layout(|l| l.direction(LeftToRight).align(Left, CenterY).padding((0, 10, 0, 10)).gap(6))
+        .layout(|l| {
+            l.direction(LeftToRight)
+                .align(Left, CenterY)
+                .padding((0, 10, 0, 10))
+                .gap(6)
+        })
         .on_press(move |_, _| {})
         .children(|ui| {
             if ui.just_released()
@@ -164,7 +169,17 @@ fn render_layer_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         } else if show_actions {
             super::layer_dialogs::layer_row_actions(ui, state, theme, i, display, lang);
         } else {
-            layer_row_normal(ui, state, theme, i, display, *is_obj, *vis, *locked, layer_count);
+            layer_row_normal(
+                ui,
+                state,
+                theme,
+                i,
+                display,
+                *is_obj,
+                *vis,
+                *locked,
+                layer_count,
+            );
         }
     }
 }
@@ -236,13 +251,7 @@ fn handle_row_swipe(ui: &mut Ui, state: &mut AppState, i: usize) {
     }
 }
 
-fn drag_handle(
-    ui: &mut Ui,
-    state: &mut AppState,
-    theme: &PlyTheme,
-    i: usize,
-    layer_count: usize,
-) {
+fn drag_handle(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, i: usize, layer_count: usize) {
     ui.element()
         .id(("layer-drag", i as u32))
         .width(fixed!(30.0))

@@ -90,7 +90,13 @@ pub(crate) fn generate_and_save(state: &mut AppState) {
     set_camera(&cam);
     clear_background(MacroquadColor::from_rgba(0, 0, 0, 0));
 
-    render_all_tile_layers(map, &state.tileset_textures, &state.tile_textures, tile_w, tile_h);
+    render_all_tile_layers(
+        map,
+        &state.tileset_textures,
+        &state.tile_textures,
+        tile_w,
+        tile_h,
+    );
 
     set_default_camera();
 
@@ -132,7 +138,15 @@ fn render_all_tile_layers(
         };
         let alpha = layer.opacity();
         let color = MacroquadColor::new(1.0, 1.0, 1.0, alpha);
-        render_thumb_layer(map, tileset_textures, tile_textures, tile_layer, tile_w, tile_h, color);
+        render_thumb_layer(
+            map,
+            tileset_textures,
+            tile_textures,
+            tile_layer,
+            tile_w,
+            tile_h,
+            color,
+        );
     }
 }
 
@@ -150,7 +164,17 @@ fn render_thumb_layer(
             let idx = (row * map.width + col) as usize;
             let gid = tile_layer.tiles.get(idx).copied().unwrap_or(0);
             if gid != 0 {
-                draw_thumb_tile(map, tileset_textures, tile_textures, gid, col, row, tile_w, tile_h, color);
+                draw_thumb_tile(
+                    map,
+                    tileset_textures,
+                    tile_textures,
+                    gid,
+                    col,
+                    row,
+                    tile_w,
+                    tile_h,
+                    color,
+                );
             }
         }
     }
@@ -179,14 +203,20 @@ fn draw_thumb_tile(
 
     // Collection-of-images tile
     if let Some(tex) = tile_textures.get(&(ts_idx, tile_ref.local_id)) {
-        draw_texture_ex(tex, dx, dy, color, DrawTextureParams {
-            dest_size: Some(Vec2::new(tile_w, tile_h)),
-            rotation,
-            flip_x,
-            flip_y,
-            pivot,
-            ..Default::default()
-        });
+        draw_texture_ex(
+            tex,
+            dx,
+            dy,
+            color,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(tile_w, tile_h)),
+                rotation,
+                flip_x,
+                flip_y,
+                pivot,
+                ..Default::default()
+            },
+        );
         return;
     }
 
@@ -199,12 +229,23 @@ fn draw_thumb_tile(
     let src_row = tile_ref.local_id / cols_in_ts;
     let sx = src_col as f32 * ts.tile_width as f32;
     let sy = src_row as f32 * ts.tile_height as f32;
-    draw_texture_ex(texture, dx, dy, color, DrawTextureParams {
-        source: Some(Rect::new(sx, sy, ts.tile_width as f32, ts.tile_height as f32)),
-        dest_size: Some(Vec2::new(tile_w, tile_h)),
-        rotation,
-        flip_x,
-        flip_y,
-        pivot,
-    });
+    draw_texture_ex(
+        texture,
+        dx,
+        dy,
+        color,
+        DrawTextureParams {
+            source: Some(Rect::new(
+                sx,
+                sy,
+                ts.tile_width as f32,
+                ts.tile_height as f32,
+            )),
+            dest_size: Some(Vec2::new(tile_w, tile_h)),
+            rotation,
+            flip_x,
+            flip_y,
+            pivot,
+        },
+    );
 }

@@ -259,15 +259,31 @@ fn build_and_cache_canvas(
             } else {
                 drop(tm);
                 cache_tilemap(
-                    map, textures, tile_textures, active_layer, tile_w, tile_h, map_px_w,
-                    map_px_h, theme, hidden_layers,
+                    map,
+                    textures,
+                    tile_textures,
+                    active_layer,
+                    tile_w,
+                    tile_h,
+                    map_px_w,
+                    map_px_h,
+                    theme,
+                    hidden_layers,
                 )
             }
         } else {
             drop(tm);
             cache_tilemap(
-                map, textures, tile_textures, active_layer, tile_w, tile_h, map_px_w, map_px_h,
-                theme, hidden_layers,
+                map,
+                textures,
+                tile_textures,
+                active_layer,
+                tile_w,
+                tile_h,
+                map_px_w,
+                map_px_h,
+                theme,
+                hidden_layers,
             )
         }
     };
@@ -323,7 +339,17 @@ fn build_and_cache_canvas(
     // Draw transfer floating tiles with opaque backing to hide underlying tiles.
     if let Some(tp) = transfer_preview {
         let bg: MacroquadColor = theme.canvas_base.into();
-        draw_transfer_preview(tp, map, textures, tile_textures, tile_w, tile_h, zoom, scaled_h, bg);
+        draw_transfer_preview(
+            tp,
+            map,
+            textures,
+            tile_textures,
+            tile_w,
+            tile_h,
+            zoom,
+            scaled_h,
+            bg,
+        );
     }
 
     let t2 = get_time();
@@ -463,32 +489,51 @@ fn render_tile_map(
                 let (rotation, flip_x, flip_y) = tile_transform(flip_h, flip_v, flip_d);
                 let pivot = Some(Vec2::new(dx + tile_w / 2.0, dy + tile_h / 2.0));
 
-                if let Some(tile_tex) =
-                    tile_textures.get(&(tileset_index, tile_ref.local_id))
-                {
+                if let Some(tile_tex) = tile_textures.get(&(tileset_index, tile_ref.local_id)) {
                     // COI tiles: draw at actual size, bottom-aligned to the grid cell.
                     let tex_w = tile_tex.width();
                     let tex_h = tile_tex.height();
                     let coi_dy = dy + tile_h - tex_h;
                     let pivot = Some(Vec2::new(dx + tex_w / 2.0, coi_dy + tex_h / 2.0));
-                    draw_texture_ex(tile_tex, dx, coi_dy, color, DrawTextureParams {
-                        dest_size: Some(Vec2::new(tex_w, tex_h)),
-                        rotation, flip_x, flip_y, pivot,
-                        ..Default::default()
-                    });
+                    draw_texture_ex(
+                        tile_tex,
+                        dx,
+                        coi_dy,
+                        color,
+                        DrawTextureParams {
+                            dest_size: Some(Vec2::new(tex_w, tex_h)),
+                            rotation,
+                            flip_x,
+                            flip_y,
+                            pivot,
+                            ..Default::default()
+                        },
+                    );
                 } else if let Some(texture) = textures.get(&tileset_index) {
                     let cols_in_tileset = (ts.image.width / ts.tile_width).max(1);
                     let src_col = tile_ref.local_id % cols_in_tileset;
                     let src_row = tile_ref.local_id / cols_in_tileset;
                     let sx = src_col as f32 * ts.tile_width as f32;
                     let sy = src_row as f32 * ts.tile_height as f32;
-                    draw_texture_ex(texture, dx, dy, color, DrawTextureParams {
-                        source: Some(Rect::new(
-                            sx, sy, ts.tile_width as f32, ts.tile_height as f32,
-                        )),
-                        dest_size: Some(Vec2::new(tile_w, tile_h)),
-                        rotation, flip_x, flip_y, pivot,
-                    });
+                    draw_texture_ex(
+                        texture,
+                        dx,
+                        dy,
+                        color,
+                        DrawTextureParams {
+                            source: Some(Rect::new(
+                                sx,
+                                sy,
+                                ts.tile_width as f32,
+                                ts.tile_height as f32,
+                            )),
+                            dest_size: Some(Vec2::new(tile_w, tile_h)),
+                            rotation,
+                            flip_x,
+                            flip_y,
+                            pivot,
+                        },
+                    );
                 }
             }
         }

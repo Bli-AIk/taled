@@ -7,8 +7,8 @@ use crate::canvas::render_canvas;
 use crate::l10n;
 use crate::theme::PlyTheme;
 
-use super::editor_toolbar::render_toolbar;
 use super::editor_obj_panel::render_object_info_panel;
+use super::editor_toolbar::render_toolbar;
 use super::tile_palette::render_viewfinder;
 use super::widgets::{bottom_nav, editor_nav_items};
 

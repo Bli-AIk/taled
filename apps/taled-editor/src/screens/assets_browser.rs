@@ -21,9 +21,15 @@ pub(crate) fn render(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         .height(fixed!(56.0))
         .background_color(theme.background_elevated)
         .border(|b| b.bottom(1).color(theme.border))
-        .layout(|l| l.direction(TopToBottom).align(Left, CenterY).padding((0, 16, 0, 16)))
+        .layout(|l| {
+            l.direction(TopToBottom)
+                .align(Left, CenterY)
+                .padding((0, 16, 0, 16))
+        })
         .children(|ui| {
-            ui.text(&title, |t| t.font_size(17).color(theme.text).alignment(CenterX));
+            ui.text(&title, |t| {
+                t.font_size(17).color(theme.text).alignment(CenterX)
+            });
         });
 
     search_bar(ui, state, theme);
@@ -87,7 +93,11 @@ fn download_banner(ui: &mut Ui, state: &AppState, theme: &PlyTheme) {
         .width(grow!())
         .height(fixed!(28.0))
         .background_color(bg)
-        .layout(|l| l.direction(TopToBottom).align(Left, CenterY).padding((0, 16, 0, 16)))
+        .layout(|l| {
+            l.direction(TopToBottom)
+                .align(Left, CenterY)
+                .padding((0, 16, 0, 16))
+        })
         .children(|ui| {
             ui.text(status, |t| {
                 t.font_size(12)
@@ -115,7 +125,15 @@ fn game_selector(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         .children(|ui| {
             for (i, &key) in GAME_KEYS.iter().enumerate() {
                 let is_active = state.utdr_selected_game == key;
-                game_chip(ui, state, theme, key, GAME_SHORT_LABELS[i], is_active, i as u32);
+                game_chip(
+                    ui,
+                    state,
+                    theme,
+                    key,
+                    GAME_SHORT_LABELS[i],
+                    is_active,
+                    i as u32,
+                );
             }
         });
 }
@@ -129,8 +147,16 @@ fn game_chip(
     active: bool,
     index: u32,
 ) {
-    let bg = if active { theme.accent } else { theme.surface_elevated };
-    let fg = if active { Color::u_rgb(0xff, 0xff, 0xff) } else { theme.muted_text };
+    let bg = if active {
+        theme.accent
+    } else {
+        theme.surface_elevated
+    };
+    let fg = if active {
+        Color::u_rgb(0xff, 0xff, 0xff)
+    } else {
+        theme.muted_text
+    };
     ui.element()
         .id(("chip", index))
         .width(fit!())
@@ -170,7 +196,10 @@ fn room_list(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
     let filtered: Vec<_> = if search.is_empty() {
         rooms.iter().collect()
     } else {
-        rooms.iter().filter(|r| r.name.to_lowercase().contains(&search)).collect()
+        rooms
+            .iter()
+            .filter(|r| r.name.to_lowercase().contains(&search))
+            .collect()
     };
 
     let count_label = l10n::text_with_args(
@@ -250,14 +279,18 @@ fn room_row(
                 .padding((10, 0, 10, 0))
                 .gap(12)
         })
-        .border(|b| if is_first { b } else { b.top(1).color(theme.border) })
+        .border(|b| {
+            if is_first {
+                b
+            } else {
+                b.top(1).color(theme.border)
+            }
+        })
         .on_press(move |_, _| {})
         .children(|ui| {
             if ui.just_released() && state.download_rx.is_none() {
                 let path = room.path.clone();
-                crate::utdr_download::start_room_download(
-                    state, &path, &repo, &branch,
-                );
+                crate::utdr_download::start_room_download(state, &path, &repo, &branch);
             }
 
             // Thumbnail (fetched from GitHub, or placeholder)

@@ -155,8 +155,10 @@ fn workspace_picker(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
                         let name = next_workspace_name(&state.workspace_list);
                         if workspace::create_workspace(&name).is_some() {
                             state.active_workspace = name;
-                            state.workspace_list =
-                                workspace::list_workspaces().into_iter().map(|w| w.name).collect();
+                            state.workspace_list = workspace::list_workspaces()
+                                .into_iter()
+                                .map(|w| w.name)
+                                .collect();
                             state.status = l10n::text(lang, "dashboard-workspace-created");
                         }
                         state.show_workspace_picker = false;
@@ -180,9 +182,25 @@ fn action_buttons(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme) {
         .layout(|l| l.direction(LeftToRight).gap(10))
         .children(|ui| {
             // "Import" button
-            dash_action_btn(ui, state, theme, "dash-btn-import", IconId::Import, &import_label, 1);
+            dash_action_btn(
+                ui,
+                state,
+                theme,
+                "dash-btn-import",
+                IconId::Import,
+                &import_label,
+                1,
+            );
             // "Export" button
-            dash_action_btn(ui, state, theme, "dash-btn-export", IconId::Export, &export_label, 2);
+            dash_action_btn(
+                ui,
+                state,
+                theme,
+                "dash-btn-export",
+                IconId::Export,
+                &export_label,
+                2,
+            );
         });
 }
 
@@ -346,8 +364,7 @@ fn project_list_filesystem(
             })
             .on_press(move |_, _| {})
             .children(|ui| {
-                if ui.just_released()
-                    && crate::session_ops::load_filesystem_map(state, &full_path)
+                if ui.just_released() && crate::session_ops::load_filesystem_map(state, &full_path)
                 {
                     state.navigate(MobileScreen::Editor);
                 }

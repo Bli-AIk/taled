@@ -61,7 +61,8 @@ pub(crate) fn render_delete_dialog(ui: &mut Ui, state: &mut AppState, theme: &Pl
 fn delete_confirm_btn(
     ui: &mut Ui,
     state: &mut AppState,
-    _theme: &PlyTheme,    layer_idx: usize,
+    _theme: &PlyTheme,
+    layer_idx: usize,
     label: &str,
 ) {
     let danger = Color::u_rgb(0xE5, 0x3E, 0x3E);
@@ -111,7 +112,9 @@ fn delete_cancel_btn(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, label:
             if ui.just_released() {
                 state.delete_layer_pending = None;
             }
-            ui.text(label, |t| t.font_size(15).color(theme.text).alignment(CenterX));
+            ui.text(label, |t| {
+                t.font_size(15).color(theme.text).alignment(CenterX)
+            });
         });
 }
 
@@ -229,7 +232,9 @@ fn rename_cancel_btn(ui: &mut Ui, state: &mut AppState, theme: &PlyTheme, i: usi
                 state.rename_synced = false;
                 state.rename_had_focus = false;
             }
-            ui.text("✕", |t| t.font_size(14).color(theme.muted_text).alignment(CenterX));
+            ui.text("✕", |t| {
+                t.font_size(14).color(theme.muted_text).alignment(CenterX)
+            });
         });
 }
 
@@ -276,8 +281,24 @@ pub(super) fn layer_row_actions(
                 .children(|ui| {
                     ui.text(display, |t| t.font_size(14).color(theme.text));
                 });
-            action_btn(ui, state, theme, ("act-rename", i as u32), &rename_label, false, i);
-            action_btn(ui, state, theme, ("act-delete", i as u32), &delete_label, true, i);
+            action_btn(
+                ui,
+                state,
+                theme,
+                ("act-rename", i as u32),
+                &rename_label,
+                false,
+                i,
+            );
+            action_btn(
+                ui,
+                state,
+                theme,
+                ("act-delete", i as u32),
+                &delete_label,
+                true,
+                i,
+            );
         });
 }
 
