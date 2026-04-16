@@ -5,6 +5,7 @@ resolver = "2"
 [workspace.package]
 edition = "2024"
 version = "0.0.1"
+readme = "readme.md"
 
 [workspace.dependencies]
 base64 = "0.22.1"

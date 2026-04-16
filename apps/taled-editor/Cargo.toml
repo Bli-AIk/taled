@@ -2,7 +2,15 @@
 name = "taled-editor"
 version = "0.0.1"
 edition = "2024"
-license = "0BSD"
+authors = ["Bli-AIk <haikun2333@gmail.com>"]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/Bli-AIk/taled"
+homepage = "https://github.com/Bli-AIk/taled"
+description = "A tile map editor for Ply engine, running on Android, web and desktop."
+documentation = "https://docs.rs/taled-editor"
+readme = "../../readme.md"
+keywords = ["tile-map", "tmx", "editor", "ply", "android"]
+categories = ["game-development", "game-engines"]
 
 [package.metadata.android]
 assets = "../../assets"
